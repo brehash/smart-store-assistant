@@ -385,7 +385,9 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
               continue;
             }
 
-            // No more tool calls — stream the final text response
+            // No more tool calls — mark pipeline complete and stream the final text response
+            sendSSE({ type: "pipeline_complete", lastStepIndex: stepIndex });
+
             if (content) {
               // Remove the pipeline block from streamed content
               const cleanContent = content.replace(/```pipeline\s*\n[\s\S]*?\n```\s*/g, "").trim();
