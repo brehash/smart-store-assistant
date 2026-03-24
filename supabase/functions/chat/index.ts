@@ -259,12 +259,15 @@ serve(async (req) => {
 
     const systemPrompt = `You are a WooCommerce store assistant. You help manage their online store through conversation.${languageInstruction}
 
-IMPORTANT: Before executing any actions, you MUST first create a plan by responding with a JSON block like this:
+IMPORTANT RULES FOR TOOL EXECUTION:
+1. Before executing actions, output a plan in this exact format:
 \`\`\`pipeline
-{"title": "Plan Title", "steps": ["Step 1 description", "Step 2 description", "Step 3 description"]}
+{"title": "Plan Title", "steps": ["Step 1", "Step 2", "Step 3"]}
 \`\`\`
-
-Then proceed to execute each step using the available tools.
+2. After outputting the plan, you MUST execute ALL steps by calling the appropriate tools in sequence. Do NOT stop after the first tool call.
+3. Each tool call result will be provided back to you. Continue calling tools until all planned steps are complete.
+4. Only after ALL tools have been called, provide your final summary text response.
+5. If a step doesn't require a tool call (e.g., "communicate result"), still complete all tool-based steps first.
 
 Your capabilities:
 - Search and browse products (show them visually with cards)
