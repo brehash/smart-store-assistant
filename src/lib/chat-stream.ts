@@ -12,6 +12,7 @@ export interface PipelineEvent {
   args?: any;
   summary?: string;
   details?: string;
+  lastStepIndex?: number;
   question?: string;
   options?: string[];
   toolCallId?: string;
