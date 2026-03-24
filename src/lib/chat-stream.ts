@@ -2,22 +2,41 @@ type Msg = { role: "user" | "assistant"; content: string };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
+export interface PipelineEvent {
+  type: "pipeline_plan" | "pipeline_step" | "approval_request" | "question_request";
+  title?: string;
+  steps?: string[];
+  stepIndex?: number;
+  status?: string;
+  toolName?: string;
+  args?: any;
+  summary?: string;
+  details?: string;
+  question?: string;
+  options?: string[];
+  toolCallId?: string;
+}
+
 export async function streamChat({
   messages,
   conversationId,
   onDelta,
   onToolCall,
+  onPipelineEvent,
   onDone,
   onError,
   accessToken,
+  approvalResponse,
 }: {
   messages: Msg[];
   conversationId: string;
   onDelta: (text: string) => void;
   onToolCall?: (toolCall: any) => void;
+  onPipelineEvent?: (event: PipelineEvent) => void;
   onDone: () => void;
   onError: (error: string) => void;
   accessToken: string;
+  approvalResponse?: { toolCallId: string; action: "approve" | "skip" | "edit"; editedArgs?: string };
 }) {
   try {
     const resp = await fetch(CHAT_URL, {
@@ -26,22 +45,12 @@ export async function streamChat({
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ messages, conversationId }),
+      body: JSON.stringify({ messages, conversationId, approvalResponse }),
     });
 
-    if (resp.status === 429) {
-      onError("Rate limited — please wait a moment and try again.");
-      return;
-    }
-    if (resp.status === 402) {
-      onError("AI credits exhausted. Please add funds in Settings → Workspace → Usage.");
-      return;
-    }
-    if (!resp.ok || !resp.body) {
-      const text = await resp.text();
-      onError(text || "Failed to connect to AI");
-      return;
-    }
+    if (resp.status === 429) { onError("Rate limited — please wait a moment and try again."); return; }
+    if (resp.status === 402) { onError("AI credits exhausted."); return; }
+    if (!resp.ok || !resp.body) { onError(await resp.text() || "Failed to connect to AI"); return; }
 
     const reader = resp.body.getReader();
     const decoder = new TextDecoder();
@@ -63,15 +72,18 @@ export async function streamChat({
         if (!line.startsWith("data: ")) continue;
 
         const jsonStr = line.slice(6).trim();
-        if (jsonStr === "[DONE]") {
-          streamDone = true;
-          break;
-        }
+        if (jsonStr === "[DONE]") { streamDone = true; break; }
 
         try {
           const parsed = JSON.parse(jsonStr);
-          
-          // Handle rich content / tool results
+
+          // Pipeline events
+          if (parsed.type === "pipeline_plan" || parsed.type === "pipeline_step" || parsed.type === "approval_request" || parsed.type === "question_request") {
+            onPipelineEvent?.(parsed);
+            continue;
+          }
+
+          // Rich content
           if (parsed.type === "rich_content") {
             onToolCall?.(parsed);
             continue;

@@ -2,19 +2,23 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { streamChat } from "@/lib/chat-stream";
-import { ChatMessage, type RichContent } from "@/components/chat/ChatMessage";
+import { streamChat, type PipelineEvent } from "@/lib/chat-stream";
+import { ChatMessage, type RichContent, type ApprovalRequest, type QuestionRequest } from "@/components/chat/ChatMessage";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { ConversationSidebar } from "@/components/chat/ConversationSidebar";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Menu, X } from "lucide-react";
+import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { PipelinePlanData } from "@/components/chat/PipelinePlan";
+import type { PipelineStepData } from "@/components/chat/PipelineStep";
 
 interface Message {
   id?: string;
   role: "user" | "assistant";
   content: string;
   richContent?: RichContent | null;
+  pipeline?: PipelinePlanData | null;
+  approvals?: ApprovalRequest[];
+  questions?: QuestionRequest[];
 }
 
 export default function Index() {
@@ -32,7 +36,6 @@ export default function Index() {
     }, 50);
   }, []);
 
-  // Load messages when conversation changes
   useEffect(() => {
     if (!conversationId || !user) return;
     const load = async () => {
@@ -42,14 +45,12 @@ export default function Index() {
         .eq("conversation_id", conversationId)
         .order("created_at", { ascending: true });
       if (data) {
-        setMessages(
-          data.map((m) => ({
-            id: m.id,
-            role: m.role as "user" | "assistant",
-            content: m.content,
-            richContent: m.rich_content as unknown as RichContent | null,
-          }))
-        );
+        setMessages(data.map((m) => ({
+          id: m.id,
+          role: m.role as "user" | "assistant",
+          content: m.content,
+          richContent: m.rich_content as unknown as RichContent | null,
+        })));
         scrollToBottom();
       }
     };
@@ -63,37 +64,36 @@ export default function Index() {
       .insert({ user_id: user.id, title: "New Conversation" })
       .select()
       .single();
-    if (data) {
-      setConversationId(data.id);
-      setMessages([]);
-      return data.id;
-    }
+    if (data) { setConversationId(data.id); setMessages([]); return data.id; }
     return null;
+  };
+
+  const updateLastAssistant = (updater: (msg: Message) => Message) => {
+    setMessages((prev) => {
+      const lastIdx = prev.length - 1;
+      if (lastIdx < 0) return prev;
+      const last = prev[lastIdx];
+      if (last.role === "assistant" && !last.id) {
+        return prev.map((m, i) => i === lastIdx ? updater(m) : m);
+      }
+      // Create a new assistant message
+      return [...prev, updater({ role: "assistant", content: "" })];
+    });
   };
 
   const handleSend = async (input: string) => {
     if (!user || !session) return;
 
     let convId = conversationId;
-    if (!convId) {
-      convId = await createConversation();
-      if (!convId) return;
-    }
+    if (!convId) { convId = await createConversation(); if (!convId) return; }
 
     const userMsg: Message = { role: "user", content: input };
     setMessages((prev) => [...prev, userMsg]);
     setIsStreaming(true);
     scrollToBottom();
 
-    // Save user message
-    await supabase.from("messages").insert({
-      conversation_id: convId,
-      user_id: user.id,
-      role: "user",
-      content: input,
-    });
+    await supabase.from("messages").insert({ conversation_id: convId, user_id: user.id, role: "user", content: input });
 
-    // Update conversation title from first message
     if (messages.length === 0) {
       const title = input.slice(0, 60) + (input.length > 60 ? "..." : "");
       await supabase.from("conversations").update({ title }).eq("id", convId);
@@ -102,41 +102,73 @@ export default function Index() {
     let assistantContent = "";
     let richContent: RichContent | null = null;
 
-    const upsertAssistant = (chunk: string) => {
-      assistantContent += chunk;
-      setMessages((prev) => {
-        const last = prev[prev.length - 1];
-        if (last?.role === "assistant" && !last.id) {
-          return prev.map((m, i) =>
-            i === prev.length - 1 ? { ...m, content: assistantContent } : m
-          );
-        }
-        return [...prev, { role: "assistant", content: assistantContent }];
-      });
-      scrollToBottom();
-    };
-
     await streamChat({
       messages: [...messages, userMsg].map((m) => ({ role: m.role, content: m.content })),
       conversationId: convId,
       accessToken: session.access_token,
-      onDelta: upsertAssistant,
+      onDelta: (chunk) => {
+        assistantContent += chunk;
+        updateLastAssistant((m) => ({ ...m, content: assistantContent }));
+        scrollToBottom();
+      },
       onToolCall: (tc) => {
         richContent = tc;
-        setMessages((prev) => {
-          const last = prev[prev.length - 1];
-          if (last?.role === "assistant" && !last.id) {
-            return prev.map((m, i) =>
-              i === prev.length - 1 ? { ...m, richContent: tc } : m
-            );
-          }
-          return prev;
-        });
+        updateLastAssistant((m) => ({ ...m, richContent: tc }));
+      },
+      onPipelineEvent: (event: PipelineEvent) => {
+        if (event.type === "pipeline_plan") {
+          const planSteps: PipelineStepData[] = (event.steps || []).map((s, i) => ({
+            id: `step-${i}`,
+            title: s,
+            status: "pending" as const,
+          }));
+          const plan: PipelinePlanData = { title: event.title || "Plan", steps: planSteps };
+          updateLastAssistant((m) => ({ ...m, pipeline: plan }));
+          scrollToBottom();
+        } else if (event.type === "pipeline_step") {
+          updateLastAssistant((m) => {
+            if (!m.pipeline) return m;
+            const steps = [...m.pipeline.steps];
+            // Find step by index or add new one
+            if (event.stepIndex !== undefined && event.stepIndex < steps.length) {
+              steps[event.stepIndex] = {
+                ...steps[event.stepIndex],
+                title: event.title || steps[event.stepIndex].title,
+                status: (event.status as PipelineStepData["status"]) || "running",
+                details: event.details,
+              };
+            }
+            return { ...m, pipeline: { ...m.pipeline, steps } };
+          });
+          scrollToBottom();
+        } else if (event.type === "approval_request") {
+          const approval: ApprovalRequest = {
+            stepIndex: event.stepIndex || 0,
+            summary: event.summary || "",
+            toolName: event.toolName || "",
+            args: event.args,
+            toolCallId: event.toolCallId || "",
+          };
+          updateLastAssistant((m) => ({
+            ...m,
+            approvals: [...(m.approvals || []), approval],
+          }));
+          scrollToBottom();
+        } else if (event.type === "question_request") {
+          const question: QuestionRequest = {
+            question: event.question || "",
+            options: event.options,
+          };
+          updateLastAssistant((m) => ({
+            ...m,
+            questions: [...(m.questions || []), question],
+          }));
+          scrollToBottom();
+        }
       },
       onDone: async () => {
         setIsStreaming(false);
-        // Save assistant message
-        if (assistantContent) {
+        if (assistantContent || richContent) {
           await supabase.from("messages").insert({
             conversation_id: convId!,
             user_id: user.id,
@@ -153,53 +185,123 @@ export default function Index() {
     });
   };
 
-  const handleNewChat = () => {
-    setConversationId(null);
-    setMessages([]);
-    setSidebarOpen(false);
+  const handleApproval = async (approval: ApprovalRequest, action: "approve" | "skip" | "edit", editedText?: string) => {
+    if (!session || !conversationId) return;
+
+    // Mark the approval as resolved
+    updateLastAssistant((m) => ({
+      ...m,
+      approvals: m.approvals?.map((a) =>
+        a.toolCallId === approval.toolCallId
+          ? { ...a, resolved: action === "edit" ? "edited" as const : action === "approve" ? "approved" as const : "skipped" as const }
+          : a
+      ),
+    }));
+
+    if (action === "skip") {
+      // Update pipeline step to skipped
+      updateLastAssistant((m) => {
+        if (!m.pipeline) return m;
+        const steps = m.pipeline.steps.map((s, i) =>
+          i === approval.stepIndex ? { ...s, status: "skipped" as const } : s
+        );
+        return { ...m, pipeline: { ...m.pipeline, steps } };
+      });
+      return;
+    }
+
+    // For approve/edit, send the approval response back to continue the pipeline
+    setIsStreaming(true);
+    let assistantContent = "";
+
+    const approvalMsg = action === "approve"
+      ? `User approved: ${approval.summary}`
+      : `User edited and approved: ${editedText}`;
+
+    await streamChat({
+      messages: [...messages, { role: "user" as const, content: approvalMsg }],
+      conversationId,
+      accessToken: session.access_token,
+      approvalResponse: { toolCallId: approval.toolCallId, action, editedArgs: editedText },
+      onDelta: (chunk) => {
+        assistantContent += chunk;
+        updateLastAssistant((m) => ({ ...m, content: assistantContent }));
+        scrollToBottom();
+      },
+      onToolCall: (tc) => {
+        updateLastAssistant((m) => ({ ...m, richContent: tc }));
+      },
+      onPipelineEvent: (event: PipelineEvent) => {
+        if (event.type === "pipeline_step") {
+          updateLastAssistant((m) => {
+            if (!m.pipeline) return m;
+            const steps = [...m.pipeline.steps];
+            if (event.stepIndex !== undefined && event.stepIndex < steps.length) {
+              steps[event.stepIndex] = {
+                ...steps[event.stepIndex],
+                title: event.title || steps[event.stepIndex].title,
+                status: (event.status as PipelineStepData["status"]) || "running",
+                details: event.details,
+              };
+            }
+            return { ...m, pipeline: { ...m.pipeline, steps } };
+          });
+          scrollToBottom();
+        }
+      },
+      onDone: async () => {
+        setIsStreaming(false);
+        if (assistantContent) {
+          await supabase.from("messages").insert({
+            conversation_id: conversationId!,
+            user_id: user!.id,
+            role: "assistant",
+            content: assistantContent,
+          });
+        }
+      },
+      onError: (error) => {
+        setIsStreaming(false);
+        toast({ title: "Error", description: error, variant: "destructive" });
+      },
+    });
   };
 
-  const handleSelectConversation = (id: string) => {
-    setConversationId(id);
-    setSidebarOpen(false);
+  const handleQuestionAnswer = async (question: QuestionRequest, answer: string) => {
+    if (!session || !conversationId) return;
+
+    updateLastAssistant((m) => ({
+      ...m,
+      questions: m.questions?.map((q) =>
+        q.question === question.question ? { ...q, resolved: answer } : q
+      ),
+    }));
+
+    // Send the answer as a new user message
+    await handleSend(answer);
   };
+
+  const handleNewChat = () => { setConversationId(null); setMessages([]); setSidebarOpen(false); };
+  const handleSelectConversation = (id: string) => { setConversationId(id); setSidebarOpen(false); };
 
   return (
     <div className="flex h-screen bg-background">
-      {/* Mobile overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* Sidebar */}
-      <div
-        className={`fixed inset-y-0 left-0 z-50 transform transition-transform lg:relative lg:translate-x-0 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <ConversationSidebar
-          activeId={conversationId}
-          onSelect={handleSelectConversation}
-          onNew={handleNewChat}
-        />
+      <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform lg:relative lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+        <ConversationSidebar activeId={conversationId} onSelect={handleSelectConversation} onNew={handleNewChat} />
       </div>
 
-      {/* Main area */}
       <div className="flex flex-1 flex-col min-w-0">
-        {/* Header */}
         <div className="flex items-center gap-3 border-b px-4 py-3 bg-card">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden"
-            onClick={() => setSidebarOpen(true)}
-          >
+          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
             <Menu className="h-5 w-5" />
           </Button>
           <h1 className="text-lg font-semibold truncate">WooCommerce AI Assistant</h1>
         </div>
 
-        {/* Messages */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center px-4">
@@ -213,17 +315,8 @@ export default function Index() {
                 Search products, create orders, get analytics, or ask anything about your WooCommerce store.
               </p>
               <div className="mt-6 flex flex-wrap justify-center gap-2">
-                {[
-                  "Search for pasta products",
-                  "Show me today's orders",
-                  "Sales report for this week",
-                  "Create a new order",
-                ].map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => handleSend(s)}
-                    className="rounded-full border border-border bg-card px-4 py-2 text-sm hover:bg-accent transition-colors"
-                  >
+                {["Search for pasta products", "Show me today's orders", "Sales report for this week", "Create a new order"].map((s) => (
+                  <button key={s} onClick={() => handleSend(s)} className="rounded-full border border-border bg-card px-4 py-2 text-sm hover:bg-accent transition-colors">
                     {s}
                   </button>
                 ))}
@@ -238,13 +331,17 @@ export default function Index() {
                   content={msg.content}
                   richContent={msg.richContent}
                   isStreaming={isStreaming && i === messages.length - 1 && msg.role === "assistant"}
+                  pipeline={msg.pipeline}
+                  approvals={msg.approvals}
+                  questions={msg.questions}
+                  onApproval={handleApproval}
+                  onQuestionAnswer={handleQuestionAnswer}
                 />
               ))}
             </div>
           )}
         </div>
 
-        {/* Input */}
         <ChatInput onSend={handleSend} disabled={isStreaming} />
       </div>
     </div>
