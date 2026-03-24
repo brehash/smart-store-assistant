@@ -100,7 +100,7 @@ export default function Index() {
     }
 
     let assistantContent = "";
-    let richContent: RichContent | null = null;
+    let richContents: RichContent[] = [];
 
     await streamChat({
       messages: [...messages, userMsg].map((m) => ({ role: m.role, content: m.content })),
@@ -112,8 +112,8 @@ export default function Index() {
         scrollToBottom();
       },
       onToolCall: (tc) => {
-        richContent = tc;
-        updateLastAssistant((m) => ({ ...m, richContent: tc }));
+        richContents = [...richContents, tc];
+        updateLastAssistant((m) => ({ ...m, richContents: [...(m.richContents || []), tc] }));
       },
       onPipelineEvent: (event: PipelineEvent) => {
         if (event.type === "pipeline_plan") {
