@@ -178,13 +178,13 @@ export default function Index() {
       },
       onDone: async () => {
         setIsStreaming(false);
-        if (assistantContent || richContent) {
+        if (assistantContent || richContents.length) {
           await supabase.from("messages").insert({
             conversation_id: convId!,
             user_id: user.id,
             role: "assistant",
             content: assistantContent,
-            rich_content: richContent as any,
+            rich_content: richContents.length ? richContents[0] as any : null,
           });
         }
       },
