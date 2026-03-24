@@ -79,7 +79,7 @@ export async function streamChat({
           const parsed = JSON.parse(jsonStr);
 
           // Pipeline events
-          if (parsed.type === "pipeline_plan" || parsed.type === "pipeline_step" || parsed.type === "approval_request" || parsed.type === "question_request") {
+          if (parsed.type === "pipeline_plan" || parsed.type === "pipeline_step" || parsed.type === "pipeline_complete" || parsed.type === "approval_request" || parsed.type === "question_request") {
             onPipelineEvent?.(parsed);
             continue;
           }
