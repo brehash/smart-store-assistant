@@ -1,55 +1,86 @@
 
-# WooCommerce AI Chat Assistant
 
-## Overview
-An AI-powered chat interface that connects to your WooCommerce store, letting you manage orders, browse products, get analytics, and more — all through natural conversation. The AI learns your preferences over time.
+# Pipeline UI with Plan Mode, Steps & Approval Flow
 
-## Core Pages & Auth
-- **Login / Signup page** with email/password authentication (Supabase Auth)
-- **Main Chat interface** — the primary workspace (protected route)
-- **Settings page** — configure WooCommerce store URL and API keys per user
+## What You'll Get
+An agentic pipeline UI where the AI shows its thinking process step-by-step — similar to how Lovable works. When you ask "create an order with 2 of 50gr pasta bourbon", instead of just doing it silently, the AI will:
 
-## Chat Interface
-- Full-screen chat UI with message history, markdown rendering, and streaming AI responses
-- Messages display rich content inline: product cards, order tables, charts, and action buttons
-- Conversation history persisted in database, switchable between past conversations
-- Mobile-responsive layout
+1. Show a **plan** with numbered steps (e.g., "1. Search for matching products 2. Confirm selection 3. Create order")
+2. Display each step with a **loading spinner** while executing, then a **checkmark** when done
+3. For destructive actions (create/update orders), show an **approval prompt** with Approve/Skip/Edit buttons
+4. Ask **clarifying questions** when the request is ambiguous
 
-## AI Capabilities (via Lovable AI + Edge Functions)
-The AI agent will have access to these WooCommerce tools via function/tool calling:
+## Architecture
 
-### 1. Product Tools
-- **Search products** — fuzzy search by name, SKU, category. Results displayed as a horizontal slider of product cards with images, price, stock status, and "Add to order" action buttons
-- **Get product details** — full product info with images, variations, and inventory
+### Backend (Edge Function `chat`)
+- Update the system prompt to instruct the AI to always output a structured plan before executing tools
+- Add a new SSE event type `pipeline_step` that streams step status updates (`pending`, `running`, `done`, `error`, `needs_approval`, `question`)
+- Before executing write tools (`create_order`, `update_order_status`), send a `needs_approval` event and pause until the client responds
+- Add a new endpoint or message type for the client to send approval/skip/edit responses mid-stream
 
-### 2. Order Tools
-- **Create order** — AI parses natural language ("2 of 50gr pasta bourbon"), searches for matching products, shows confirmation table, then creates the order
-- **Search orders** — by customer, date range, status. Results shown in a sortable table
-- **Update order status** — change order status (processing, completed, etc.)
+### Frontend Components
 
-### 3. Analytics Tools
-- **Sales insights** — revenue summaries, top products, order trends displayed as interactive charts (bar, line, pie charts using Recharts)
-- **Inventory overview** — low stock alerts, product performance tables
+**1. `PipelineStep` component**
+- Renders a single step with icon (spinner → checkmark → X), title, and optional details
+- States: `pending` (gray dot), `running` (spinning loader), `done` (green check), `error` (red X), `skipped` (gray dash)
+- Expandable to show tool results inline
 
-## Learning & Memory
-- **User preferences table** — stores product aliases, shortcuts, and patterns per user (e.g., "pasta bourbon" → specific product ID)
-- AI references past interactions to improve accuracy over time
-- Preference management in settings (view/edit learned shortcuts)
+**2. `PipelinePlan` component**
+- Renders the full plan as a vertical list of `PipelineStep` items with a connecting line
+- Shows plan title and summary at the top
 
-## Backend Architecture
-- **Supabase (Lovable Cloud)** for auth, database, and edge functions
-- **Edge function: `woo-proxy`** — securely proxies all WooCommerce REST API calls (store credentials never exposed to client)
-- **Edge function: `chat`** — handles AI conversations with tool calling, routes tool results back to the AI for natural responses
-- WooCommerce API keys stored securely as Supabase secrets
+**3. `ApprovalCard` component**
+- Inline card with action summary, Approve/Skip/Edit buttons
+- Edit opens inline text input to modify the action parameters
+- Styled as a distinct card within the chat flow
 
-## Database Tables
-- `conversations` — chat session metadata per user
-- `messages` — full message history with role, content, and rich content metadata
-- `user_preferences` — learned product aliases and user patterns
-- `woo_connections` — encrypted WooCommerce store credentials per user
+**4. `QuestionCard` component**
+- Renders AI questions with clickable option buttons
+- Supports free-text "Other" input
 
-## Rich UI Components
-- **Product card slider** — horizontal scrollable cards with product image, name, price, stock badge, and quick-action buttons
-- **Order table** — sortable/filterable table with order details
-- **Charts** — Recharts-based visualizations for sales data, rendered inline in chat
-- **Confirmation dialogs** — before executing write operations (create order, update status)
+### Message Flow
+
+```text
+User: "Create order with 2 of 50gr pasta bourbon"
+    ↓
+AI streams plan:
+  ┌─────────────────────────────────────┐
+  │ Plan: Create Order                   │
+  │                                      │
+  │ ⏳ 1. Search for "pasta bourbon"     │
+  │ ○  2. Confirm product match          │
+  │ ○  3. Create order                   │
+  └─────────────────────────────────────┘
+    ↓
+Step 1 executes:
+  │ ✅ 1. Search for "pasta bourbon"     │  ← checkmark + product slider
+  │ ⏳ 2. Confirm product match          │
+    ↓
+Step 2 — approval needed:
+  │ ✅ 1. Search for "pasta bourbon"     │
+  │ ⏳ 2. Confirm product match          │
+  │   ┌──────────────────────────┐       │
+  │   │ Found: Pasta Bourbon 50g │       │
+  │   │ Qty: 2  Price: 15 RON   │       │
+  │   │ [Approve] [Skip] [Edit]  │       │
+  │   └──────────────────────────┘       │
+    ↓ (user clicks Approve)
+  │ ✅ 2. Confirmed                      │
+  │ ⏳ 3. Creating order...              │
+  │ ✅ 3. Order #1234 created            │
+```
+
+### Data Flow Changes
+
+- **`chat-stream.ts`**: Add new callbacks: `onPipelineStep`, `onApprovalNeeded`, `onQuestion`
+- **`Index.tsx`**: Track pipeline state per assistant message; handle approval responses by sending a follow-up message to the edge function
+- **`ChatMessage.tsx`**: Render pipeline steps inline when `richContent.type === "pipeline"`
+- **Edge function**: New SSE event types (`pipeline_plan`, `pipeline_step_update`, `approval_request`, `question_request`); approval handled via a second request with the user's response
+
+### Files to Create/Modify
+- **Create**: `src/components/chat/PipelineStep.tsx`, `src/components/chat/PipelinePlan.tsx`, `src/components/chat/ApprovalCard.tsx`, `src/components/chat/QuestionCard.tsx`
+- **Modify**: `supabase/functions/chat/index.ts` (plan generation, step streaming, approval flow)
+- **Modify**: `src/lib/chat-stream.ts` (new event handlers)
+- **Modify**: `src/pages/Index.tsx` (pipeline state management, approval handlers)
+- **Modify**: `src/components/chat/ChatMessage.tsx` (render pipeline UI)
+
