@@ -31,7 +31,7 @@ export interface QuestionRequest {
 interface ChatMessageProps {
   role: "user" | "assistant";
   content: string;
-  richContent?: RichContent | null;
+  richContents?: RichContent[];
   isStreaming?: boolean;
   pipeline?: PipelinePlanData | null;
   approvals?: ApprovalRequest[];
@@ -41,7 +41,7 @@ interface ChatMessageProps {
 }
 
 export function ChatMessage({
-  role, content, richContent, isStreaming,
+  role, content, richContents, isStreaming,
   pipeline, approvals, questions,
   onApproval, onQuestionAnswer,
 }: ChatMessageProps) {
