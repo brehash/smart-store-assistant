@@ -1,11 +1,12 @@
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell, Legend } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface ChartData {
-  type: "bar" | "line" | "pie";
+  type: "bar" | "line" | "pie" | "grouped_bar";
   title: string;
   data: any[];
   dataKey?: string;
+  dataKeys?: string[];
   nameKey?: string;
 }
 
@@ -32,7 +33,18 @@ export function ChatChart({ chartData }: { chartData: ChartData }) {
       <CardContent>
         <div className="h-[200px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            {chartData.type === "bar" ? (
+            {chartData.type === "grouped_bar" && chartData.dataKeys ? (
+              <BarChart data={chartData.data}>
+                <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                <XAxis dataKey={nk} tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <Legend />
+                {chartData.dataKeys.map((key, i) => (
+                  <Bar key={key} dataKey={key} fill={COLORS[i % COLORS.length]} radius={[4, 4, 0, 0]} />
+                ))}
+              </BarChart>
+            ) : chartData.type === "bar" ? (
               <BarChart data={chartData.data}>
                 <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
                 <XAxis dataKey={nk} tick={{ fontSize: 11 }} />

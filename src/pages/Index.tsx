@@ -239,7 +239,7 @@ export default function Index() {
         scrollToBottom();
       },
       onToolCall: (tc) => {
-        updateLastAssistant((m) => ({ ...m, richContent: tc }));
+        updateLastAssistant((m) => ({ ...m, richContents: [...(m.richContents || []), tc] }));
       },
       onPipelineEvent: (event: PipelineEvent) => {
         if (event.type === "pipeline_step") {
