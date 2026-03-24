@@ -257,6 +257,15 @@ export default function Index() {
             return { ...m, pipeline: { ...m.pipeline, steps } };
           });
           scrollToBottom();
+        } else if (event.type === "pipeline_complete") {
+          updateLastAssistant((m) => {
+            if (!m.pipeline) return m;
+            const steps = m.pipeline.steps.map((s) =>
+              s.status === "pending" ? { ...s, status: "done" as const } : s
+            );
+            return { ...m, pipeline: { ...m.pipeline, steps } };
+          });
+          scrollToBottom();
         }
       },
       onDone: async () => {
