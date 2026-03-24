@@ -1,37 +1,54 @@
 
 
-# Settings: Response Language & OpenAI API Key
+# Fix: Product Sliders, Charts, Sales Reports & Comparisons
 
-## Overview
-Add two new settings sections: a language selector for AI response language (and pipeline labels), and an optional OpenAI API key field. When an OpenAI key is provided, the chat edge function calls OpenAI directly instead of the Lovable AI gateway.
+## Issues Identified
+
+1. **Products not showing as slider cards** — The `rich_content` SSE event is sent but the frontend `onToolCall` handler in `Index.tsx` overwrites `richContent` on each call. More critically, the rich content is sent as a generic SSE event and may not be properly attached to the assistant message when products are returned from `search_products`.
+
+2. **Charts not displaying** — The `chart` rich content is sent via `rich_content` SSE event, but the `onToolCall` callback only sets the last rich content received. The chart data from `get_sales_report` is being overwritten by any subsequent content, or the AI is returning the data as text instead of triggering the tool.
+
+3. **Missing days in sales report** — The `get_sales_report` tool only returns days that have orders. Days with zero sales are skipped because `byDate` only accumulates dates from actual orders. Need to fill in gaps.
+
+4. **No period comparison** — There's no `compare_periods` tool. The AI has no way to fetch two date ranges and compare them.
 
 ## Changes
 
-### 1. Database Migration
-Add two columns to `woo_connections`:
-- `response_language TEXT DEFAULT 'English'`
-- `openai_api_key TEXT` (nullable)
+### 1. Edge Function (`supabase/functions/chat/index.ts`)
 
-This keeps all user settings in one row per user.
+**Fix sales report date gaps**: In `get_sales_report`, after building `byDate`, iterate from `date_min` to `date_max` day by day and fill missing dates with `0` revenue.
 
-### 2. Settings Page (`src/pages/Settings.tsx`)
-Add two new Card sections:
+**Add `compare_sales` tool**: New tool definition that takes two date ranges (`period_a_start`, `period_a_end`, `period_b_start`, `period_b_end`), fetches orders for both, and returns comparison data with a grouped bar chart rich content.
 
-**AI Language** — A select dropdown with languages: English, Romanian, French, German, Spanish, Italian, Portuguese, Dutch, Polish, Turkish, Greek, Russian, Chinese, Japanese, Korean (no Arabic/Hebrew/Farsi/Urdu).
+**Fix rich content for products**: Ensure the `rich_content` event for products is always emitted when `search_products` or `get_product` returns results.
 
-**OpenAI API Key** — A password input for the user's OpenAI key. When set, the chat uses OpenAI directly with model `gpt-4o-mini` (the closest real OpenAI nano-tier model — `gpt-5.4-nano` does not exist yet; can be updated when available). A note explains this overrides the default AI provider.
+### 2. Frontend — Support Multiple Rich Contents (`Index.tsx`)
 
-### 3. Chat Edge Function (`supabase/functions/chat/index.ts`)
-- Load `response_language` and `openai_api_key` from the user's `woo_connections` row
-- Append to system prompt: `"Always respond in {language}. Pipeline step labels and plan titles must also be in {language}."`
-- If `openai_api_key` is set: call `https://api.openai.com/v1/chat/completions` with model `gpt-4o-mini` using the user's key directly, instead of the Lovable AI gateway
-- If not set: continue using Lovable AI gateway as before
+Change `richContent` from a single object to an array (`richContents: RichContent[]`) on each message. The `onToolCall` callback appends instead of replacing. This way both a product slider AND a chart can appear in the same message.
 
-### 4. Stream Function (`src/lib/chat-stream.ts`)
-No changes needed — the backend handles provider routing transparently.
+### 3. Frontend — ChatMessage & Rendering
+
+Update `ChatMessage` to render an array of `richContents` — iterating and rendering the appropriate component (ProductSlider, OrderTable, ChatChart) for each.
+
+### 4. Edge Function — Fill Missing Dates in Sales Report
+
+```text
+// After building byDate from orders:
+// Generate all dates between start and end
+// For each date not in byDate, set value to 0
+```
+
+This ensures "sales report for this week" shows all 7 days, including days with 0 revenue.
+
+### 5. New Tool: `compare_sales`
+
+Parameters: `period_a_start`, `period_a_end`, `period_b_start`, `period_b_end`, `period_a_label`, `period_b_label`
+
+Returns comparison stats (total revenue, order count for each period) plus a grouped bar chart showing both periods side by side.
 
 ### Files Modified
-- **Migration SQL** — add columns
-- `src/pages/Settings.tsx` — language dropdown + OpenAI key input
-- `supabase/functions/chat/index.ts` — language injection + OpenAI routing
+- `supabase/functions/chat/index.ts` — fix date gaps, add compare tool, update system prompt
+- `src/pages/Index.tsx` — change richContent to array, append instead of replace
+- `src/components/chat/ChatMessage.tsx` — render array of rich contents
+- `src/components/chat/ChatChart.tsx` — support grouped bar chart for comparisons
 
