@@ -66,6 +66,8 @@ export default function Settings() {
             consumer_key: consumerKey,
             consumer_secret: consumerSecret,
             store_name: storeName,
+            response_language: responseLanguage,
+            openai_api_key: openaiApiKey || null,
           })
           .eq("id", existingConnection.id);
       } else {
@@ -77,6 +79,8 @@ export default function Settings() {
             consumer_key: consumerKey,
             consumer_secret: consumerSecret,
             store_name: storeName,
+            response_language: responseLanguage,
+            openai_api_key: openaiApiKey || null,
           })
           .select()
           .single();
