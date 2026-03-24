@@ -15,7 +15,7 @@ interface Message {
   id?: string;
   role: "user" | "assistant";
   content: string;
-  richContent?: RichContent | null;
+  richContents?: RichContent[];
   pipeline?: PipelinePlanData | null;
   approvals?: ApprovalRequest[];
   questions?: QuestionRequest[];
@@ -49,7 +49,7 @@ export default function Index() {
           id: m.id,
           role: m.role as "user" | "assistant",
           content: m.content,
-          richContent: m.rich_content as unknown as RichContent | null,
+          richContents: m.rich_content ? [m.rich_content as unknown as RichContent] : [],
         })));
         scrollToBottom();
       }
@@ -100,7 +100,7 @@ export default function Index() {
     }
 
     let assistantContent = "";
-    let richContent: RichContent | null = null;
+    let richContents: RichContent[] = [];
 
     await streamChat({
       messages: [...messages, userMsg].map((m) => ({ role: m.role, content: m.content })),
@@ -112,8 +112,8 @@ export default function Index() {
         scrollToBottom();
       },
       onToolCall: (tc) => {
-        richContent = tc;
-        updateLastAssistant((m) => ({ ...m, richContent: tc }));
+        richContents = [...richContents, tc];
+        updateLastAssistant((m) => ({ ...m, richContents: [...(m.richContents || []), tc] }));
       },
       onPipelineEvent: (event: PipelineEvent) => {
         if (event.type === "pipeline_plan") {
@@ -178,13 +178,13 @@ export default function Index() {
       },
       onDone: async () => {
         setIsStreaming(false);
-        if (assistantContent || richContent) {
+        if (assistantContent || richContents.length) {
           await supabase.from("messages").insert({
             conversation_id: convId!,
             user_id: user.id,
             role: "assistant",
             content: assistantContent,
-            rich_content: richContent as any,
+            rich_content: richContents.length ? richContents[0] as any : null,
           });
         }
       },
@@ -239,7 +239,7 @@ export default function Index() {
         scrollToBottom();
       },
       onToolCall: (tc) => {
-        updateLastAssistant((m) => ({ ...m, richContent: tc }));
+        updateLastAssistant((m) => ({ ...m, richContents: [...(m.richContents || []), tc] }));
       },
       onPipelineEvent: (event: PipelineEvent) => {
         if (event.type === "pipeline_step") {
@@ -348,7 +348,7 @@ export default function Index() {
                   key={i}
                   role={msg.role}
                   content={msg.content}
-                  richContent={msg.richContent}
+                  richContents={msg.richContents}
                   isStreaming={isStreaming && i === messages.length - 1 && msg.role === "assistant"}
                   pipeline={msg.pipeline}
                   approvals={msg.approvals}

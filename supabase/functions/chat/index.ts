@@ -93,14 +93,33 @@ const TOOLS = [
     type: "function",
     function: {
       name: "get_sales_report",
-      description: "Get sales analytics — revenue, order count, top products, trends",
+      description: "Get sales analytics — revenue, order count, top products, trends. Always use date_min and date_max for accurate results.",
       parameters: {
         type: "object",
         properties: {
           period: { type: "string", description: "Time period: today, week, month, year, or custom" },
-          date_min: { type: "string", description: "Start date for custom period (YYYY-MM-DD)" },
-          date_max: { type: "string", description: "End date for custom period (YYYY-MM-DD)" },
+          date_min: { type: "string", description: "Start date (YYYY-MM-DD). Always calculate and provide this." },
+          date_max: { type: "string", description: "End date (YYYY-MM-DD). Always calculate and provide this." },
         },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "compare_sales",
+      description: "Compare sales between two date ranges. Returns comparison stats and grouped bar chart.",
+      parameters: {
+        type: "object",
+        properties: {
+          period_a_start: { type: "string", description: "Start of period A (YYYY-MM-DD)" },
+          period_a_end: { type: "string", description: "End of period A (YYYY-MM-DD)" },
+          period_b_start: { type: "string", description: "Start of period B (YYYY-MM-DD)" },
+          period_b_end: { type: "string", description: "End of period B (YYYY-MM-DD)" },
+          period_a_label: { type: "string", description: "Label for period A (e.g. 'This Month')" },
+          period_b_label: { type: "string", description: "Label for period B (e.g. 'Last Month')" },
+        },
+        required: ["period_a_start", "period_a_end", "period_b_start", "period_b_end"],
       },
     },
   },
@@ -133,6 +152,7 @@ const TOOL_LABELS: Record<string, string> = {
   create_order: "Creating order",
   update_order_status: "Updating order status",
   get_sales_report: "Generating sales report",
+  compare_sales: "Comparing sales periods",
   save_preference: "Saving preference",
 };
 
@@ -188,12 +208,21 @@ async function executeTool(
       const params = new URLSearchParams();
       params.set("per_page", "100");
       params.set("status", "completed,processing");
-      if (args.date_min) params.set("after", `${args.date_min}T00:00:00`);
-      if (args.date_max) params.set("before", `${args.date_max}T23:59:59`);
+      let startDate = args.date_min;
+      let endDate = args.date_max;
       const now = new Date();
-      if (args.period === "today") params.set("after", `${now.toISOString().split("T")[0]}T00:00:00`);
-      else if (args.period === "week") params.set("after", new Date(now.getTime() - 7 * 864e5).toISOString());
-      else if (args.period === "month") params.set("after", new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()).toISOString());
+      if (args.period === "today") {
+        startDate = now.toISOString().split("T")[0];
+        endDate = startDate;
+      } else if (args.period === "week") {
+        startDate = new Date(now.getTime() - 6 * 864e5).toISOString().split("T")[0];
+        endDate = now.toISOString().split("T")[0];
+      } else if (args.period === "month") {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+        endDate = now.toISOString().split("T")[0];
+      }
+      if (startDate) params.set("after", `${startDate}T00:00:00`);
+      if (endDate) params.set("before", `${endDate}T23:59:59`);
       const orders = await callWooProxy(supabaseUrl, authHeader, { endpoint: `orders?${params.toString()}` });
       if (!Array.isArray(orders)) return { result: orders };
       const totalRevenue = orders.reduce((s: number, o: any) => s + parseFloat(o.total || "0"), 0);
@@ -202,10 +231,45 @@ async function executeTool(
         const date = o.date_created?.split("T")[0] || "unknown";
         byDate[date] = (byDate[date] || 0) + parseFloat(o.total || "0");
       });
+      // Fill missing dates
+      if (startDate && endDate) {
+        const cur = new Date(startDate);
+        const end = new Date(endDate);
+        while (cur <= end) {
+          const key = cur.toISOString().split("T")[0];
+          if (!(key in byDate)) byDate[key] = 0;
+          cur.setDate(cur.getDate() + 1);
+        }
+      }
       const chartData = Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b)).map(([name, value]) => ({ name, value: Math.round(value * 100) / 100 }));
       return {
         result: { totalRevenue: Math.round(totalRevenue * 100) / 100, orderCount: orders.length, dailyBreakdown: chartData },
         richContent: { type: "chart", data: { type: "bar", title: `Sales Report (${args.period || "custom"})`, data: chartData, dataKey: "value", nameKey: "name" } },
+      };
+    }
+    case "compare_sales": {
+      const fetchPeriod = async (start: string, end: string) => {
+        const params = new URLSearchParams();
+        params.set("per_page", "100");
+        params.set("status", "completed,processing");
+        params.set("after", `${start}T00:00:00`);
+        params.set("before", `${end}T23:59:59`);
+        const orders = await callWooProxy(supabaseUrl, authHeader, { endpoint: `orders?${params.toString()}` });
+        if (!Array.isArray(orders)) return { revenue: 0, count: 0 };
+        const revenue = orders.reduce((s: number, o: any) => s + parseFloat(o.total || "0"), 0);
+        return { revenue: Math.round(revenue * 100) / 100, count: orders.length };
+      };
+      const a = await fetchPeriod(args.period_a_start, args.period_a_end);
+      const b = await fetchPeriod(args.period_b_start, args.period_b_end);
+      const labelA = args.period_a_label || "Period A";
+      const labelB = args.period_b_label || "Period B";
+      const chartData = [
+        { name: "Revenue", [labelA]: a.revenue, [labelB]: b.revenue },
+        { name: "Orders", [labelA]: a.count, [labelB]: b.count },
+      ];
+      return {
+        result: { [labelA]: a, [labelB]: b, change_revenue: a.revenue - b.revenue, change_orders: a.count - b.count },
+        richContent: { type: "chart", data: { type: "grouped_bar", title: `${labelA} vs ${labelB}`, data: chartData, dataKeys: [labelA, labelB], nameKey: "name" } },
       };
     }
     case "save_preference": {
