@@ -248,7 +248,16 @@ serve(async (req) => {
       prefsContext = "\n\nUser's saved preferences/aliases:\n" + prefs.map((p: any) => `- ${p.preference_type}: "${p.key}" → ${JSON.stringify(p.value)}`).join("\n");
     }
 
-    const systemPrompt = `You are a WooCommerce store assistant. You help manage their online store through conversation.
+    // Load user's woo_connections settings (language + openai key)
+    const { data: connData } = await supabase.from("woo_connections").select("response_language, openai_api_key").eq("user_id", userId).eq("is_active", true).maybeSingle();
+    const responseLanguage = connData?.response_language || "English";
+    const userOpenAIKey = connData?.openai_api_key || null;
+
+    const languageInstruction = responseLanguage !== "English"
+      ? `\n\nIMPORTANT: Always respond in ${responseLanguage}. All pipeline step labels, plan titles, confirmations, and explanations must also be in ${responseLanguage}.`
+      : "";
+
+    const systemPrompt = `You are a WooCommerce store assistant. You help manage their online store through conversation.${languageInstruction}
 
 IMPORTANT: Before executing any actions, you MUST first create a plan by responding with a JSON block like this:
 \`\`\`pipeline
