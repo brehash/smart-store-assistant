@@ -93,14 +93,33 @@ const TOOLS = [
     type: "function",
     function: {
       name: "get_sales_report",
-      description: "Get sales analytics — revenue, order count, top products, trends",
+      description: "Get sales analytics — revenue, order count, top products, trends. Always use date_min and date_max for accurate results.",
       parameters: {
         type: "object",
         properties: {
           period: { type: "string", description: "Time period: today, week, month, year, or custom" },
-          date_min: { type: "string", description: "Start date for custom period (YYYY-MM-DD)" },
-          date_max: { type: "string", description: "End date for custom period (YYYY-MM-DD)" },
+          date_min: { type: "string", description: "Start date (YYYY-MM-DD). Always calculate and provide this." },
+          date_max: { type: "string", description: "End date (YYYY-MM-DD). Always calculate and provide this." },
         },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "compare_sales",
+      description: "Compare sales between two date ranges. Returns comparison stats and grouped bar chart.",
+      parameters: {
+        type: "object",
+        properties: {
+          period_a_start: { type: "string", description: "Start of period A (YYYY-MM-DD)" },
+          period_a_end: { type: "string", description: "End of period A (YYYY-MM-DD)" },
+          period_b_start: { type: "string", description: "Start of period B (YYYY-MM-DD)" },
+          period_b_end: { type: "string", description: "End of period B (YYYY-MM-DD)" },
+          period_a_label: { type: "string", description: "Label for period A (e.g. 'This Month')" },
+          period_b_label: { type: "string", description: "Label for period B (e.g. 'Last Month')" },
+        },
+        required: ["period_a_start", "period_a_end", "period_b_start", "period_b_end"],
       },
     },
   },
