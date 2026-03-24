@@ -387,10 +387,10 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
               // Remove the pipeline block from streamed content
               const cleanContent = content.replace(/```pipeline\s*\n[\s\S]*?\n```\s*/g, "").trim();
               if (cleanContent) {
-                const streamResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                const streamResp = await fetch(aiBaseUrl, {
                   method: "POST",
-                  headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-                  body: JSON.stringify({ model: "google/gemini-3-flash-preview", messages: aiMessages, stream: true }),
+                  headers: { Authorization: aiAuthHeader, "Content-Type": "application/json" },
+                  body: JSON.stringify({ model: aiModel, messages: aiMessages, stream: true }),
                 });
 
                 if (streamResp.ok && streamResp.body) {
