@@ -10,7 +10,7 @@ const TOOLS = [
     type: "function",
     function: {
       name: "search_products",
-      description: "Search WooCommerce products by name, SKU, or category. Returns product details including images, price, stock status.",
+      description: "Search WooCommerce products by name, SKU, or category.",
       parameters: {
         type: "object",
         properties: {
@@ -63,13 +63,9 @@ const TOOLS = [
             type: "array",
             items: {
               type: "object",
-              properties: {
-                product_id: { type: "number" },
-                quantity: { type: "number" },
-              },
+              properties: { product_id: { type: "number" }, quantity: { type: "number" } },
               required: ["product_id", "quantity"],
             },
-            description: "Products and quantities for the order",
           },
           customer_id: { type: "number", description: "Customer ID (optional)" },
           status: { type: "string", description: "Order status (default: processing)" },
@@ -112,7 +108,7 @@ const TOOLS = [
     type: "function",
     function: {
       name: "save_preference",
-      description: "Save a user preference/alias. Use this when the user refers to a product by a nickname or shorthand, or establishes any pattern.",
+      description: "Save a user preference/alias.",
       parameters: {
         type: "object",
         properties: {
@@ -126,25 +122,31 @@ const TOOLS = [
   },
 ];
 
+// Tools that require user approval before execution
+const WRITE_TOOLS = new Set(["create_order", "update_order_status"]);
+
+// Human-readable labels for tool names
+const TOOL_LABELS: Record<string, string> = {
+  search_products: "Searching products",
+  get_product: "Getting product details",
+  search_orders: "Searching orders",
+  create_order: "Creating order",
+  update_order_status: "Updating order status",
+  get_sales_report: "Generating sales report",
+  save_preference: "Saving preference",
+};
+
 async function callWooProxy(supabaseUrl: string, authHeader: string, payload: any) {
   const resp = await fetch(`${supabaseUrl}/functions/v1/woo-proxy`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: authHeader,
-    },
+    headers: { "Content-Type": "application/json", Authorization: authHeader },
     body: JSON.stringify(payload),
   });
   return resp.json();
 }
 
 async function executeTool(
-  toolName: string,
-  args: any,
-  supabaseUrl: string,
-  authHeader: string,
-  userId: string,
-  supabase: any
+  toolName: string, args: any, supabaseUrl: string, authHeader: string, userId: string, supabase: any
 ): Promise<{ result: any; richContent?: any }> {
   switch (toolName) {
     case "search_products": {
@@ -152,22 +154,12 @@ async function executeTool(
       params.set("search", args.search);
       if (args.category) params.set("category", args.category);
       params.set("per_page", String(args.per_page || 10));
-      const data = await callWooProxy(supabaseUrl, authHeader, {
-        endpoint: `products?${params.toString()}`,
-      });
-      return {
-        result: data,
-        richContent: { type: "products", data: Array.isArray(data) ? data : [] },
-      };
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `products?${params.toString()}` });
+      return { result: data, richContent: { type: "products", data: Array.isArray(data) ? data : [] } };
     }
     case "get_product": {
-      const data = await callWooProxy(supabaseUrl, authHeader, {
-        endpoint: `products/${args.product_id}`,
-      });
-      return {
-        result: data,
-        richContent: { type: "products", data: [data] },
-      };
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `products/${args.product_id}` });
+      return { result: data, richContent: { type: "products", data: [data] } };
     }
     case "search_orders": {
       const params = new URLSearchParams();
@@ -176,90 +168,49 @@ async function executeTool(
       if (args.after) params.set("after", args.after);
       if (args.before) params.set("before", args.before);
       params.set("per_page", String(args.per_page || 10));
-      const data = await callWooProxy(supabaseUrl, authHeader, {
-        endpoint: `orders?${params.toString()}`,
-      });
-      return {
-        result: data,
-        richContent: { type: "orders", data: Array.isArray(data) ? data : [] },
-      };
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `orders?${params.toString()}` });
+      return { result: data, richContent: { type: "orders", data: Array.isArray(data) ? data : [] } };
     }
     case "create_order": {
       const data = await callWooProxy(supabaseUrl, authHeader, {
-        endpoint: "orders",
-        method: "POST",
-        body: {
-          line_items: args.line_items,
-          customer_id: args.customer_id || 0,
-          status: args.status || "processing",
-        },
+        endpoint: "orders", method: "POST",
+        body: { line_items: args.line_items, customer_id: args.customer_id || 0, status: args.status || "processing" },
       });
       return { result: data };
     }
     case "update_order_status": {
       const data = await callWooProxy(supabaseUrl, authHeader, {
-        endpoint: `orders/${args.order_id}`,
-        method: "PUT",
-        body: { status: args.status },
+        endpoint: `orders/${args.order_id}`, method: "PUT", body: { status: args.status },
       });
       return { result: data };
     }
     case "get_sales_report": {
-      // Fetch recent orders for analytics
       const params = new URLSearchParams();
       params.set("per_page", "100");
       params.set("status", "completed,processing");
       if (args.date_min) params.set("after", `${args.date_min}T00:00:00`);
       if (args.date_max) params.set("before", `${args.date_max}T23:59:59`);
-      
-      // Set date ranges based on period
       const now = new Date();
-      if (args.period === "today") {
-        params.set("after", `${now.toISOString().split("T")[0]}T00:00:00`);
-      } else if (args.period === "week") {
-        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        params.set("after", weekAgo.toISOString());
-      } else if (args.period === "month") {
-        const monthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
-        params.set("after", monthAgo.toISOString());
-      }
-
-      const orders = await callWooProxy(supabaseUrl, authHeader, {
-        endpoint: `orders?${params.toString()}`,
-      });
-
+      if (args.period === "today") params.set("after", `${now.toISOString().split("T")[0]}T00:00:00`);
+      else if (args.period === "week") params.set("after", new Date(now.getTime() - 7 * 864e5).toISOString());
+      else if (args.period === "month") params.set("after", new Date(now.getFullYear(), now.getMonth() - 1, now.getDate()).toISOString());
+      const orders = await callWooProxy(supabaseUrl, authHeader, { endpoint: `orders?${params.toString()}` });
       if (!Array.isArray(orders)) return { result: orders };
-
-      const totalRevenue = orders.reduce((sum: number, o: any) => sum + parseFloat(o.total || "0"), 0);
-      const orderCount = orders.length;
-      
-      // Group by date for chart
+      const totalRevenue = orders.reduce((s: number, o: any) => s + parseFloat(o.total || "0"), 0);
       const byDate: Record<string, number> = {};
       orders.forEach((o: any) => {
         const date = o.date_created?.split("T")[0] || "unknown";
         byDate[date] = (byDate[date] || 0) + parseFloat(o.total || "0");
       });
-
-      const chartData = Object.entries(byDate)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([name, value]) => ({ name, value: Math.round(value * 100) / 100 }));
-
+      const chartData = Object.entries(byDate).sort(([a], [b]) => a.localeCompare(b)).map(([name, value]) => ({ name, value: Math.round(value * 100) / 100 }));
       return {
-        result: { totalRevenue: Math.round(totalRevenue * 100) / 100, orderCount, dailyBreakdown: chartData },
-        richContent: {
-          type: "chart",
-          data: { type: "bar", title: `Sales Report (${args.period || "custom"})`, data: chartData, dataKey: "value", nameKey: "name" },
-        },
+        result: { totalRevenue: Math.round(totalRevenue * 100) / 100, orderCount: orders.length, dailyBreakdown: chartData },
+        richContent: { type: "chart", data: { type: "bar", title: `Sales Report (${args.period || "custom"})`, data: chartData, dataKey: "value", nameKey: "name" } },
       };
     }
     case "save_preference": {
       await supabase.from("user_preferences").upsert(
-        {
-          user_id: userId,
-          preference_type: args.preference_type,
-          key: args.key,
-          value: args.value,
-        },
+        { user_id: userId, preference_type: args.preference_type, key: args.key, value: args.value },
         { onConflict: "user_id,preference_type,key" }
       );
       return { result: { success: true, message: `Saved preference: "${args.key}"` } };
@@ -275,44 +226,36 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    const supabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: authHeader } } });
 
-    const { data: claimsData, error: claimsErr } = await supabase.auth.getClaims(
-      authHeader.replace("Bearer ", "")
-    );
+    const { data: claimsData, error: claimsErr } = await supabase.auth.getClaims(authHeader.replace("Bearer ", ""));
     if (claimsErr || !claimsData?.claims) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     const userId = claimsData.claims.sub;
 
-    const { messages, conversationId } = await req.json();
+    const { messages, conversationId, approvalResponse } = await req.json();
 
-    // Load user preferences for context
-    const { data: prefs } = await supabase
-      .from("user_preferences")
-      .select("preference_type, key, value")
-      .eq("user_id", userId);
-
+    // Load user preferences
+    const { data: prefs } = await supabase.from("user_preferences").select("preference_type, key, value").eq("user_id", userId);
     let prefsContext = "";
     if (prefs?.length) {
-      prefsContext = "\n\nUser's saved preferences/aliases:\n" +
-        prefs.map((p: any) => `- ${p.preference_type}: "${p.key}" → ${JSON.stringify(p.value)}`).join("\n");
+      prefsContext = "\n\nUser's saved preferences/aliases:\n" + prefs.map((p: any) => `- ${p.preference_type}: "${p.key}" → ${JSON.stringify(p.value)}`).join("\n");
     }
 
-    const systemPrompt = `You are a WooCommerce store assistant for the user. You help manage their online store through conversation.
+    const systemPrompt = `You are a WooCommerce store assistant. You help manage their online store through conversation.
+
+IMPORTANT: Before executing any actions, you MUST first create a plan by responding with a JSON block like this:
+\`\`\`pipeline
+{"title": "Plan Title", "steps": ["Step 1 description", "Step 2 description", "Step 3 description"]}
+\`\`\`
+
+Then proceed to execute each step using the available tools.
 
 Your capabilities:
 - Search and browse products (show them visually with cards)
@@ -320,9 +263,9 @@ Your capabilities:
 - Provide sales analytics and insights with charts
 - Learn the user's preferences and product aliases
 
-When the user refers to a product casually (e.g. "pasta bourbon"), search for it and confirm which product they mean. If you identify a pattern or alias, save it as a preference so you remember next time.
+When the user refers to a product casually (e.g. "pasta bourbon"), search for it first. If you identify a pattern or alias, save it as a preference.
 
-When creating orders, always search for products first to confirm the right items, show the user what you found, then create the order.
+When creating orders, always search for products first to confirm the right items, then create the order.
 
 For analytics, fetch the data and present insights with charts.
 
@@ -331,127 +274,122 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    // Initial AI call with tools
-    let aiMessages = [
-      { role: "system", content: systemPrompt },
-      ...messages,
-    ];
-
-    let accumulatedRichContent: any = null;
+    let aiMessages: any[] = [{ role: "system", content: systemPrompt }, ...messages];
     const encoder = new TextEncoder();
 
-    // Create a readable stream for SSE
     const stream = new ReadableStream({
       async start(controller) {
-        const sendSSE = (data: string) => {
-          controller.enqueue(encoder.encode(`data: ${data}\n\n`));
+        const sendSSE = (data: any) => {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
         };
 
         try {
-          // Loop for tool calling
-          let maxIterations = 5;
+          let maxIterations = 8;
+          let stepIndex = 0;
+
           while (maxIterations-- > 0) {
             const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
               method: "POST",
-              headers: {
-                Authorization: `Bearer ${LOVABLE_API_KEY}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                model: "google/gemini-3-flash-preview",
-                messages: aiMessages,
-                tools: TOOLS,
-                stream: false, // Non-streaming for tool calls
-              }),
+              headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ model: "google/gemini-3-flash-preview", messages: aiMessages, tools: TOOLS, stream: false }),
             });
 
             if (!aiResp.ok) {
-              if (aiResp.status === 429) {
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: "Rate limited" })}\n\n`));
-                controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-                controller.close();
-                return;
-              }
-              if (aiResp.status === 402) {
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: "Credits exhausted" })}\n\n`));
-                controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-                controller.close();
-                return;
-              }
+              if (aiResp.status === 429) { sendSSE({ error: "Rate limited" }); break; }
+              if (aiResp.status === 402) { sendSSE({ error: "Credits exhausted" }); break; }
               throw new Error(`AI gateway error: ${aiResp.status}`);
             }
 
             const aiData = await aiResp.json();
             const choice = aiData.choices?.[0];
-
             if (!choice) break;
 
-            // Check for tool calls
+            // Extract pipeline plan from content if present
+            const content = choice.message?.content || "";
+            const pipelineMatch = content.match(/```pipeline\s*\n([\s\S]*?)\n```/);
+            if (pipelineMatch) {
+              try {
+                const plan = JSON.parse(pipelineMatch[1]);
+                sendSSE({ type: "pipeline_plan", title: plan.title, steps: plan.steps });
+              } catch { /* ignore parse errors */ }
+            }
+
+            // Handle tool calls
             if (choice.finish_reason === "tool_calls" || choice.message?.tool_calls?.length) {
               const toolCalls = choice.message.tool_calls;
               aiMessages.push(choice.message);
 
               for (const tc of toolCalls) {
                 const args = JSON.parse(tc.function.arguments);
-                console.log(`Executing tool: ${tc.function.name}`, args);
+                const toolName = tc.function.name;
+                const stepLabel = TOOL_LABELS[toolName] || toolName;
 
-                const { result, richContent } = await executeTool(
-                  tc.function.name,
-                  args,
-                  supabaseUrl,
-                  authHeader,
-                  userId,
-                  supabase
-                );
+                // Send step running event
+                sendSSE({ type: "pipeline_step", stepIndex, title: stepLabel, status: "running", toolName, args });
 
-                if (richContent) {
-                  accumulatedRichContent = richContent;
-                  sendSSE(JSON.stringify({ type: "rich_content", ...richContent }));
+                // Check if this is a write tool that needs approval
+                if (WRITE_TOOLS.has(toolName) && !approvalResponse) {
+                  // Send approval request and pause
+                  sendSSE({
+                    type: "approval_request",
+                    stepIndex,
+                    title: stepLabel,
+                    summary: `${stepLabel} with: ${JSON.stringify(args)}`,
+                    toolName,
+                    args,
+                    toolCallId: tc.id,
+                  });
+
+                  // Add a placeholder tool result indicating we're waiting
+                  aiMessages.push({
+                    role: "tool",
+                    tool_call_id: tc.id,
+                    content: JSON.stringify({ status: "awaiting_approval", message: "Waiting for user approval..." }),
+                  });
+
+                  sendSSE({ type: "pipeline_step", stepIndex, title: stepLabel, status: "needs_approval" });
+                  stepIndex++;
+                  continue;
                 }
 
-                aiMessages.push({
-                  role: "tool",
-                  tool_call_id: tc.id,
-                  content: JSON.stringify(result),
-                });
+                // Execute the tool
+                const { result, richContent } = await executeTool(toolName, args, supabaseUrl, authHeader, userId, supabase);
+
+                if (richContent) {
+                  sendSSE({ type: "rich_content", ...richContent });
+                }
+
+                sendSSE({ type: "pipeline_step", stepIndex, title: stepLabel, status: "done", details: typeof result === "object" ? `Found ${Array.isArray(result) ? result.length : 1} result(s)` : String(result) });
+
+                aiMessages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(result) });
+                stepIndex++;
               }
-              // Continue loop for AI to process tool results
               continue;
             }
 
-            // No more tool calls — stream the final response
-            const finalContent = choice.message?.content || "";
-            if (finalContent) {
-              // Stream the final response with proper SSE format
-              const streamResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-                method: "POST",
-                headers: {
-                  Authorization: `Bearer ${LOVABLE_API_KEY}`,
-                  "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                  model: "google/gemini-3-flash-preview",
-                  messages: aiMessages,
-                  stream: true,
-                }),
-              });
+            // No more tool calls — stream the final text response
+            if (content) {
+              // Remove the pipeline block from streamed content
+              const cleanContent = content.replace(/```pipeline\s*\n[\s\S]*?\n```\s*/g, "").trim();
+              if (cleanContent) {
+                const streamResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                  method: "POST",
+                  headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+                  body: JSON.stringify({ model: "google/gemini-3-flash-preview", messages: aiMessages, stream: true }),
+                });
 
-              if (streamResp.ok && streamResp.body) {
-                const reader = streamResp.body.getReader();
-                const decoder = new TextDecoder();
-                while (true) {
-                  const { done, value } = await reader.read();
-                  if (done) break;
-                  controller.enqueue(value);
+                if (streamResp.ok && streamResp.body) {
+                  const reader = streamResp.body.getReader();
+                  while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    controller.enqueue(value);
+                  }
+                } else {
+                  sendSSE({ choices: [{ delta: { content: cleanContent } }] });
                 }
-              } else {
-                // Fallback: send as single chunk
-                sendSSE(JSON.stringify({
-                  choices: [{ delta: { content: finalContent } }],
-                }));
               }
             }
-
             break;
           }
 
@@ -459,7 +397,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
           controller.close();
         } catch (e) {
           console.error("Stream error:", e);
-          sendSSE(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }));
+          sendSSE({ error: e instanceof Error ? e.message : "Unknown error" });
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
         }
@@ -467,18 +405,12 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
     });
 
     return new Response(stream, {
-      headers: {
-        ...corsHeaders,
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
-        Connection: "keep-alive",
-      },
+      headers: { ...corsHeaders, "Content-Type": "text/event-stream", "Cache-Control": "no-cache", Connection: "keep-alive" },
     });
   } catch (e) {
     console.error("chat error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
