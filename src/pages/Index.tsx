@@ -15,7 +15,7 @@ interface Message {
   id?: string;
   role: "user" | "assistant";
   content: string;
-  richContent?: RichContent | null;
+  richContents?: RichContent[];
   pipeline?: PipelinePlanData | null;
   approvals?: ApprovalRequest[];
   questions?: QuestionRequest[];
