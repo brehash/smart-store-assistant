@@ -303,10 +303,10 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
           let stepIndex = 0;
 
           while (maxIterations-- > 0) {
-            const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            const aiResp = await fetch(aiBaseUrl, {
               method: "POST",
-              headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-              body: JSON.stringify({ model: "google/gemini-3-flash-preview", messages: aiMessages, tools: TOOLS, stream: false }),
+              headers: { Authorization: aiAuthHeader, "Content-Type": "application/json" },
+              body: JSON.stringify({ model: aiModel, messages: aiMessages, tools: TOOLS, stream: false }),
             });
 
             if (!aiResp.ok) {
