@@ -152,6 +152,7 @@ const TOOL_LABELS: Record<string, string> = {
   create_order: "Creating order",
   update_order_status: "Updating order status",
   get_sales_report: "Generating sales report",
+  compare_sales: "Comparing sales periods",
   save_preference: "Saving preference",
 };
 
