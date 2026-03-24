@@ -47,7 +47,7 @@ export default function Index() {
             id: m.id,
             role: m.role as "user" | "assistant",
             content: m.content,
-            richContent: m.rich_content as RichContent | null,
+            richContent: m.rich_content as unknown as RichContent | null,
           }))
         );
         scrollToBottom();
