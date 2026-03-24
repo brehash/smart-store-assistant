@@ -19,10 +19,18 @@ export default function Settings() {
   const [consumerKey, setConsumerKey] = useState("");
   const [consumerSecret, setConsumerSecret] = useState("");
   const [storeName, setStoreName] = useState("");
+  const [responseLanguage, setResponseLanguage] = useState("English");
+  const [openaiApiKey, setOpenaiApiKey] = useState("");
   const [existingConnection, setExistingConnection] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<"success" | "error" | null>(null);
+
+  const LANGUAGES = [
+    "English", "Romanian", "French", "German", "Spanish", "Italian",
+    "Portuguese", "Dutch", "Polish", "Turkish", "Greek", "Russian",
+    "Chinese", "Japanese", "Korean",
+  ];
 
   useEffect(() => {
     if (!user) return;
