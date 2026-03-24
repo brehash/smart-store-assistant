@@ -248,7 +248,16 @@ serve(async (req) => {
       prefsContext = "\n\nUser's saved preferences/aliases:\n" + prefs.map((p: any) => `- ${p.preference_type}: "${p.key}" → ${JSON.stringify(p.value)}`).join("\n");
     }
 
-    const systemPrompt = `You are a WooCommerce store assistant. You help manage their online store through conversation.
+    // Load user's woo_connections settings (language + openai key)
+    const { data: connData } = await supabase.from("woo_connections").select("response_language, openai_api_key").eq("user_id", userId).eq("is_active", true).maybeSingle();
+    const responseLanguage = connData?.response_language || "English";
+    const userOpenAIKey = connData?.openai_api_key || null;
+
+    const languageInstruction = responseLanguage !== "English"
+      ? `\n\nIMPORTANT: Always respond in ${responseLanguage}. All pipeline step labels, plan titles, confirmations, and explanations must also be in ${responseLanguage}.`
+      : "";
+
+    const systemPrompt = `You are a WooCommerce store assistant. You help manage their online store through conversation.${languageInstruction}
 
 IMPORTANT: Before executing any actions, you MUST first create a plan by responding with a JSON block like this:
 \`\`\`pipeline
@@ -272,7 +281,13 @@ For analytics, fetch the data and present insights with charts.
 Be conversational, efficient, and proactive. Use markdown for formatting. Currency is RON (lei).${prefsContext}`;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    if (!LOVABLE_API_KEY && !userOpenAIKey) throw new Error("No AI API key configured");
+
+    // Determine AI provider
+    const useOpenAI = !!userOpenAIKey;
+    const aiBaseUrl = useOpenAI ? "https://api.openai.com/v1/chat/completions" : "https://ai.gateway.lovable.dev/v1/chat/completions";
+    const aiAuthHeader = useOpenAI ? `Bearer ${userOpenAIKey}` : `Bearer ${LOVABLE_API_KEY}`;
+    const aiModel = useOpenAI ? "gpt-4o-mini" : "google/gemini-3-flash-preview";
 
     let aiMessages: any[] = [{ role: "system", content: systemPrompt }, ...messages];
     const encoder = new TextEncoder();
@@ -288,10 +303,10 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
           let stepIndex = 0;
 
           while (maxIterations-- > 0) {
-            const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            const aiResp = await fetch(aiBaseUrl, {
               method: "POST",
-              headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-              body: JSON.stringify({ model: "google/gemini-3-flash-preview", messages: aiMessages, tools: TOOLS, stream: false }),
+              headers: { Authorization: aiAuthHeader, "Content-Type": "application/json" },
+              body: JSON.stringify({ model: aiModel, messages: aiMessages, tools: TOOLS, stream: false }),
             });
 
             if (!aiResp.ok) {
@@ -372,10 +387,10 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
               // Remove the pipeline block from streamed content
               const cleanContent = content.replace(/```pipeline\s*\n[\s\S]*?\n```\s*/g, "").trim();
               if (cleanContent) {
-                const streamResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                const streamResp = await fetch(aiBaseUrl, {
                   method: "POST",
-                  headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-                  body: JSON.stringify({ model: "google/gemini-3-flash-preview", messages: aiMessages, stream: true }),
+                  headers: { Authorization: aiAuthHeader, "Content-Type": "application/json" },
+                  body: JSON.stringify({ model: aiModel, messages: aiMessages, stream: true }),
                 });
 
                 if (streamResp.ok && streamResp.body) {

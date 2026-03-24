@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Store, Save, Trash2, CheckCircle2, XCircle } from "lucide-react";
+import { ArrowLeft, Store, Save, Trash2, CheckCircle2, XCircle, Globe, Key } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function Settings() {
   const { user } = useAuth();
@@ -18,10 +19,18 @@ export default function Settings() {
   const [consumerKey, setConsumerKey] = useState("");
   const [consumerSecret, setConsumerSecret] = useState("");
   const [storeName, setStoreName] = useState("");
+  const [responseLanguage, setResponseLanguage] = useState("English");
+  const [openaiApiKey, setOpenaiApiKey] = useState("");
   const [existingConnection, setExistingConnection] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<"success" | "error" | null>(null);
+
+  const LANGUAGES = [
+    "English", "Romanian", "French", "German", "Spanish", "Italian",
+    "Portuguese", "Dutch", "Polish", "Turkish", "Greek", "Russian",
+    "Chinese", "Japanese", "Korean",
+  ];
 
   useEffect(() => {
     if (!user) return;
@@ -38,6 +47,8 @@ export default function Settings() {
         setConsumerKey(data.consumer_key);
         setConsumerSecret(data.consumer_secret);
         setStoreName(data.store_name || "");
+        setResponseLanguage(data.response_language || "English");
+        setOpenaiApiKey(data.openai_api_key || "");
       }
     };
     load();
@@ -55,6 +66,8 @@ export default function Settings() {
             consumer_key: consumerKey,
             consumer_secret: consumerSecret,
             store_name: storeName,
+            response_language: responseLanguage,
+            openai_api_key: openaiApiKey || null,
           })
           .eq("id", existingConnection.id);
       } else {
@@ -66,6 +79,8 @@ export default function Settings() {
             consumer_key: consumerKey,
             consumer_secret: consumerSecret,
             store_name: storeName,
+            response_language: responseLanguage,
+            openai_api_key: openaiApiKey || null,
           })
           .select()
           .single();
@@ -166,6 +181,59 @@ export default function Settings() {
             </div>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-primary/10 p-2">
+                <Globe className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle>AI Response Language</CardTitle>
+                <CardDescription>Choose the language for AI responses and pipeline labels</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Select value={responseLanguage} onValueChange={setResponseLanguage}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LANGUAGES.map((lang) => (
+                  <SelectItem key={lang} value={lang}>{lang}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-primary/10 p-2">
+                <Key className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle>OpenAI API Key</CardTitle>
+                <CardDescription>Optional — uses your own OpenAI key with gpt-4o-mini. Leave blank to use the default AI.</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>API Key</Label>
+              <Input value={openaiApiKey} onChange={(e) => setOpenaiApiKey(e.target.value)} placeholder="sk-..." type="password" />
+            </div>
+            <p className="text-xs text-muted-foreground">When set, all chat requests will be routed to OpenAI directly using model <code className="text-xs">gpt-4o-mini</code>.</p>
+          </CardContent>
+        </Card>
+
+        <div className="flex justify-end">
+          <Button onClick={handleSave} disabled={saving || !storeUrl || !consumerKey || !consumerSecret} className="gap-1.5">
+            <Save className="h-4 w-4" /> {saving ? "Saving all settings..." : "Save All Settings"}
+          </Button>
+        </div>
       </div>
     </div>
   );
