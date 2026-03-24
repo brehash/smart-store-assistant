@@ -111,13 +111,13 @@ export function ChatMessage({
         )}
 
         {/* Rich content */}
-        {richContent && (
-          <div className="w-full max-w-[600px]">
-            {richContent.type === "products" && <ProductSlider products={richContent.data} />}
-            {richContent.type === "orders" && <OrderTable orders={richContent.data} />}
-            {richContent.type === "chart" && <ChatChart chartData={richContent.data} />}
+        {richContents?.map((rc, i) => (
+          <div key={`rich-${i}`} className="w-full max-w-[600px]">
+            {rc.type === "products" && <ProductSlider products={rc.data} />}
+            {rc.type === "orders" && <OrderTable orders={rc.data} />}
+            {rc.type === "chart" && <ChatChart chartData={rc.data} />}
           </div>
-        )}
+        ))}
       </div>
     </div>
   );

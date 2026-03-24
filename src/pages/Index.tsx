@@ -348,7 +348,7 @@ export default function Index() {
                   key={i}
                   role={msg.role}
                   content={msg.content}
-                  richContent={msg.richContent}
+                  richContents={msg.richContents}
                   isStreaming={isStreaming && i === messages.length - 1 && msg.role === "assistant"}
                   pipeline={msg.pipeline}
                   approvals={msg.approvals}
