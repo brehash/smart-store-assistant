@@ -47,6 +47,8 @@ export default function Settings() {
         setConsumerKey(data.consumer_key);
         setConsumerSecret(data.consumer_secret);
         setStoreName(data.store_name || "");
+        setResponseLanguage(data.response_language || "English");
+        setOpenaiApiKey(data.openai_api_key || "");
       }
     };
     load();
