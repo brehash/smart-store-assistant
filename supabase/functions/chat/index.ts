@@ -386,32 +386,38 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
             const choice = aiData.choices?.[0];
             if (!choice) break;
 
-            // Extract pipeline plan from content if present
             const content = choice.message?.content || "";
-            const pipelineMatch = content.match(/```pipeline\s*\n([\s\S]*?)\n```/);
-            if (pipelineMatch) {
+            const pipelineBlockMatch = content.match(/```pipeline\s*\n([\s\S]*?)\n```/);
+            const jsonPlanMatch = !pipelineBlockMatch ? content.match(/^\s*(\{\s*"title"\s*:\s*"[\s\S]*?"\s*,\s*"steps"\s*:\s*\[[\s\S]*?\]\s*\})\s*$/) : null;
+            const planPayload = pipelineBlockMatch?.[1] || jsonPlanMatch?.[1];
+            const cleanContent = content
+              .replace(/```pipeline\s*\n[\s\S]*?\n```\s*/g, "")
+              .replace(/^\s*\{\s*"title"\s*:\s*"[\s\S]*?"\s*,\s*"steps"\s*:\s*\[[\s\S]*?\]\s*\}\s*/g, "")
+              .trim();
+
+            if (planPayload) {
               try {
-                const plan = JSON.parse(pipelineMatch[1]);
-                sendSSE({ type: "pipeline_plan", title: plan.title, steps: plan.steps });
-              } catch { /* ignore parse errors */ }
+                const plan = JSON.parse(planPayload);
+                if (plan?.title && Array.isArray(plan?.steps)) {
+                  sendSSE({ type: "pipeline_plan", title: plan.title, steps: plan.steps });
+                }
+              } catch {
+                // ignore malformed plan payloads
+              }
             }
 
-            // Handle tool calls
             if (choice.finish_reason === "tool_calls" || choice.message?.tool_calls?.length) {
               const toolCalls = choice.message.tool_calls;
-              aiMessages.push(choice.message);
+              aiMessages.push({ ...choice.message, content: cleanContent || null });
 
               for (const tc of toolCalls) {
                 const args = JSON.parse(tc.function.arguments);
                 const toolName = tc.function.name;
                 const stepLabel = TOOL_LABELS[toolName] || toolName;
 
-                // Send step running event
                 sendSSE({ type: "pipeline_step", stepIndex, title: stepLabel, status: "running", toolName, args });
 
-                // Check if this is a write tool that needs approval
                 if (WRITE_TOOLS.has(toolName) && !approvalResponse) {
-                  // Send approval request and pause
                   sendSSE({
                     type: "approval_request",
                     stepIndex,
@@ -422,7 +428,6 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                     toolCallId: tc.id,
                   });
 
-                  // Add a placeholder tool result indicating we're waiting
                   aiMessages.push({
                     role: "tool",
                     tool_call_id: tc.id,
@@ -434,7 +439,6 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                   continue;
                 }
 
-                // Execute the tool
                 const { result, richContent } = await executeTool(toolName, args, supabaseUrl, authHeader, userId, supabase);
 
                 if (richContent) {
@@ -449,30 +453,10 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
               continue;
             }
 
-            // No more tool calls — mark pipeline complete and stream the final text response
             sendSSE({ type: "pipeline_complete", lastStepIndex: stepIndex });
 
-            if (content) {
-              // Remove the pipeline block from streamed content
-              const cleanContent = content.replace(/```pipeline\s*\n[\s\S]*?\n```\s*/g, "").trim();
-              if (cleanContent) {
-                const streamResp = await fetch(aiBaseUrl, {
-                  method: "POST",
-                  headers: { Authorization: aiAuthHeader, "Content-Type": "application/json" },
-                  body: JSON.stringify({ model: aiModel, messages: aiMessages, stream: true }),
-                });
-
-                if (streamResp.ok && streamResp.body) {
-                  const reader = streamResp.body.getReader();
-                  while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    controller.enqueue(value);
-                  }
-                } else {
-                  sendSSE({ choices: [{ delta: { content: cleanContent } }] });
-                }
-              }
+            if (cleanContent) {
+              sendSSE({ choices: [{ delta: { content: cleanContent } }] });
             }
             break;
           }
