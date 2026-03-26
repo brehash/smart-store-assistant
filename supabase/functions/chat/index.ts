@@ -465,6 +465,14 @@ DASHBOARD/REPORT DISPLAY RULES:
 - For grouped_bar charts, use "dataKeys": ["Label A", "Label B"] instead of "dataKey".
 - All currency values should use "lei" suffix.
 
+DATE CALCULATION RULES (CRITICAL):
+- Today's date is: ${formatDate(new Date())}
+- "This month" = first day of current month → today.
+- "Last month same period" = first day of previous month → same day-of-month as today (capped to last day of that month).
+  Example: if today is 2026-03-26, "this month" = 2026-03-01 to 2026-03-26, "last month same period" = 2026-02-01 to 2026-02-26.
+- "This week" = 7 days ago → today. "Last week same period" = 14 days ago → 8 days ago.
+- NEVER use the same dates for both periods in a comparison. Each period must have distinct date ranges.
+
 Be conversational, efficient, and proactive. Use markdown for formatting. Currency is RON (lei).${defaultStatusStr}${prefsContext}${viewContext}`;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
