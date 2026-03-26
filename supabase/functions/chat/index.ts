@@ -308,7 +308,7 @@ serve(async (req) => {
     }
     const userId = claimsData.claims.sub;
 
-    const { messages, conversationId, approvalResponse } = await req.json();
+    const { messages, conversationId, approvalResponse, viewId } = await req.json();
 
     const { data: prefs } = await supabase.from("user_preferences").select("preference_type, key, value").eq("user_id", userId);
     let prefsContext = "";
