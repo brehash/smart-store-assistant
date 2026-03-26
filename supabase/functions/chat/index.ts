@@ -584,7 +584,14 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
               continue;
             }
 
-            sendSSE({ type: "pipeline_complete", lastStepIndex: stepIndex });
+            // Post-tool synthesis feedback
+            if (planSent && stepIndex > 0) {
+              sendSSE({ type: "pipeline_step", stepIndex, title: "Analyzing received data", status: "running" });
+              // Small delay not needed since the AI response generation IS the analysis
+              sendSSE({ type: "pipeline_step", stepIndex, title: "Analyzing received data", status: "done" });
+              stepIndex++;
+              sendSSE({ type: "pipeline_step", stepIndex, title: "Crafting response", status: "running" });
+            }
 
             if (content) {
               // Parse dashboard blocks from content
