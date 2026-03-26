@@ -395,7 +395,14 @@ async function callWooProxy(supabaseUrl: string, authHeader: string, payload: an
     headers: { "Content-Type": "application/json", Authorization: authHeader },
     body: JSON.stringify(payload),
   });
-  return resp.json();
+  // Harden against truncated/non-JSON responses
+  const text = await resp.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    console.error("callWooProxy: failed to parse response as JSON, length:", text.length, "preview:", text.slice(0, 200));
+    return { error: "Invalid response from store API", raw_preview: text.slice(0, 300) };
+  }
 }
 
 async function executeTool(
