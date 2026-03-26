@@ -128,6 +128,24 @@ const TOOLS = [
   {
     type: "function",
     function: {
+      name: "get_product_sales",
+      description:
+        "Get sales history for a specific product over a date range. Returns units sold, daily breakdown, revenue from this product, and orders containing it. Use this to analyze stock burn rate and restock timing. Call this AFTER search_products to get sales velocity data.",
+      parameters: {
+        type: "object",
+        properties: {
+          product_id: { type: "number", description: "WooCommerce product ID" },
+          days: { type: "number", description: "Number of days to look back (default 60)" },
+          date_min: { type: "string", description: "Override start date (YYYY-MM-DD)" },
+          date_max: { type: "string", description: "Override end date (YYYY-MM-DD)" },
+        },
+        required: ["product_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "save_preference",
       description: "Save a user preference/alias.",
       parameters: {
