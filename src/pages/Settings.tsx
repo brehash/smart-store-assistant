@@ -99,7 +99,6 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
         setConsumerSecret(data.consumer_secret);
         setStoreName(data.store_name || "");
         setResponseLanguage(data.response_language || "English");
-        setOpenaiApiKey(data.openai_api_key || "");
         const statuses = (data as any).order_statuses as string[] | undefined;
         if (statuses?.length) setSelectedStatuses(statuses);
         fetchOrderStatuses(data.store_url, data.consumer_key, data.consumer_secret);
