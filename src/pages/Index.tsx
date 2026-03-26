@@ -127,6 +127,7 @@ export default function Index() {
     let debugEntries: DebugEntry[] = [];
     let approvalsList: ApprovalRequest[] = [];
     let questionsList: QuestionRequest[] = [];
+    let reasoningEntries: ReasoningEntry[] = [];
 
     await streamChat({
       messages: [...messages, userMsg].map((m) => ({ role: m.role, content: m.content })),
