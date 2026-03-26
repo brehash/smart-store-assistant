@@ -792,13 +792,23 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
               continue;
             }
 
-            // Post-tool synthesis feedback
+            // Post-tool synthesis: tick remaining semantic steps
             if (planSent && stepIndex > 0) {
-              sendSSE({ type: "pipeline_step", stepIndex, title: "Analyzing received data", status: "running" });
-              // Small delay not needed since the AI response generation IS the analysis
-              sendSSE({ type: "pipeline_step", stepIndex, title: "Analyzing received data", status: "done" });
-              stepIndex++;
-              sendSSE({ type: "pipeline_step", stepIndex, title: "Crafting response", status: "running" });
+              // Mark remaining semantic steps (Building dashboard, Writing explanation)
+              for (let i = 0; i < semanticSteps.length; i++) {
+                const ss = semanticSteps[i];
+                if (ss.title === "Building dashboard" || ss.title === "Rendering results") {
+                  sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "running" });
+                  sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "done" });
+                  stepIndex++;
+                }
+                if (ss.title === "Writing explanation") {
+                  sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "running" });
+                }
+              }
+            } else if (!planSent) {
+              // No tools were called — mark Understanding request as done
+              sendSSE({ type: "pipeline_step", stepIndex: 0, title: "Understanding request", status: "done" });
             }
 
             if (content) {
@@ -820,9 +830,9 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
               }
             }
 
-            // Mark crafting step done and send pipeline_complete
+            // Mark writing explanation step done and send pipeline_complete
             if (planSent && stepIndex > 0) {
-              sendSSE({ type: "pipeline_step", stepIndex, title: "Crafting response", status: "done" });
+              sendSSE({ type: "pipeline_step", stepIndex, title: "Writing explanation", status: "done" });
               stepIndex++;
             }
             sendSSE({ type: "pipeline_complete", lastStepIndex: stepIndex });
