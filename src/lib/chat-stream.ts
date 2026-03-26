@@ -3,7 +3,7 @@ type Msg = { role: "user" | "assistant"; content: string };
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
 export interface PipelineEvent {
-  type: "pipeline_plan" | "pipeline_step" | "pipeline_complete" | "approval_request" | "question_request" | "debug_api";
+  type: "pipeline_plan" | "pipeline_step" | "pipeline_complete" | "approval_request" | "question_request" | "debug_api" | "reasoning";
   title?: string;
   steps?: string[];
   stepIndex?: number;
