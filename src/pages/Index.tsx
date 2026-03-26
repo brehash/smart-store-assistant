@@ -10,6 +10,7 @@ import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { PipelinePlanData } from "@/components/chat/PipelinePlan";
 import type { PipelineStepData } from "@/components/chat/PipelineStep";
+import type { DebugEntry } from "@/components/chat/DebugPanel";
 
 interface Message {
   id?: string;
@@ -19,6 +20,7 @@ interface Message {
   pipeline?: PipelinePlanData | null;
   approvals?: ApprovalRequest[];
   questions?: QuestionRequest[];
+  debugLogs?: DebugEntry[];
 }
 
 export default function Index() {
