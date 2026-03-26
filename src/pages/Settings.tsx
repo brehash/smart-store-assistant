@@ -8,8 +8,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Store, Save, Trash2, CheckCircle2, XCircle, Globe, Key } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ArrowLeft, Store, Save, Trash2, CheckCircle2, XCircle, Globe, Key, ListChecks, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+interface OrderStatus {
+  slug: string;
+  name: string;
+  total: number;
+}
 
 export default function Settings() {
   const { user } = useAuth();
@@ -25,6 +32,9 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<"success" | "error" | null>(null);
+  const [orderStatuses, setOrderStatuses] = useState<OrderStatus[]>([]);
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
+  const [loadingStatuses, setLoadingStatuses] = useState(false);
 
   const LANGUAGES = [
     "English", "Romanian", "French", "German", "Spanish", "Italian",
@@ -49,46 +59,64 @@ export default function Settings() {
         setStoreName(data.store_name || "");
         setResponseLanguage(data.response_language || "English");
         setOpenaiApiKey(data.openai_api_key || "");
+        const statuses = (data as any).order_statuses as string[] | undefined;
+        if (statuses?.length) setSelectedStatuses(statuses);
+        // Fetch order statuses if connection exists
+        fetchOrderStatuses(data.store_url, data.consumer_key, data.consumer_secret);
       }
     };
     load();
   }, [user]);
 
+  const fetchOrderStatuses = async (url: string, ck: string, cs: string) => {
+    setLoadingStatuses(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("woo-proxy", {
+        body: { endpoint: "reports/orders/totals", storeUrl: url, consumerKey: ck, consumerSecret: cs },
+      });
+      if (error) throw error;
+      if (Array.isArray(data)) {
+        setOrderStatuses(data.map((s: any) => ({ slug: s.slug, name: s.name, total: s.total })));
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setLoadingStatuses(false);
+    }
+  };
+
+  const toggleStatus = (slug: string) => {
+    setSelectedStatuses((prev) =>
+      prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]
+    );
+  };
+
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
     try {
+      const payload = {
+        store_url: storeUrl,
+        consumer_key: consumerKey,
+        consumer_secret: consumerSecret,
+        store_name: storeName,
+        response_language: responseLanguage,
+        openai_api_key: openaiApiKey || null,
+        order_statuses: selectedStatuses,
+      };
       if (existingConnection) {
-        await supabase
-          .from("woo_connections")
-          .update({
-            store_url: storeUrl,
-            consumer_key: consumerKey,
-            consumer_secret: consumerSecret,
-            store_name: storeName,
-            response_language: responseLanguage,
-            openai_api_key: openaiApiKey || null,
-          })
-          .eq("id", existingConnection.id);
+        await supabase.from("woo_connections").update(payload as any).eq("id", existingConnection.id);
       } else {
         const { data } = await supabase
           .from("woo_connections")
-          .insert({
-            user_id: user.id,
-            store_url: storeUrl,
-            consumer_key: consumerKey,
-            consumer_secret: consumerSecret,
-            store_name: storeName,
-            response_language: responseLanguage,
-            openai_api_key: openaiApiKey || null,
-          })
+          .insert({ user_id: user.id, ...payload } as any)
           .select()
           .single();
         setExistingConnection(data);
       }
-      toast({ title: "Saved!", description: "WooCommerce connection updated." });
+      toast({ title: "Saved!", description: "Settings updated successfully." });
     } catch {
-      toast({ title: "Error", description: "Failed to save connection.", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to save.", variant: "destructive" });
     } finally {
       setSaving(false);
     }
@@ -105,6 +133,8 @@ export default function Settings() {
       setTestResult("success");
       if (data?.name) setStoreName(data.name);
       toast({ title: "Connection successful!", description: `Connected to ${data?.name || storeUrl}` });
+      // Fetch order statuses after successful test
+      fetchOrderStatuses(storeUrl, consumerKey, consumerSecret);
     } catch {
       setTestResult("error");
       toast({ title: "Connection failed", description: "Check your API keys and store URL.", variant: "destructive" });
@@ -120,24 +150,25 @@ export default function Settings() {
     setConsumerKey("");
     setConsumerSecret("");
     setStoreName("");
+    setOrderStatuses([]);
+    setSelectedStatuses([]);
     toast({ title: "Deleted", description: "WooCommerce connection removed." });
   };
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-2xl px-4 py-8">
-        <Button variant="ghost" onClick={() => navigate("/")} className="mb-6 gap-2">
+      <div className="mx-auto max-w-2xl px-4 py-8 space-y-6">
+        <Button variant="ghost" onClick={() => navigate("/")} className="mb-2 gap-2">
           <ArrowLeft className="h-4 w-4" /> Back to chat
         </Button>
 
-        <h1 className="text-2xl font-bold mb-6">Settings</h1>
+        <h1 className="text-2xl font-bold">Settings</h1>
 
+        {/* WooCommerce Connection */}
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-primary/10 p-2">
-                <Store className="h-5 w-5 text-primary" />
-              </div>
+              <div className="rounded-lg bg-primary/10 p-2"><Store className="h-5 w-5 text-primary" /></div>
               <div>
                 <CardTitle>WooCommerce Connection</CardTitle>
                 <CardDescription>Connect your WooCommerce store to enable AI management</CardDescription>
@@ -163,7 +194,6 @@ export default function Settings() {
               <Label>Consumer Secret</Label>
               <Input value={consumerSecret} onChange={(e) => setConsumerSecret(e.target.value)} placeholder="cs_..." type="password" />
             </div>
-
             <div className="flex gap-2 pt-2">
               <Button onClick={handleTest} variant="outline" disabled={testing || !storeUrl || !consumerKey || !consumerSecret}>
                 {testing ? "Testing..." : "Test Connection"}
@@ -174,20 +204,52 @@ export default function Settings() {
                 <Save className="h-4 w-4" /> {saving ? "Saving..." : "Save"}
               </Button>
               {existingConnection && (
-                <Button onClick={handleDelete} variant="destructive" size="icon">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <Button onClick={handleDelete} variant="destructive" size="icon"><Trash2 className="h-4 w-4" /></Button>
               )}
             </div>
           </CardContent>
         </Card>
 
+        {/* Order Status Filter */}
+        {orderStatuses.length > 0 && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-primary/10 p-2"><ListChecks className="h-5 w-5 text-primary" /></div>
+                <div>
+                  <CardTitle>Default Order Statuses</CardTitle>
+                  <CardDescription>Select which order statuses to include by default in queries</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingStatuses ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Loading statuses...
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {orderStatuses.map((status) => (
+                    <label key={status.slug} className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 cursor-pointer hover:bg-accent/50 transition-colors">
+                      <Checkbox
+                        checked={selectedStatuses.includes(status.slug)}
+                        onCheckedChange={() => toggleStatus(status.slug)}
+                      />
+                      <span className="text-sm flex-1">{status.name}</span>
+                      <span className="text-xs text-muted-foreground">{status.total}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Language */}
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-primary/10 p-2">
-                <Globe className="h-5 w-5 text-primary" />
-              </div>
+              <div className="rounded-lg bg-primary/10 p-2"><Globe className="h-5 w-5 text-primary" /></div>
               <div>
                 <CardTitle>AI Response Language</CardTitle>
                 <CardDescription>Choose the language for AI responses and pipeline labels</CardDescription>
@@ -196,9 +258,7 @@ export default function Settings() {
           </CardHeader>
           <CardContent>
             <Select value={responseLanguage} onValueChange={setResponseLanguage}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
+              <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {LANGUAGES.map((lang) => (
                   <SelectItem key={lang} value={lang}>{lang}</SelectItem>
@@ -208,12 +268,11 @@ export default function Settings() {
           </CardContent>
         </Card>
 
+        {/* OpenAI Key */}
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-primary/10 p-2">
-                <Key className="h-5 w-5 text-primary" />
-              </div>
+              <div className="rounded-lg bg-primary/10 p-2"><Key className="h-5 w-5 text-primary" /></div>
               <div>
                 <CardTitle>OpenAI API Key</CardTitle>
                 <CardDescription>Optional — uses your own OpenAI key with gpt-4o-mini. Leave blank to use the default AI.</CardDescription>
