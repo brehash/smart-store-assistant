@@ -47,12 +47,19 @@ export default function Index() {
         .eq("conversation_id", conversationId)
         .order("created_at", { ascending: true });
       if (data) {
-        setMessages(data.map((m) => ({
-          id: m.id,
-          role: m.role as "user" | "assistant",
-          content: m.content,
-          richContents: m.rich_content ? [m.rich_content as unknown as RichContent] : [],
-        })));
+        setMessages(data.map((m) => {
+          const meta = (m as any).metadata as any;
+          return {
+            id: m.id,
+            role: m.role as "user" | "assistant",
+            content: m.content,
+            richContents: m.rich_content ? [m.rich_content as unknown as RichContent] : [],
+            pipeline: meta?.pipeline || null,
+            debugLogs: meta?.debugLogs || [],
+            approvals: meta?.approvals || [],
+            questions: meta?.questions || [],
+          };
+        }));
         scrollToBottom();
       }
     };
