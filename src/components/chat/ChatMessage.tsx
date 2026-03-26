@@ -119,6 +119,7 @@ export function ChatMessage({
             {rc.type === "products" && <ProductSlider products={rc.data} />}
             {rc.type === "orders" && <OrderTable orders={rc.data} />}
             {rc.type === "chart" && <ChatChart chartData={rc.data} />}
+            {rc.type === "dashboard" && <DashboardView data={rc.data} />}
           </div>
         ))}
 

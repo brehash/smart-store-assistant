@@ -185,6 +185,7 @@ export default function Index() {
             toolName: event.toolName || "",
             args: event.args,
             result: event.result,
+            requestUri: event.requestUri,
           };
           updateLastAssistant((m) => ({
             ...m,

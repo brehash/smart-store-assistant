@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight, Bug } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 export interface DebugEntry {
   toolName: string;
   args: any;
   result: any;
+  requestUri?: string;
 }
 
 export function DebugPanel({ logs }: { logs: DebugEntry[] }) {
@@ -44,6 +44,12 @@ function DebugEntryCard({ entry, index }: { entry: DebugEntry; index: number }) 
       <div className="font-semibold text-foreground mb-1">
         {index + 1}. {entry.toolName}
       </div>
+
+      {entry.requestUri && (
+        <div className="mb-1.5 px-1 py-0.5 rounded bg-muted text-[10px] font-mono text-muted-foreground break-all">
+          {entry.requestUri}
+        </div>
+      )}
 
       <button
         onClick={() => setShowArgs(!showArgs)}
