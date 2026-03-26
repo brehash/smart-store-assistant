@@ -469,7 +469,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
               while ((match = dashboardRegex.exec(content)) !== null) {
                 try {
                   const dashboardData = JSON.parse(match[1].trim());
-                  sendSSE({ type: "rich_content", type: "dashboard", data: dashboardData });
+                  sendSSE({ type: "rich_content", contentType: "dashboard", data: dashboardData });
                   textContent = textContent.replace(match[0], "").trim();
                 } catch { /* ignore malformed JSON */ }
               }
