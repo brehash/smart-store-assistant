@@ -14,7 +14,7 @@ interface StatCard {
 interface DashboardTable {
   title: string;
   columns: string[];
-  rows: string[][];
+  rows: Array<Array<string | number | null>>;
 }
 
 interface DashboardList {
@@ -34,66 +34,69 @@ export function DashboardView({ data }: { data: DashboardData }) {
   if (!data) return null;
 
   return (
-    <div className="w-full space-y-3">
-      {/* Stat cards */}
+    <div className="w-full max-w-5xl space-y-4">
       {data.cards && data.cards.length > 0 && (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {data.cards.map((card, i) => (
-            <Card key={i} className="p-3">
-              <p className="text-xs text-muted-foreground">{card.label}</p>
-              <p className="text-lg font-bold mt-0.5">{card.value}</p>
-              {card.change && (
-                <div className={cn(
-                  "flex items-center gap-1 text-xs mt-1",
-                  card.change.startsWith("-") ? "text-destructive" : "text-green-600 dark:text-green-400"
-                )}>
-                  {card.change.startsWith("-")
-                    ? <TrendingDown className="h-3 w-3" />
-                    : <TrendingUp className="h-3 w-3" />
-                  }
-                  {card.change}
-                </div>
-              )}
-            </Card>
-          ))}
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {data.cards.map((card, i) => {
+            const negative = card.change?.trim().startsWith("-");
+
+            return (
+              <Card key={i} className="p-4">
+                <p className="text-sm text-muted-foreground">{card.label}</p>
+                <p className="mt-2 text-3xl font-bold tracking-tight">{card.value}</p>
+                {card.change && (
+                  <div className={cn(
+                    "mt-3 flex items-center gap-1 text-sm",
+                    negative ? "text-destructive" : "text-primary",
+                  )}>
+                    {negative ? <TrendingDown className="h-4 w-4" /> : <TrendingUp className="h-4 w-4" />}
+                    <span>{card.change}</span>
+                  </div>
+                )}
+              </Card>
+            );
+          })}
         </div>
       )}
 
-      {/* Charts */}
       {data.charts?.map((chart, i) => (
         <ChatChart key={`chart-${i}`} chartData={chart} />
       ))}
 
-      {/* Tables */}
       {data.tables?.map((table, i) => (
         <Card key={`table-${i}`}>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm">{table.title}</CardTitle>
+            <CardTitle className="text-sm sm:text-base">{table.title}</CardTitle>
           </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  {table.columns.map((col, ci) => (
-                    <TableHead key={ci} className="text-xs">{col}</TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {table.rows.map((row, ri) => (
-                  <TableRow key={ri}>
-                    {row.map((cell, ci) => (
-                      <TableCell key={ci} className="text-xs py-2">{cell}</TableCell>
+          <CardContent className="pt-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    {table.columns.map((col, ci) => (
+                      <TableHead key={ci} className="min-w-[140px] align-top text-xs sm:text-sm whitespace-normal">
+                        {col}
+                      </TableHead>
                     ))}
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {table.rows.map((row, ri) => (
+                    <TableRow key={ri}>
+                      {row.map((cell, ci) => (
+                        <TableCell key={ci} className="min-w-[140px] py-3 text-xs sm:text-sm align-top whitespace-normal">
+                          {cell == null || cell === "" ? "—" : String(cell)}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       ))}
 
-      {/* Lists */}
       {data.lists?.map((list, i) => (
         <CollapsibleList key={`list-${i}`} list={list} />
       ))}
@@ -109,22 +112,22 @@ function CollapsibleList({ list }: { list: DashboardList }) {
       <button
         onClick={() => list.collapsible && setOpen(!open)}
         className={cn(
-          "flex w-full items-center gap-2 px-4 py-3 text-sm font-medium",
-          list.collapsible && "cursor-pointer hover:bg-accent/50"
+          "flex w-full items-center gap-2 px-4 py-4 text-left text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+          list.collapsible && "cursor-pointer hover:bg-accent/50",
         )}
       >
         {list.collapsible && (
-          open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
+          open ? <ChevronDown className="h-4 w-4 shrink-0" /> : <ChevronRight className="h-4 w-4 shrink-0" />
         )}
-        {list.title}
+        <span>{list.title}</span>
       </button>
       {open && (
         <CardContent className="pt-0">
-          <ul className="space-y-1 text-sm text-muted-foreground">
+          <ul className="space-y-2 text-sm text-muted-foreground">
             {list.items.map((item, i) => (
-              <li key={i} className="flex items-start gap-2">
-                <span className="text-muted-foreground/50 mt-0.5">•</span>
-                {item}
+              <li key={i} className="flex items-start gap-2 leading-relaxed">
+                <span className="mt-1 text-muted-foreground/50">•</span>
+                <span className="whitespace-pre-wrap">{item}</span>
               </li>
             ))}
           </ul>

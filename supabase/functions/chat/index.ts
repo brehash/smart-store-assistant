@@ -890,11 +890,11 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
 
             if (choice.finish_reason === "tool_calls" || choice.message?.tool_calls?.length) {
               const toolCalls = choice.message.tool_calls;
-              aiMessages.push({
-                role: "assistant",
-                content: content || "",
-                tool_calls: choice.message.tool_calls,
-              });
+               aiMessages.push({
+                 role: "assistant",
+                 content: coerceMessageContent(content),
+                 tool_calls: choice.message.tool_calls,
+               });
 
               // Mark "Understanding request" as done and emit semantic plan
               if (!planSent) {

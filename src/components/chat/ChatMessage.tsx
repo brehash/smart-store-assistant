@@ -63,7 +63,7 @@ export function ChatMessage({
         {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
       </div>
 
-      <div className={cn("flex max-w-[80%] flex-col gap-2", isUser ? "items-end" : "items-start")}>
+      <div className={cn("flex w-full flex-col gap-2", isUser ? "max-w-[80%] items-end" : "max-w-[min(92%,1100px)] items-start")}>
         {/* Reasoning bubbles (above pipeline) */}
         {reasoningLogs && reasoningLogs.length > 0 && !isUser && (
           <ReasoningBubbles entries={reasoningLogs} isStreaming={!!isStreaming} />
