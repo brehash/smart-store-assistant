@@ -1,66 +1,83 @@
 
 
-# Pipeline UI Overhaul, Debug URIs, and Structured LLM Responses
+# Multi-Feature Update: Views, Pipeline Persistence, Order Statuses, Multi-Tool
 
-## Overview
+## 1. Pipeline/Debug Persistence on Chat Reload
 
-Four changes: restyle the pipeline to match the screenshot, add WooCommerce request URIs to the debug panel, instruct the LLM to return structured dashboard JSON for reports, and instruct it to return structured product JSON for sliders.
+**Problem**: When reopening a chat, only `content` and `rich_content` are loaded from the `messages` table. Pipeline data, debug logs, approvals, and questions are lost.
 
-## Changes
+**Solution**: Add a `metadata` JSONB column to the `messages` table. When saving an assistant message, store `{ pipeline, debugLogs, approvals, questions }` in it. When loading messages, restore these fields from metadata.
 
-### 1. Pipeline UI — Match Screenshot Style (`src/components/chat/PipelineStep.tsx`, `src/components/chat/PipelinePlan.tsx`)
+**Migration**: `ALTER TABLE messages ADD COLUMN metadata jsonb;`
 
-Restyle to match the screenshot: a card with a subtle border, each step as a row with a spinner (running) or circle (pending) on the left, step title text, and the whole thing in a compact vertical list. Remove the vertical connecting line approach and use a simpler list layout. Running steps show a spinning indicator, done steps show a checkmark, pending steps show an empty circle.
+**Files**: `src/pages/Index.tsx` (save/load metadata), migration SQL.
 
-### 2. Debug Panel — Show WooCommerce Request URI
+## 2. Delete Chat (with messages cascade)
 
-**Edge function** (`supabase/functions/chat/index.ts`): In each `executeTool`, capture the full WooCommerce REST API endpoint string (e.g., `products?search=pasta&per_page=10`) and include it in the `debug_api` SSE event as `requestUri`.
+**Problem**: Deleting a conversation doesn't delete its messages (no foreign key cascade).
 
-**`woo-proxy`**: Return the constructed `wooUrl` (with credentials stripped) in the response so the chat function can capture it. Alternatively, reconstruct the URI in the chat function from the endpoint string — simpler approach: just include the `endpoint` value passed to `callWooProxy` in the debug event.
+**Solution**: Add a foreign key from `messages.conversation_id` to `conversations.id` with `ON DELETE CASCADE`. The sidebar delete already calls `supabase.from("conversations").delete()` — this will now cascade to messages automatically.
 
-**`DebugPanel.tsx`**: Show a "Request URI" field displaying the WooCommerce REST endpoint path (e.g., `GET /wp-json/wc/v3/products?search=pasta&per_page=10`).
+**Migration**: `ALTER TABLE messages ADD CONSTRAINT messages_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE;`
 
-Update `DebugEntry` interface to include `requestUri?: string`.
+## 3. Views (Chat Groups with Shared Context)
 
-### 3. System Prompt — Structured Dashboard JSON for Reports
+**Problem**: User wants to group multiple chats into "views" where chats share context.
 
-Add instructions to the system prompt telling the LLM that after calling `get_sales_report` or `compare_sales`, it must include a structured JSON block in its response using a specific format. The frontend will parse this and render dashboard components.
-
-The instruction will tell the LLM to wrap structured output in a ` ```dashboard ... ``` ` code block with this schema:
-
-```text
-{
-  "cards": [{ "label": "Total Revenue", "value": "1,234 lei", "change": "+12%" }],
-  "charts": [{ "type": "bar", "title": "...", "data": [...] }],
-  "tables": [{ "title": "Top Products", "columns": [...], "rows": [...] }],
-  "lists": [{ "title": "...", "items": [...], "collapsible": true }]
-}
+**New table**: `views`
+```sql
+CREATE TABLE public.views (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  name text NOT NULL DEFAULT 'New View',
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
 ```
 
-**Edge function**: After the AI responds, parse any ` ```dashboard ``` ` block from the content, emit it as a `rich_content` event with `type: "dashboard"`, and strip it from the text content.
+**Modify `conversations`**: Add nullable `view_id uuid REFERENCES views(id) ON DELETE SET NULL`.
 
-**Frontend**: Create a new `DashboardView` component that renders the structured dashboard (stat cards, charts, tables, lists). Register it in `ChatMessage` for `richContent.type === "dashboard"`.
+**Shared context**: When sending a chat message within a view, include recent messages from sibling conversations in the same view as additional context in the system prompt. The edge function receives `viewId` and fetches recent messages from other conversations in the view.
 
-### 4. System Prompt — Structured Product JSON for Sliders
+**Sidebar UI**: Add a "Views" section above conversations. Each view is expandable, showing its chats. Chats can be dragged or moved into views. Views can be created/renamed/deleted. Chats within a view show a delete button.
 
-Add instructions to the system prompt telling the LLM that when presenting products, it should NOT describe them in text but instead rely on the `rich_content` SSE event that is already emitted by the `search_products` and `get_product` tools. The LLM should provide a brief text summary only.
+**RLS**: Standard user-owned policies on `views` table.
 
-The `rich_content` event for products already sends the full WooCommerce product objects (with `images`, `name`, `price`, etc.), so the `ProductSlider` already works — the issue is the LLM sometimes dumps product details as text. The system prompt update will say: "When products are found, do NOT list product details in text — they are displayed as interactive cards automatically. Just provide a brief summary like 'Found X products matching your search.'"
+**Files**: Migration, `ConversationSidebar.tsx` (views section), `src/pages/Index.tsx` (pass viewId), `supabase/functions/chat/index.ts` (fetch shared context).
 
-### 5. New Component: `DashboardView.tsx`
+## 4. Multi-Tool Sequential Execution
 
-Renders a structured dashboard inside the chat:
-- **Stat cards**: Row of cards with label, value, optional change percentage (green/red)
-- **Charts**: Reuses existing `ChatChart` component
-- **Tables**: Simple table with headers and rows
-- **Lists**: Collapsible lists with titles and items
+**Problem**: Complex queries like "dashboard with sales report compared to last month" should trigger multiple tool calls.
 
-### Files Modified
-- `supabase/functions/chat/index.ts` — system prompt updates, dashboard parsing, requestUri in debug events
-- `src/components/chat/PipelineStep.tsx` — restyle to match screenshot
-- `src/components/chat/PipelinePlan.tsx` — restyle container
-- `src/components/chat/DebugPanel.tsx` — show request URI
-- `src/components/chat/ChatMessage.tsx` — add DashboardView rendering
-- `src/components/chat/DashboardView.tsx` — new component
-- `src/lib/chat-stream.ts` — add requestUri to PipelineEvent
+**Current state**: The while loop already supports multiple iterations (up to 8). The LLM can return multiple `tool_calls` in one response, and after executing them, the loop continues to let the LLM call more tools.
+
+**Fix**: The issue is the system prompt doesn't instruct the LLM to use multiple tools. Add explicit instruction:
+
+> "When the user's request requires data from multiple sources (e.g. 'create a dashboard comparing this month to last month'), call ALL necessary tools. You can call multiple tools in a single response or across multiple turns. Do not stop after one tool call if more data is needed."
+
+Also update the pipeline plan generation to handle additional tool calls arriving in subsequent iterations — append new steps to the existing plan instead of ignoring them (since `planSent` is already true).
+
+**Files**: `supabase/functions/chat/index.ts` (system prompt + pipeline plan appending).
+
+## 5. Order Status Multi-Select in Settings
+
+**Problem**: After connecting, user wants to select which order statuses to use as defaults for WooCommerce API calls.
+
+**Implementation**:
+- After successful connection test, fetch order statuses from `GET /wp-json/wc/v3/reports/orders/totals` (returns all statuses with counts).
+- Display a multi-select checkbox list in Settings.
+- Save selected statuses to `woo_connections` table (new column `order_statuses text[] DEFAULT '{}'::text[]`).
+- In the edge function, read `order_statuses` from the connection and pass them as default status filter to tools like `search_orders` and `get_sales_report`.
+
+**Migration**: `ALTER TABLE woo_connections ADD COLUMN order_statuses text[] NOT NULL DEFAULT '{}'::text[];`
+
+**Files**: `Settings.tsx` (fetch statuses, render checkboxes, save), `supabase/functions/chat/index.ts` (read and apply default statuses), `woo-proxy/index.ts` (no changes needed — already proxies any endpoint), migration.
+
+## Files Modified
+
+- **Migration**: New migration for `metadata` column, `conversation_id` FK cascade, `views` table, `view_id` on conversations, `order_statuses` on woo_connections
+- `src/pages/Index.tsx` — save/load metadata, pass viewId
+- `src/pages/Settings.tsx` — order status fetching + multi-select UI
+- `src/components/chat/ConversationSidebar.tsx` — views section with CRUD
+- `supabase/functions/chat/index.ts` — multi-tool prompt, shared view context, default order statuses, pipeline plan appending
 
