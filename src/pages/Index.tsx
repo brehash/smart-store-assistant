@@ -337,11 +337,25 @@ export default function Index() {
     await handleSend(answer);
   };
 
-  const handleNewChat = () => { setConversationId(null); setMessages([]); setSidebarOpen(false); };
+  const handleNewChat = () => { setConversationId(null); setMessages([]); setViewId(null); setSidebarOpen(false); };
   const handleSelectConversation = (id: string, vId?: string | null) => {
     setConversationId(id);
     setViewId(vId || null);
     setSidebarOpen(false);
+  };
+  const handleNewInView = async (targetViewId: string) => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("conversations")
+      .insert({ user_id: user.id, title: "New Conversation", view_id: targetViewId })
+      .select()
+      .single();
+    if (data) {
+      setConversationId(data.id);
+      setViewId(targetViewId);
+      setMessages([]);
+      setSidebarOpen(false);
+    }
   };
 
   return (
@@ -351,7 +365,7 @@ export default function Index() {
       )}
 
       <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform lg:relative lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <ConversationSidebar activeId={conversationId} onSelect={handleSelectConversation} onNew={handleNewChat} onViewIdChange={setViewId} />
+        <ConversationSidebar activeId={conversationId} onSelect={handleSelectConversation} onNew={handleNewChat} onNewInView={handleNewInView} onViewIdChange={setViewId} />
       </div>
 
       <div className="flex flex-1 flex-col min-w-0">
