@@ -21,6 +21,89 @@ export interface PipelineEvent {
   text?: string;
 }
 
+function handleSsePayload(
+  parsed: any,
+  callbacks: {
+    onDelta: (text: string) => void;
+    onToolCall?: (toolCall: any) => void;
+    onPipelineEvent?: (event: PipelineEvent) => void;
+  },
+) {
+  if (parsed.error && typeof parsed.error === "string") {
+    console.warn("SSE error from backend:", parsed.error);
+    return true;
+  }
+
+  if (
+    parsed.type === "pipeline_plan" ||
+    parsed.type === "pipeline_step" ||
+    parsed.type === "pipeline_complete" ||
+    parsed.type === "approval_request" ||
+    parsed.type === "question_request" ||
+    parsed.type === "debug_api" ||
+    parsed.type === "reasoning"
+  ) {
+    callbacks.onPipelineEvent?.(parsed);
+    return true;
+  }
+
+  if (parsed.type === "rich_content") {
+    callbacks.onToolCall?.(parsed);
+    return true;
+  }
+
+  if (parsed.type === "dashboard") {
+    callbacks.onToolCall?.({ type: "dashboard", data: parsed.data });
+    return true;
+  }
+
+  const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+  if (content) {
+    callbacks.onDelta(content);
+    return true;
+  }
+
+  return false;
+}
+
+function processSseLine(
+  line: string,
+  callbacks: {
+    onDelta: (text: string) => void;
+    onToolCall?: (toolCall: any) => void;
+    onPipelineEvent?: (event: PipelineEvent) => void;
+  },
+): { handled: boolean; done: boolean } {
+  let normalized = line;
+  if (normalized.endsWith("\r")) normalized = normalized.slice(0, -1);
+  if (normalized.startsWith(":") || normalized.trim() === "") return { handled: false, done: false };
+  if (!normalized.startsWith("data: ")) return { handled: false, done: false };
+
+  const jsonStr = normalized.slice(6).trim();
+  if (jsonStr === "[DONE]") return { handled: true, done: true };
+
+  try {
+    const parsed = JSON.parse(jsonStr);
+    return { handled: handleSsePayload(parsed, callbacks), done: false };
+  } catch {
+    return { handled: false, done: false };
+  }
+}
+
+function flushRemainingBuffer(
+  buffer: string,
+  callbacks: {
+    onDelta: (text: string) => void;
+    onToolCall?: (toolCall: any) => void;
+    onPipelineEvent?: (event: PipelineEvent) => void;
+  },
+) {
+  for (const raw of buffer.split("\n")) {
+    if (!raw.trim()) continue;
+    processSseLine(raw, callbacks);
+  }
+}
+
 export async function streamChat({
   messages,
   conversationId,
@@ -44,6 +127,22 @@ export async function streamChat({
   approvalResponse?: { toolCallId: string; action: "approve" | "skip" | "edit"; editedArgs?: string };
   viewId?: string | null;
 }) {
+  let receivedPayload = false;
+  const callbacks = {
+    onDelta: (text: string) => {
+      receivedPayload = true;
+      onDelta(text);
+    },
+    onToolCall: (toolCall: any) => {
+      receivedPayload = true;
+      onToolCall?.(toolCall);
+    },
+    onPipelineEvent: (event: PipelineEvent) => {
+      receivedPayload = true;
+      onPipelineEvent?.(event);
+    },
+  };
+
   try {
     const resp = await fetch(CHAT_URL, {
       method: "POST",
@@ -63,90 +162,61 @@ export async function streamChat({
     let buffer = "";
     let streamDone = false;
     let lastActivity = Date.now();
-    const INACTIVITY_TIMEOUT = 120_000; // 120s
+    const INACTIVITY_TIMEOUT = 120_000;
 
     while (!streamDone) {
-      // Check for inactivity timeout
       if (Date.now() - lastActivity > INACTIVITY_TIMEOUT) {
         reader.cancel();
         onError("Connection timed out — no data received for 2 minutes. Please try again.");
         return;
       }
 
-      const { done, value } = await reader.read();
+      let readResult: ReadableStreamReadResult<Uint8Array>;
+      try {
+        readResult = await reader.read();
+      } catch (readError) {
+        flushRemainingBuffer(buffer, callbacks);
+        if (receivedPayload) {
+          onDone();
+          return;
+        }
+        throw readError;
+      }
+
+      const { done, value } = readResult;
       if (done) break;
+
       lastActivity = Date.now();
       buffer += decoder.decode(value, { stream: true });
 
       let newlineIndex: number;
       while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
-        let line = buffer.slice(0, newlineIndex);
+        const line = buffer.slice(0, newlineIndex);
         buffer = buffer.slice(newlineIndex + 1);
 
-        if (line.endsWith("\r")) line = line.slice(0, -1);
-        if (line.startsWith(":") || line.trim() === "") continue;
-        if (!line.startsWith("data: ")) continue;
+        const result = processSseLine(line, callbacks);
+        if (result.done) {
+          streamDone = true;
+          break;
+        }
 
-        const jsonStr = line.slice(6).trim();
-        if (jsonStr === "[DONE]") { streamDone = true; break; }
-
-        try {
-          const parsed = JSON.parse(jsonStr);
-
-          // Backend error events
-          if (parsed.error && typeof parsed.error === "string") {
-            // Don't terminate immediately — let remaining events flush (the backend sends content + [DONE] after error)
-            // But surface it as a toast so the user knows
-            console.warn("SSE error from backend:", parsed.error);
-            continue;
-          }
-
-          // Pipeline events
-          if (parsed.type === "pipeline_plan" || parsed.type === "pipeline_step" || parsed.type === "pipeline_complete" || parsed.type === "approval_request" || parsed.type === "question_request" || parsed.type === "debug_api" || parsed.type === "reasoning") {
-            onPipelineEvent?.(parsed);
-            continue;
-          }
-
-          // Rich content (products, orders, charts)
-          if (parsed.type === "rich_content") {
-            onToolCall?.(parsed);
-            continue;
-          }
-
-          // Dashboard content
-          if (parsed.type === "dashboard") {
-            onToolCall?.({ type: "dashboard", data: parsed.data });
-            continue;
-          }
-
-          const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-          if (content) onDelta(content);
-        } catch {
+        if (!result.handled && line.startsWith("data: ")) {
           buffer = line + "\n" + buffer;
           break;
         }
       }
     }
 
-    // Flush remaining
     if (buffer.trim()) {
-      for (let raw of buffer.split("\n")) {
-        if (!raw) continue;
-        if (raw.endsWith("\r")) raw = raw.slice(0, -1);
-        if (raw.startsWith(":") || raw.trim() === "") continue;
-        if (!raw.startsWith("data: ")) continue;
-        const jsonStr = raw.slice(6).trim();
-        if (jsonStr === "[DONE]") continue;
-        try {
-          const parsed = JSON.parse(jsonStr);
-          const content = parsed.choices?.[0]?.delta?.content as string | undefined;
-          if (content) onDelta(content);
-        } catch { /* ignore */ }
-      }
+      flushRemainingBuffer(buffer, callbacks);
     }
 
     onDone();
   } catch (e) {
+    if (receivedPayload) {
+      onDone();
+      return;
+    }
     onError(e instanceof Error ? e.message : "Unknown error");
   }
 }

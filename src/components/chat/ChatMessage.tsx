@@ -63,7 +63,7 @@ export function ChatMessage({
         {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
       </div>
 
-      <div className={cn("flex max-w-[80%] flex-col gap-2", isUser ? "items-end" : "items-start")}>
+      <div className={cn("flex w-full flex-col gap-2", isUser ? "max-w-[80%] items-end" : "max-w-[min(92%,1100px)] items-start")}>
         {/* Reasoning bubbles (above pipeline) */}
         {reasoningLogs && reasoningLogs.length > 0 && !isUser && (
           <ReasoningBubbles entries={reasoningLogs} isStreaming={!!isStreaming} />
@@ -122,7 +122,13 @@ export function ChatMessage({
 
         {/* Rich content */}
         {richContents?.map((rc, i) => (
-          <div key={`rich-${i}`} className="w-full max-w-[600px]">
+          <div
+            key={`rich-${i}`}
+            className={cn(
+              "w-full",
+              rc.type === "dashboard" ? "max-w-5xl" : rc.type === "chart" ? "max-w-4xl" : "max-w-[600px]",
+            )}
+          >
             {rc.type === "products" && <ProductSlider products={rc.data} />}
             {rc.type === "orders" && <OrderTable orders={rc.data} />}
             {rc.type === "chart" && <ChatChart chartData={rc.data} />}

@@ -29,10 +29,10 @@ export function ReasoningBubbles({ entries, isStreaming }: ReasoningBubblesProps
     const latest = entries[entries.length - 1];
 
     return (
-      <div className="flex flex-col gap-0.5 my-1 w-full max-w-[400px]">
+      <div className="flex flex-col gap-1 my-1 w-full max-w-[520px]">
         <div className="flex items-start gap-1.5 animate-reasoning-in">
           <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary animate-pulse" />
-          <span className="text-xs italic text-muted-foreground leading-snug">
+          <span className="text-xs italic text-muted-foreground leading-snug whitespace-pre-wrap">
             {latest.text}
           </span>
         </div>
