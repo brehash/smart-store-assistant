@@ -1,85 +1,84 @@
 
 
-## Make the AI Proactively Chain Tools for Stock/Inventory Analysis
+## Add Streaming Reasoning Bubbles to Chat
 
-### Problem
-When the user asks about stock levels and restock timing, the AI finds the product but then asks the user for sales data instead of fetching it automatically. The AI should chain multiple tools on its own: find the product → fetch recent orders containing it → calculate burn rate → present a visual inventory report.
+### What it does
+When the AI processes a request, small italic thought bubbles appear in real-time above the pipeline, showing what the AI is "thinking" (e.g., "Looking for products matching 'pasta bourbon'...", "Found 3 results, checking stock levels...", "Sales velocity is 1.6/day, calculating stockout..."). These fade/collapse into a summary once the response is complete.
 
-### What changes
+### Architecture
 
-**File: `supabase/functions/chat/index.ts`**
-
-1. **Add a new `get_product_sales` tool** that fetches orders from the last N days and filters them by a specific product ID, returning:
-   - Total units sold
-   - Daily/weekly breakdown
-   - List of orders containing the product
-   - Average units per order
-
-   Tool definition:
-   ```typescript
-   {
-     name: "get_product_sales",
-     description: "Get sales history for a specific product over a date range. Returns units sold, daily breakdown, and orders containing this product. Use this to analyze stock burn rate and restock timing.",
-     parameters: {
-       product_id: number,       // required
-       days: number,             // default 60
-       date_min: string,         // optional override
-       date_max: string          // optional override
-     }
-   }
-   ```
-
-2. **Implement `get_product_sales` in `executeTool`**:
-   - Fetch orders from the last N days (paginated, up to 100 per page, max ~300)
-   - Filter line items matching the product ID (including variation parent IDs)
-   - Aggregate: total units, revenue from that product, daily breakdown
-   - Return structured data the AI can use for burn-rate math
-   - Also return a `richContent` chart showing daily/weekly units sold
-
-3. **Update the system prompt** with explicit multi-tool chaining instructions for inventory/stock intents:
-   ```
-   STOCK & INVENTORY ANALYSIS:
-   - When the user asks about stock levels, restock timing, or inventory for a product:
-     1. FIRST call search_products to find the product and get current stock quantity
-     2. THEN call get_product_sales with the product_id to get sales velocity over 30-60 days
-     3. Calculate burn rate = units_sold / days
-     4. Calculate days_of_stock_remaining = current_stock / burn_rate
-     5. Present a visual dashboard with: current stock, burn rate, estimated stockout date, restock recommendation
-   - NEVER ask the user for sales data you can look up yourself
-   - ALWAYS chain these tools automatically in a single flow
-   ```
-
-4. **Update `generateSemanticPlan`** to handle the new tool:
-   - `get_product_sales` → "Analyzing sales velocity" with details like "Product #123 — last 60 days"
-
-5. **Update prompt to require dashboard output for inventory analysis** — the AI must emit a `dashboard` block with:
-   - Stat cards: Current Stock, Units Sold (30d), Burn Rate/day, Days Until Stockout, Recommended Reorder Date
-   - Chart: daily/weekly units sold trend line
-   - Table: recent orders containing the product
-   - List: insights and restock recommendation
-
-### Pipeline example for "show me stock for pasta bourbon and when to reorder"
+**Backend** — emit a new SSE event type `reasoning` from the edge function at key decision points:
 
 ```text
-✓ Understanding request
-✓ Searching product catalog
-    Query: "pasta bourbon"
-✓ Analyzing sales velocity
-    Product #245 — last 60 days
-✓ Calculating burn rate
-● Building inventory report
-○ Writing recommendation
+data: {"type":"reasoning","text":"Searching for 'pasta bourbon' in product catalog..."}
+data: {"type":"reasoning","text":"Found product #245 with stock_quantity: 39"}
+data: {"type":"reasoning","text":"Fetching 60-day order history to calculate burn rate..."}
+data: {"type":"reasoning","text":"47 units sold in 58 days → burn rate ~0.81/day → ~48 days of stock left"}
 ```
 
-### Visual output example
-The AI response should include a dashboard with:
-- **Cards**: Stock: 39 | Sold (30d): 47 | Burn Rate: 1.6/day | Days Left: ~24
-- **Chart**: Line chart of daily units sold over 60 days
-- **Table**: Recent orders with this product
-- **Insights**: "At current rate, stock runs out around April 19. Recommend reordering by April 10 to allow supplier lead time."
+Reasoning events are emitted:
+- Before each tool call (intent-based, e.g., "Searching for..." / "Fetching orders...")
+- After each tool result (data-based, e.g., "Found X products" / "Total units sold: 47")
+- During synthesis (e.g., "Calculating burn rate..." / "Building dashboard...")
+
+**Frontend** — new `ReasoningBubbles` component:
+
+```text
+┌─────────────────────────────────────┐
+│ 💭 Searching for 'pasta bourbon'... │  ← streaming, italic, muted
+│ 💭 Found product #245, stock: 39    │  ← appears with fade-in
+│ 💭 Fetching 60-day sales history... │  ← appears with fade-in
+│ ● Calculating burn rate...          │  ← latest thought pulses
+├─────────────────────────────────────┤
+│ ✓ Understanding request             │  ← existing pipeline below
+│ ✓ Searching product catalog         │
+│ ● Analyzing sales velocity          │
+│ ○ Building inventory report         │
+└─────────────────────────────────────┘
+```
+
+When streaming completes, the reasoning bubbles collapse into a single clickable line: "Thought for X seconds" → click to expand full reasoning trail.
 
 ### Files to modify
+
 | File | Changes |
 |------|---------|
-| `supabase/functions/chat/index.ts` | Add `get_product_sales` tool definition, implement in `executeTool`, update system prompt with inventory chaining rules, update `generateSemanticPlan` |
+| `supabase/functions/chat/index.ts` | Emit `reasoning` SSE events before/after tool calls and during synthesis |
+| `src/lib/chat-stream.ts` | Add `reasoning` to `PipelineEvent` type, forward to handler |
+| `src/components/chat/ReasoningBubbles.tsx` | **New** — renders streaming thought bubbles with fade-in, collapses when done |
+| `src/components/chat/ChatMessage.tsx` | Add `reasoningLogs` prop, render `ReasoningBubbles` above pipeline |
+| `src/pages/Index.tsx` | Track reasoning events in message state, pass to ChatMessage |
+
+### Reasoning event generation logic (edge function)
+
+Before each tool call:
+- `search_products` → "Looking up products matching '{args.search}'..."
+- `get_product_sales` → "Fetching sales history for product #{id} over last {days} days..."
+- `get_sales_report` → "Pulling orders from {date_min} to {date_max}..."
+- `compare_sales` → "Comparing {label_a} vs {label_b}..."
+
+After each tool result (parse the result to generate insight):
+- Products → "Found {count} products. {name} has {stock_quantity} in stock."
+- Product sales → "{total_units} units sold over {days} days. Burn rate: {rate}/day."
+- Sales report → "{orderCount} orders, {totalRevenue} lei total revenue."
+
+During synthesis:
+- "Calculating days of stock remaining..."
+- "Building visual dashboard with insights..."
+
+### ReasoningBubbles component design
+
+- Each thought: `text-xs italic text-muted-foreground` with `animate-fade-in`
+- Latest thought has a pulsing dot indicator
+- On completion: all thoughts collapse into "Thought for Xs" with Collapsible expand
+- Max visible thoughts while streaming: last 4 (older ones fade out)
+
+### Data flow
+
+```text
+Edge fn → SSE {type:"reasoning", text:"..."} 
+       → chat-stream.ts onPipelineEvent 
+       → Index.tsx reasoningLogs[] 
+       → ChatMessage → ReasoningBubbles (above PipelinePlan)
+```
 
