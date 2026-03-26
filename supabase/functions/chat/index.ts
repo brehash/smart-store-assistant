@@ -165,7 +165,7 @@ async function callWooProxy(supabaseUrl: string, authHeader: string, payload: an
 
 async function executeTool(
   toolName: string, args: any, supabaseUrl: string, authHeader: string, userId: string, supabase: any
-): Promise<{ result: any; richContent?: any }> {
+): Promise<{ result: any; richContent?: any; requestUri?: string }> {
   switch (toolName) {
     case "search_products": {
       const params = new URLSearchParams();
