@@ -7,6 +7,7 @@ import { ChatChart } from "./ChatChart";
 import { PipelinePlan, type PipelinePlanData } from "./PipelinePlan";
 import { ApprovalCard } from "./ApprovalCard";
 import { QuestionCard } from "./QuestionCard";
+import { DebugPanel, type DebugEntry } from "./DebugPanel";
 
 export interface RichContent {
   type: "products" | "orders" | "chart" | "confirmation" | "pipeline";
