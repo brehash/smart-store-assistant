@@ -71,6 +71,9 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
 
+  // Misc UI
+  const [showApiKey, setShowApiKey] = useState(false);
+
   // Appearance
   const [theme, setTheme] = useState<"system" | "dark" | "light">(() => {
     return (localStorage.getItem("theme") as any) || "system";
