@@ -369,6 +369,7 @@ export default function Index() {
                   pipeline={msg.pipeline}
                   approvals={msg.approvals}
                   questions={msg.questions}
+                  debugLogs={msg.debugLogs}
                   onApproval={handleApproval}
                   onQuestionAnswer={handleQuestionAnswer}
                 />
