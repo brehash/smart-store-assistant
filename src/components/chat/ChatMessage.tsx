@@ -40,13 +40,14 @@ interface ChatMessageProps {
   approvals?: ApprovalRequest[];
   questions?: QuestionRequest[];
   debugLogs?: DebugEntry[];
+  reasoningLogs?: ReasoningEntry[];
   onApproval?: (approval: ApprovalRequest, action: "approve" | "skip" | "edit", editedText?: string) => void;
   onQuestionAnswer?: (question: QuestionRequest, answer: string) => void;
 }
 
 export function ChatMessage({
   role, content, richContents, isStreaming,
-  pipeline, approvals, questions, debugLogs,
+  pipeline, approvals, questions, debugLogs, reasoningLogs,
   onApproval, onQuestionAnswer,
 }: ChatMessageProps) {
   const isUser = role === "user";
