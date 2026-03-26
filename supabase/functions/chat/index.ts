@@ -917,8 +917,8 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                 // Mark any remaining intermediate semantic steps (e.g. "Comparing periods") as done
                 while (semanticIdx < semanticSteps.length) {
                   const ss = semanticSteps[semanticIdx];
-                  if (ss.title === "Writing explanation" || ss.title === "Building dashboard" || ss.title === "Rendering results") break;
-                  if (ss.title.startsWith("Fetching") || ss.title === "Awaiting approval") break;
+                  if (ss.title === "Writing explanation" || ss.title === "Building dashboard" || ss.title === "Rendering results" || ss.title === "Building inventory report") break;
+                  if (ss.title.startsWith("Fetching") || ss.title === "Awaiting approval" || ss.title.startsWith("Analyzing")) break;
                   sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "running", details: ss.details });
                   sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "done", details: ss.details });
                   stepIndex++;
