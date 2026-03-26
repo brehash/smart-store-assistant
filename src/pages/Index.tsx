@@ -337,11 +337,25 @@ export default function Index() {
     await handleSend(answer);
   };
 
-  const handleNewChat = () => { setConversationId(null); setMessages([]); setSidebarOpen(false); };
+  const handleNewChat = () => { setConversationId(null); setMessages([]); setViewId(null); setSidebarOpen(false); };
   const handleSelectConversation = (id: string, vId?: string | null) => {
     setConversationId(id);
     setViewId(vId || null);
     setSidebarOpen(false);
+  };
+  const handleNewInView = async (targetViewId: string) => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("conversations")
+      .insert({ user_id: user.id, title: "New Conversation", view_id: targetViewId })
+      .select()
+      .single();
+    if (data) {
+      setConversationId(data.id);
+      setViewId(targetViewId);
+      setMessages([]);
+      setSidebarOpen(false);
+    }
   };
 
   return (

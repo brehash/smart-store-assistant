@@ -4,11 +4,17 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import {
   Plus, MessageSquare, Settings, LogOut, Trash2,
   FolderOpen, ChevronDown, ChevronRight, FolderPlus,
-  Pencil, X, Check, Search,
+  Pencil, X, Check, Search, MoreHorizontal, Pin,
+  ArrowRight,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -17,6 +23,7 @@ interface Conversation {
   title: string;
   updated_at: string;
   view_id: string | null;
+  pinned: boolean;
 }
 
 interface View {
@@ -29,10 +36,11 @@ interface ConversationSidebarProps {
   activeId: string | null;
   onSelect: (id: string, viewId?: string | null) => void;
   onNew: () => void;
+  onNewInView?: (viewId: string) => void;
   onViewIdChange?: (viewId: string | null) => void;
 }
 
-export function ConversationSidebar({ activeId, onSelect, onNew, onViewIdChange }: ConversationSidebarProps) {
+export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, onViewIdChange }: ConversationSidebarProps) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -42,6 +50,8 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onViewIdChange 
   const [expandedViews, setExpandedViews] = useState<Set<string>>(new Set());
   const [editingViewId, setEditingViewId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [editingConvId, setEditingConvId] = useState<string | null>(null);
+  const [editingConvTitle, setEditingConvTitle] = useState("");
   const [viewsLimit, setViewsLimit] = useState(5);
   const [recentsLimit, setRecentsLimit] = useState(10);
 
@@ -51,64 +61,89 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onViewIdChange 
       const [convRes, viewRes] = await Promise.all([
         supabase
           .from("conversations")
-          .select("id, title, updated_at, view_id" as any)
+          .select("id, title, updated_at, view_id, pinned")
           .eq("user_id", user.id)
           .order("updated_at", { ascending: false }),
-        (supabase as any)
+        supabase
           .from("views")
           .select("*")
           .eq("user_id", user.id)
           .order("updated_at", { ascending: false }),
       ]);
       if (convRes.data) setConversations(convRes.data as unknown as Conversation[]);
-      if (viewRes.data) setViews(viewRes.data as View[]);
+      if (viewRes.data) setViews(viewRes.data as unknown as View[]);
     };
     load();
   }, [user, activeId]);
 
-  // Filtered conversations based on search
   const filteredConversations = useMemo(() => {
     if (!searchQuery.trim()) return conversations;
     const q = searchQuery.toLowerCase();
     return conversations.filter((c) => c.title.toLowerCase().includes(q));
   }, [conversations, searchQuery]);
 
-  const ungroupedConversations = filteredConversations.filter((c) => !c.view_id);
+  const ungroupedConversations = useMemo(() => {
+    const ungrouped = filteredConversations.filter((c) => !c.view_id);
+    // Pinned first, then by updated_at
+    return ungrouped.sort((a, b) => {
+      if (a.pinned && !b.pinned) return -1;
+      if (!a.pinned && b.pinned) return 1;
+      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+    });
+  }, [filteredConversations]);
+
   const getViewConversations = (viewId: string) => filteredConversations.filter((c) => c.view_id === viewId);
 
   // Handlers
-  const handleDelete = async (e: React.MouseEvent, id: string) => {
-    e.stopPropagation();
+  const handleDelete = async (id: string) => {
     await supabase.from("conversations").delete().eq("id", id);
     setConversations((prev) => prev.filter((c) => c.id !== id));
     if (activeId === id) onNew();
   };
 
+  const handleRenameConv = async (id: string) => {
+    if (!editingConvTitle.trim()) return;
+    await supabase.from("conversations").update({ title: editingConvTitle.trim() }).eq("id", id);
+    setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, title: editingConvTitle.trim() } : c)));
+    setEditingConvId(null);
+  };
+
+  const handleTogglePin = async (conv: Conversation) => {
+    const newPinned = !conv.pinned;
+    await supabase.from("conversations").update({ pinned: newPinned } as any).eq("id", conv.id);
+    setConversations((prev) => prev.map((c) => (c.id === conv.id ? { ...c, pinned: newPinned } : c)));
+  };
+
+  const handleMoveToView = async (convId: string, viewId: string | null) => {
+    await supabase.from("conversations").update({ view_id: viewId }).eq("id", convId);
+    setConversations((prev) => prev.map((c) => (c.id === convId ? { ...c, view_id: viewId } : c)));
+  };
+
   const handleCreateView = async () => {
     if (!user) return;
-    const { data } = await (supabase as any)
+    const { data } = await supabase
       .from("views")
       .insert({ user_id: user.id, name: "New View" })
       .select()
       .single();
     if (data) {
-      setViews((prev) => [data as View, ...prev]);
+      setViews((prev) => [data as unknown as View, ...prev]);
       setExpandedViews((prev) => new Set(prev).add(data.id));
       setEditingViewId(data.id);
-      setEditingName(data.name);
+      setEditingName((data as any).name);
     }
   };
 
   const handleRenameView = async (viewId: string) => {
     if (!editingName.trim()) return;
-    await (supabase as any).from("views").update({ name: editingName.trim() }).eq("id", viewId);
+    await supabase.from("views").update({ name: editingName.trim() }).eq("id", viewId);
     setViews((prev) => prev.map((v) => (v.id === viewId ? { ...v, name: editingName.trim() } : v)));
     setEditingViewId(null);
   };
 
   const handleDeleteView = async (e: React.MouseEvent, viewId: string) => {
     e.stopPropagation();
-    await (supabase as any).from("views").delete().eq("id", viewId);
+    await supabase.from("views").delete().eq("id", viewId);
     setViews((prev) => prev.filter((v) => v.id !== viewId));
     setConversations((prev) => prev.map((c) => (c.view_id === viewId ? { ...c, view_id: null } : c)));
   };
@@ -122,27 +157,82 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onViewIdChange 
     });
   };
 
-  // Render a single conversation item
+  // Render a single conversation item with context menu
   const renderConversation = (c: Conversation) => (
-    <button
+    <div
       key={c.id}
-      onClick={() => onSelect(c.id, c.view_id)}
       className={cn(
-        "group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors",
+        "group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors cursor-pointer",
         activeId === c.id
           ? "bg-sidebar-accent text-sidebar-accent-foreground"
           : "hover:bg-sidebar-accent/50 text-sidebar-foreground/70"
       )}
+      onClick={() => onSelect(c.id, c.view_id)}
     >
       <MessageSquare className="h-3.5 w-3.5 shrink-0" />
-      <span className="truncate flex-1">{c.title}</span>
-      <button
-        onClick={(e) => handleDelete(e, c.id)}
-        className="opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity"
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </button>
-    </button>
+
+      {editingConvId === c.id ? (
+        <Input
+          value={editingConvTitle}
+          onChange={(e) => setEditingConvTitle(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleRenameConv(c.id);
+            if (e.key === "Escape") setEditingConvId(null);
+          }}
+          onBlur={() => handleRenameConv(c.id)}
+          onClick={(e) => e.stopPropagation()}
+          className="h-5 text-xs bg-sidebar-accent border-sidebar-border px-1 flex-1"
+          autoFocus
+        />
+      ) : (
+        <span className="truncate flex-1">{c.title}</span>
+      )}
+
+      {/* Pin icon - visible when pinned, shifts on hover to make room for menu */}
+      {c.pinned && editingConvId !== c.id && (
+        <Pin className="h-3 w-3 shrink-0 rotate-45 text-sidebar-foreground/50 group-hover:hidden" />
+      )}
+
+      {/* Context menu - visible on hover */}
+      {editingConvId !== c.id && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+            <button className="shrink-0 opacity-0 group-hover:opacity-100 hover:text-sidebar-foreground transition-opacity p-0.5 rounded hover:bg-sidebar-accent">
+              <MoreHorizontal className="h-3.5 w-3.5" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditingConvId(c.id); setEditingConvTitle(c.title); }}>
+              <Pencil className="h-3.5 w-3.5 mr-2" /> Rename
+            </DropdownMenuItem>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <ArrowRight className="h-3.5 w-3.5 mr-2" /> Move to view
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                {c.view_id && (
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleMoveToView(c.id, null); }}>
+                    <X className="h-3.5 w-3.5 mr-2" /> Remove from view
+                  </DropdownMenuItem>
+                )}
+                {views.map((v) => (
+                  <DropdownMenuItem key={v.id} onClick={(e) => { e.stopPropagation(); handleMoveToView(c.id, v.id); }}>
+                    <FolderOpen className="h-3.5 w-3.5 mr-2" /> {v.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleTogglePin(c); }}>
+              <Pin className="h-3.5 w-3.5 mr-2 rotate-45" /> {c.pinned ? "Unpin chat" : "Pin chat"}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={(e) => { e.stopPropagation(); handleDelete(c.id); }}>
+              <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+    </div>
   );
 
   const visibleViews = views.slice(0, viewsLimit);
@@ -150,14 +240,14 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onViewIdChange 
 
   return (
     <div className="flex h-full w-64 flex-col bg-sidebar text-sidebar-foreground">
-      {/* 1. New Chat */}
+      {/* New Chat */}
       <div className="p-3 pb-2">
         <Button onClick={onNew} className="w-full gap-2 bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90">
           <Plus className="h-4 w-4" /> New Chat
         </Button>
       </div>
 
-      {/* 2. Search */}
+      {/* Search */}
       <div className="px-3 pb-2">
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-sidebar-foreground/40" />
@@ -172,21 +262,14 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onViewIdChange 
 
       <ScrollArea className="flex-1 px-2">
         <div className="space-y-4">
-          {/* 3. Views Section */}
+          {/* Views Section */}
           <div>
             <div className="flex items-center justify-between px-2 py-1">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">
-                Views
-              </span>
-              <button
-                onClick={handleCreateView}
-                className="p-0.5 rounded hover:bg-sidebar-accent/50 text-sidebar-foreground/40 hover:text-sidebar-foreground transition-colors"
-                title="New View"
-              >
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">Views</span>
+              <button onClick={handleCreateView} className="p-0.5 rounded hover:bg-sidebar-accent/50 text-sidebar-foreground/40 hover:text-sidebar-foreground transition-colors" title="New View">
                 <FolderPlus className="h-3.5 w-3.5" />
               </button>
             </div>
-
             <div className="space-y-0.5">
               {visibleViews.length === 0 && (
                 <p className="px-3 py-2 text-[11px] text-sidebar-foreground/30">No views yet</p>
@@ -240,6 +323,13 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onViewIdChange 
                           <p className="text-[10px] text-sidebar-foreground/30 px-3 py-1">No chats yet</p>
                         )}
                         {viewConvs.map(renderConversation)}
+                        {/* New Chat inside view */}
+                        <button
+                          onClick={() => onNewInView?.(view.id)}
+                          className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-[11px] text-sidebar-foreground/40 hover:text-sidebar-foreground/70 hover:bg-sidebar-accent/30 transition-colors"
+                        >
+                          <Plus className="h-3 w-3" /> New Chat
+                        </button>
                       </div>
                     )}
                   </div>
@@ -256,12 +346,10 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onViewIdChange 
             </div>
           </div>
 
-          {/* 4. Recents Section */}
+          {/* Recents Section */}
           <div>
             <div className="px-2 py-1">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">
-                Recents
-              </span>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">Recents</span>
             </div>
             <div className="space-y-0.5">
               {visibleRecents.length === 0 && (
@@ -283,16 +371,10 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onViewIdChange 
 
       {/* Footer */}
       <div className="border-t border-sidebar-border p-3 space-y-1">
-        <button
-          onClick={() => navigate("/settings")}
-          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors"
-        >
+        <button onClick={() => navigate("/settings")} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors">
           <Settings className="h-4 w-4" /> Settings
         </button>
-        <button
-          onClick={signOut}
-          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors"
-        >
+        <button onClick={signOut} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors">
           <LogOut className="h-4 w-4" /> Sign out
         </button>
       </div>
