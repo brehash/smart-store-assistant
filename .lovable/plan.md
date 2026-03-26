@@ -1,84 +1,90 @@
 
 
-## Add Streaming Reasoning Bubbles to Chat
+## Fix Reasoning & Pipeline Display Issues
 
-### What it does
-When the AI processes a request, small italic thought bubbles appear in real-time above the pipeline, showing what the AI is "thinking" (e.g., "Looking for products matching 'pasta bourbon'...", "Found 3 results, checking stock levels...", "Sales velocity is 1.6/day, calculating stockout..."). These fade/collapse into a summary once the response is complete.
+### Root cause analysis
 
-### Architecture
+There are **3 bugs** causing the broken experience — none of them require a different AI model.
 
-**Backend** — emit a new SSE event type `reasoning` from the edge function at key decision points:
+**Bug 1: Pipeline steps reset to "pending"**
+When the AI returns tool calls, line 896 sends a second `pipeline_plan` event with all steps. The frontend handler (Index.tsx line 148) recreates ALL steps with `status: "pending"`, wiping out the already-completed "Understanding request" step. This is why steps show empty circles in the screenshot.
 
-```text
-data: {"type":"reasoning","text":"Searching for 'pasta bourbon' in product catalog..."}
-data: {"type":"reasoning","text":"Found product #245 with stock_quantity: 39"}
-data: {"type":"reasoning","text":"Fetching 60-day order history to calculate burn rate..."}
-data: {"type":"reasoning","text":"47 units sold in 58 days → burn rate ~0.81/day → ~48 days of stock left"}
+**Bug 2: Edge function uses `stream: false` — response hangs**
+The AI call at line 860 uses `stream: false`, meaning the entire AI round-trip blocks before any SSE events are sent. If the AI model takes 15-30s to think + the WooCommerce API takes time, the SSE connection can appear dead. The frontend shows no activity during this wait. Combined with Supabase edge function timeout limits (~150s), complex multi-tool chains can silently die.
+
+**Bug 3: No timeout/error detection on frontend**
+If the edge function times out or the SSE stream dies, `onDone` never fires, `onError` never fires, and the UI stays stuck in "streaming" state forever with no feedback.
+
+### Fixes
+
+#### 1. Fix pipeline_plan to preserve completed steps (Index.tsx)
+
+When a `pipeline_plan` event arrives, merge with existing step statuses instead of replacing them:
+
+```typescript
+// Before (broken): all steps get "pending"
+const planSteps = (event.steps || []).map((s, i) => ({
+  id: `step-${i}`, title: s, status: "pending"
+}));
+
+// After (fixed): preserve existing step statuses
+const existingSteps = m.pipeline?.steps || [];
+const planSteps = (event.steps || []).map((s, i) => ({
+  id: `step-${i}`,
+  title: s,
+  status: existingSteps[i]?.status || "pending"
+}));
 ```
 
-Reasoning events are emitted:
-- Before each tool call (intent-based, e.g., "Searching for..." / "Fetching orders...")
-- After each tool result (data-based, e.g., "Found X products" / "Total units sold: 47")
-- During synthesis (e.g., "Calculating burn rate..." / "Building dashboard...")
+#### 2. Add SSE keepalive heartbeat (edge function)
 
-**Frontend** — new `ReasoningBubbles` component:
+Send periodic `reasoning` events during long operations so the frontend knows the connection is alive:
 
-```text
-┌─────────────────────────────────────┐
-│ 💭 Searching for 'pasta bourbon'... │  ← streaming, italic, muted
-│ 💭 Found product #245, stock: 39    │  ← appears with fade-in
-│ 💭 Fetching 60-day sales history... │  ← appears with fade-in
-│ ● Calculating burn rate...          │  ← latest thought pulses
-├─────────────────────────────────────┤
-│ ✓ Understanding request             │  ← existing pipeline below
-│ ✓ Searching product catalog         │
-│ ● Analyzing sales velocity          │
-│ ○ Building inventory report         │
-└─────────────────────────────────────┘
+```typescript
+// Before each AI call, emit a reasoning event
+sendSSE({ type: "reasoning", text: "Analyzing your request..." });
+
+// During tool execution, emit progress
+sendSSE({ type: "reasoning", text: `Processing ${toolName}...` });
 ```
 
-When streaming completes, the reasoning bubbles collapse into a single clickable line: "Thought for X seconds" → click to expand full reasoning trail.
+Also add a "thinking" reasoning event before the AI model call itself (the slowest part):
+
+```typescript
+sendSSE({ type: "reasoning", text: "Thinking about how to help..." });
+const aiResp = await fetch(aiBaseUrl, { ... });
+```
+
+#### 3. Add frontend timeout detection (chat-stream.ts + Index.tsx)
+
+Add a 120s inactivity timeout — if no SSE data arrives for 120s, surface an error:
+
+```typescript
+let lastActivity = Date.now();
+// In the read loop: lastActivity = Date.now() after each chunk
+// Timeout check: if (Date.now() - lastActivity > 120_000) onError("Connection timed out")
+```
+
+Also add a cleanup in Index.tsx so if `isStreaming` is true but no events arrive for 2 minutes, reset the state.
+
+#### 4. Emit synthesis reasoning events (edge function)
+
+After all tools complete and before the final AI call, emit reasoning events so the user sees activity:
+
+```typescript
+// Before final AI synthesis call
+sendSSE({ type: "reasoning", text: "Preparing your response..." });
+```
 
 ### Files to modify
 
 | File | Changes |
 |------|---------|
-| `supabase/functions/chat/index.ts` | Emit `reasoning` SSE events before/after tool calls and during synthesis |
-| `src/lib/chat-stream.ts` | Add `reasoning` to `PipelineEvent` type, forward to handler |
-| `src/components/chat/ReasoningBubbles.tsx` | **New** — renders streaming thought bubbles with fade-in, collapses when done |
-| `src/components/chat/ChatMessage.tsx` | Add `reasoningLogs` prop, render `ReasoningBubbles` above pipeline |
-| `src/pages/Index.tsx` | Track reasoning events in message state, pass to ChatMessage |
+| `src/pages/Index.tsx` | Fix `pipeline_plan` handler to preserve existing step statuses |
+| `src/lib/chat-stream.ts` | Add 120s inactivity timeout detection |
+| `supabase/functions/chat/index.ts` | Add reasoning events before AI calls ("Thinking..."), add keepalive reasoning during long waits |
 
-### Reasoning event generation logic (edge function)
+### Why a reasoning model is NOT needed
 
-Before each tool call:
-- `search_products` → "Looking up products matching '{args.search}'..."
-- `get_product_sales` → "Fetching sales history for product #{id} over last {days} days..."
-- `get_sales_report` → "Pulling orders from {date_min} to {date_max}..."
-- `compare_sales` → "Comparing {label_a} vs {label_b}..."
-
-After each tool result (parse the result to generate insight):
-- Products → "Found {count} products. {name} has {stock_quantity} in stock."
-- Product sales → "{total_units} units sold over {days} days. Burn rate: {rate}/day."
-- Sales report → "{orderCount} orders, {totalRevenue} lei total revenue."
-
-During synthesis:
-- "Calculating days of stock remaining..."
-- "Building visual dashboard with insights..."
-
-### ReasoningBubbles component design
-
-- Each thought: `text-xs italic text-muted-foreground` with `animate-fade-in`
-- Latest thought has a pulsing dot indicator
-- On completion: all thoughts collapse into "Thought for Xs" with Collapsible expand
-- Max visible thoughts while streaming: last 4 (older ones fade out)
-
-### Data flow
-
-```text
-Edge fn → SSE {type:"reasoning", text:"..."} 
-       → chat-stream.ts onPipelineEvent 
-       → Index.tsx reasoningLogs[] 
-       → ChatMessage → ReasoningBubbles (above PipelinePlan)
-```
+The reasoning bubbles feature doesn't use AI model "reasoning mode" (like OpenAI's extended thinking). It's a **UI feature** that shows what the system is doing — which tools it's calling, what data it found, etc. The bugs above are purely SSE streaming and state management issues. The current `gemini-3-flash-preview` model works fine for this.
 
