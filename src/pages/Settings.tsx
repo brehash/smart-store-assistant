@@ -42,9 +42,10 @@ const TABS: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
 /*  Main exported component                                            */
 /* ------------------------------------------------------------------ */
 
-export function SettingsContent({ activeTab = "general", onTabChange }: {
+export function SettingsContent({ activeTab = "general", onTabChange, onClose }: {
   activeTab?: SettingsTab;
   onTabChange?: (tab: SettingsTab) => void;
+  onClose?: () => void;
 }) {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
