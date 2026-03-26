@@ -512,10 +512,8 @@ export default function Index() {
 
       {/* Settings Modal */}
       <Dialog open={settingsOpen} onOpenChange={handleCloseSettings}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden p-0">
-          <ScrollArea className="max-h-[85vh] p-6">
-            <SettingsContent />
-          </ScrollArea>
+        <DialogContent className="max-w-4xl h-[85vh] overflow-hidden p-0">
+          <SettingsContent activeTab={settingsTab} onTabChange={handleSettingsTabChange} />
         </DialogContent>
       </Dialog>
     </div>
