@@ -928,6 +928,9 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                   ? semanticSteps[semanticIdx].details
                   : undefined;
 
+                // Emit reasoning before tool call
+                sendSSE({ type: "reasoning", text: generateReasoningBefore(toolName, args) });
+
                 sendSSE({ type: "pipeline_step", stepIndex, title: currentSemanticTitle, status: "running", details: currentSemanticDetails, toolName, args });
 
                 if (WRITE_TOOLS.has(toolName) && !approvalResponse) {
