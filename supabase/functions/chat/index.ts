@@ -348,6 +348,10 @@ serve(async (req) => {
       ? `\n\nIMPORTANT: Always respond in ${responseLanguage}. All plan titles, confirmations, and explanations must also be in ${responseLanguage}.`
       : "";
 
+    const defaultStatusStr = defaultOrderStatuses.length
+      ? `\n\nDEFAULT ORDER STATUSES: The user has configured these default order statuses: ${defaultOrderStatuses.join(", ")}. Use these as the status filter when searching orders or generating reports unless the user explicitly specifies different statuses.`
+      : "";
+
     const systemPrompt = `You are a WooCommerce store assistant. You help manage their online store through conversation.${languageInstruction}
 
 Your capabilities:
@@ -355,6 +359,10 @@ Your capabilities:
 - Create and manage orders
 - Provide sales analytics and insights with charts and dashboards
 - Learn the user's preferences and product aliases
+
+MULTI-TOOL EXECUTION:
+- When the user's request requires data from multiple sources (e.g. "create a dashboard comparing this month to last month"), call ALL necessary tools. You can call multiple tools in a single response or across multiple turns. Do not stop after one tool call if more data is needed.
+- For comparisons, call tools separately for each period/dataset needed.
 
 When the user refers to a product casually (e.g. "pasta bourbon"), search for it first. If you identify a pattern or alias, save it as a preference.
 
@@ -383,7 +391,7 @@ DASHBOARD/REPORT DISPLAY RULES:
 - For grouped_bar charts, use "dataKeys": ["Label A", "Label B"] instead of "dataKey".
 - All currency values should use "lei" suffix.
 
-Be conversational, efficient, and proactive. Use markdown for formatting. Currency is RON (lei).${prefsContext}`;
+Be conversational, efficient, and proactive. Use markdown for formatting. Currency is RON (lei).${defaultStatusStr}${prefsContext}${viewContext}`;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY && !userOpenAIKey) throw new Error("No AI API key configured");
