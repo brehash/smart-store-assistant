@@ -67,13 +67,13 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onViewIdChange 
 
   const handleCreateView = async () => {
     if (!user) return;
-    const { data } = await supabase
+    const { data } = await (supabase as any)
       .from("views")
       .insert({ user_id: user.id, name: "New View" })
       .select()
       .single();
     if (data) {
-      setViews((prev) => [data, ...prev]);
+      setViews((prev) => [data as View, ...prev]);
       setExpandedViews((prev) => new Set(prev).add(data.id));
       setEditingViewId(data.id);
       setEditingName(data.name);
