@@ -1,7 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import {
@@ -9,14 +8,15 @@ import {
   DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import {
   Plus, MessageSquare, Settings, LogOut, Trash2,
   FolderOpen, ChevronDown, ChevronRight, FolderPlus,
   Pencil, X, Check, Search, MoreHorizontal, Pin,
-  ArrowRight,
+  ArrowRight, PanelLeftClose, PanelLeft,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 
 interface Conversation {
   id: string;
@@ -38,11 +38,13 @@ interface ConversationSidebarProps {
   onNew: () => void;
   onNewInView?: (viewId: string) => void;
   onViewIdChange?: (viewId: string | null) => void;
+  collapsed: boolean;
+  onToggle: () => void;
+  onOpenSettings: () => void;
 }
 
-export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, onViewIdChange }: ConversationSidebarProps) {
+export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, onViewIdChange, collapsed, onToggle, onOpenSettings }: ConversationSidebarProps) {
   const { user, signOut } = useAuth();
-  const navigate = useNavigate();
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [views, setViews] = useState<View[]>([]);
@@ -86,7 +88,6 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
 
   const ungroupedConversations = useMemo(() => {
     const ungrouped = filteredConversations.filter((c) => !c.view_id);
-    // Pinned first, then by updated_at
     return ungrouped.sort((a, b) => {
       if (a.pinned && !b.pinned) return -1;
       if (!a.pinned && b.pinned) return 1;
@@ -96,7 +97,6 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
 
   const getViewConversations = (viewId: string) => filteredConversations.filter((c) => c.view_id === viewId);
 
-  // Handlers
   const handleDelete = async (id: string) => {
     await supabase.from("conversations").delete().eq("id", id);
     setConversations((prev) => prev.filter((c) => c.id !== id));
@@ -160,7 +160,8 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
     });
   };
 
-  // Render a single conversation item with context menu
+  const userInitials = user?.email ? user.email.slice(0, 2).toUpperCase() : "U";
+
   const renderConversation = (c: Conversation) => {
     const showMenu = hoveredConvId === c.id || openMenuConvId === c.id;
     return (
@@ -195,7 +196,6 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
           <span className="truncate min-w-0 flex-1">{c.title}</span>
         )}
 
-        {/* Fixed-width action slot */}
         <div className="w-5 h-5 shrink-0 flex items-center justify-center">
           {editingConvId === c.id ? null : showMenu ? (
             <DropdownMenu onOpenChange={(open) => setOpenMenuConvId(open ? c.id : null)}>
@@ -249,13 +249,93 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
   const visibleViews = views.slice(0, viewsLimit);
   const visibleRecents = ungroupedConversations.slice(0, recentsLimit);
 
+  // --- Collapsed view ---
+  if (collapsed) {
+    return (
+      <div className="flex h-full w-14 flex-col items-center bg-sidebar text-sidebar-foreground py-3 gap-1">
+        {/* Toggle */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button onClick={onToggle} className="p-2 rounded-lg hover:bg-sidebar-accent/50 transition-colors">
+              <PanelLeft className="h-5 w-5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">Expand sidebar</TooltipContent>
+        </Tooltip>
+
+        {/* New Chat */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button onClick={onNew} className="p-2 rounded-lg hover:bg-sidebar-accent/50 transition-colors text-sidebar-foreground/70">
+              <Plus className="h-5 w-5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">New Chat</TooltipContent>
+        </Tooltip>
+
+        {/* Search */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button className="p-2 rounded-lg hover:bg-sidebar-accent/50 transition-colors text-sidebar-foreground/70">
+              <Search className="h-5 w-5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">Search</TooltipContent>
+        </Tooltip>
+
+        <div className="flex-1" />
+
+        {/* User avatar dropup */}
+        <DropdownMenu>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <button className="p-1 rounded-full hover:ring-2 hover:ring-sidebar-accent transition-all">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="text-xs bg-sidebar-accent text-sidebar-foreground">{userInitials}</AvatarFallback>
+                  </Avatar>
+                </button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="right">Account</TooltipContent>
+          </Tooltip>
+          <DropdownMenuContent side="top" align="center" className="w-48">
+            <DropdownMenuItem onClick={onOpenSettings}>
+              <Settings className="h-4 w-4 mr-2" /> Settings
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={signOut}>
+              <LogOut className="h-4 w-4 mr-2" /> Sign out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    );
+  }
+
+  // --- Expanded view ---
   return (
     <div className="flex h-full w-64 flex-col bg-sidebar text-sidebar-foreground">
-      {/* New Chat */}
-      <div className="p-3 pb-2">
-        <Button onClick={onNew} className="w-full gap-2 bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90">
+      {/* Header: Toggle + New Chat */}
+      <div className="p-3 pb-2 space-y-1">
+        <div className="flex items-center justify-between">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button onClick={onToggle} className="p-2 rounded-lg hover:bg-sidebar-accent/50 transition-colors">
+                <PanelLeftClose className="h-5 w-5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Collapse sidebar</TooltipContent>
+          </Tooltip>
+        </div>
+
+        {/* New Chat as plain menu item */}
+        <button
+          onClick={onNew}
+          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors"
+        >
           <Plus className="h-4 w-4" /> New Chat
-        </Button>
+        </button>
       </div>
 
       {/* Search */}
@@ -277,9 +357,14 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
           <div>
             <div className="flex items-center justify-between px-2 py-1">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">Views</span>
-              <button onClick={handleCreateView} className="p-1 rounded-md hover:bg-sidebar-accent/50 text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors" title="New View">
-                <Plus className="h-4 w-4" />
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button onClick={handleCreateView} className="p-1 rounded-md hover:bg-sidebar-accent/50 text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors">
+                    <Plus className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">New View</TooltipContent>
+              </Tooltip>
             </div>
             <div className="space-y-0.5">
               {visibleViews.length === 0 && (
@@ -334,7 +419,6 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
                           <p className="text-[10px] text-sidebar-foreground/30 px-3 py-1">No chats yet</p>
                         )}
                         {viewConvs.map(renderConversation)}
-                        {/* New Chat inside view */}
                         <button
                           onClick={() => onNewInView?.(view.id)}
                           className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-[11px] text-sidebar-foreground/40 hover:text-sidebar-foreground/70 hover:bg-sidebar-accent/30 transition-colors"
@@ -380,14 +464,29 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
         </div>
       </ScrollArea>
 
-      {/* Footer */}
-      <div className="border-t border-sidebar-border p-3 space-y-1">
-        <button onClick={() => navigate("/settings")} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors">
-          <Settings className="h-4 w-4" /> Settings
-        </button>
-        <button onClick={signOut} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors">
-          <LogOut className="h-4 w-4" /> Sign out
-        </button>
+      {/* Footer: User avatar dropup */}
+      <div className="border-t border-sidebar-border p-3">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex w-full items-center gap-3 rounded-lg px-2 py-2 hover:bg-sidebar-accent/50 transition-colors">
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="text-xs bg-sidebar-accent text-sidebar-foreground">{userInitials}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 text-left min-w-0">
+                <p className="text-sm truncate text-sidebar-foreground/80">{user?.email}</p>
+              </div>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent side="top" align="start" className="w-56">
+            <DropdownMenuItem onClick={onOpenSettings}>
+              <Settings className="h-4 w-4 mr-2" /> Settings
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={signOut}>
+              <LogOut className="h-4 w-4 mr-2" /> Sign out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );

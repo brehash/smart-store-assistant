@@ -6,8 +6,12 @@ import { streamChat, type PipelineEvent } from "@/lib/chat-stream";
 import { ChatMessage, type RichContent, type ApprovalRequest, type QuestionRequest } from "@/components/chat/ChatMessage";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { ConversationSidebar } from "@/components/chat/ConversationSidebar";
+import { SettingsContent } from "@/pages/Settings";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useSearchParams } from "react-router-dom";
 import type { PipelinePlanData } from "@/components/chat/PipelinePlan";
 import type { PipelineStepData } from "@/components/chat/PipelineStep";
 import type { DebugEntry } from "@/components/chat/DebugPanel";
@@ -33,7 +37,33 @@ export default function Index() {
   const [viewId, setViewId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    return localStorage.getItem("sidebar-collapsed") === "true";
+  });
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [settingsOpen, setSettingsOpen] = useState(() => searchParams.get("settings") === "true");
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const handleToggleSidebar = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("sidebar-collapsed", String(next));
+      return next;
+    });
+  };
+
+  const handleOpenSettings = () => {
+    setSettingsOpen(true);
+    setSearchParams({ settings: "true" }, { replace: true });
+  };
+
+  const handleCloseSettings = (open: boolean) => {
+    setSettingsOpen(open);
+    if (!open) {
+      searchParams.delete("settings");
+      setSearchParams(searchParams, { replace: true });
+    }
+  };
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
@@ -407,7 +437,16 @@ export default function Index() {
       )}
 
       <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform lg:relative lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <ConversationSidebar activeId={conversationId} onSelect={handleSelectConversation} onNew={handleNewChat} onNewInView={handleNewInView} onViewIdChange={setViewId} />
+        <ConversationSidebar
+          activeId={conversationId}
+          onSelect={handleSelectConversation}
+          onNew={handleNewChat}
+          onNewInView={handleNewInView}
+          onViewIdChange={setViewId}
+          collapsed={sidebarCollapsed}
+          onToggle={handleToggleSidebar}
+          onOpenSettings={handleOpenSettings}
+        />
       </div>
 
       <div className="flex flex-1 flex-col min-w-0">
@@ -462,6 +501,15 @@ export default function Index() {
 
         <ChatInput onSend={handleSend} disabled={isStreaming} />
       </div>
+
+      {/* Settings Modal */}
+      <Dialog open={settingsOpen} onOpenChange={handleCloseSettings}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden p-0">
+          <ScrollArea className="max-h-[85vh] p-6">
+            <SettingsContent />
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
