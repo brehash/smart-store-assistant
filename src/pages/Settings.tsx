@@ -17,8 +17,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Settings, Globe, Palette, Store, User,
-  Save, Trash2, CheckCircle2, XCircle, Key, ListChecks, Loader2,
-  Sun, Moon, Monitor, Eye, EyeOff, X,
+  Save, Trash2, CheckCircle2, XCircle, ListChecks, Loader2,
+  Sun, Moon, Monitor, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -56,7 +56,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
   const [consumerSecret, setConsumerSecret] = useState("");
   const [storeName, setStoreName] = useState("");
   const [responseLanguage, setResponseLanguage] = useState("English");
-  const [openaiApiKey, setOpenaiApiKey] = useState("");
+  
   const [existingConnection, setExistingConnection] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -71,8 +71,6 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
 
-  // Misc UI
-  const [showApiKey, setShowApiKey] = useState(false);
 
   // Appearance
   const [theme, setTheme] = useState<"system" | "dark" | "light">(() => {
@@ -101,7 +99,6 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
         setConsumerSecret(data.consumer_secret);
         setStoreName(data.store_name || "");
         setResponseLanguage(data.response_language || "English");
-        setOpenaiApiKey(data.openai_api_key || "");
         const statuses = (data as any).order_statuses as string[] | undefined;
         if (statuses?.length) setSelectedStatuses(statuses);
         fetchOrderStatuses(data.store_url, data.consumer_key, data.consumer_secret);
@@ -133,7 +130,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
       const payload = {
         store_url: storeUrl, consumer_key: consumerKey, consumer_secret: consumerSecret,
         store_name: storeName, response_language: responseLanguage,
-        openai_api_key: openaiApiKey || null, order_statuses: selectedStatuses,
+        order_statuses: selectedStatuses,
       };
       if (existingConnection) {
         await supabase.from("woo_connections").update(payload as any).eq("id", existingConnection.id);
@@ -270,26 +267,6 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
               {LANGUAGES.map((lang) => (<SelectItem key={lang} value={lang}>{lang}</SelectItem>))}
             </SelectContent>
           </Select>
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-primary/10 p-2"><Key className="h-5 w-5 text-primary" /></div>
-            <div>
-              <CardTitle>OpenAI API Key</CardTitle>
-              <CardDescription>Optional — uses your own OpenAI key. Leave blank for default AI.</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <div className="relative">
-            <Input value={openaiApiKey} onChange={(e) => setOpenaiApiKey(e.target.value)} placeholder="sk-..." type={showApiKey ? "text" : "password"} className="pr-10" />
-            <button type="button" onClick={() => setShowApiKey(!showApiKey)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
-              {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
-          </div>
-          <p className="text-xs text-muted-foreground">When set, chat requests route to OpenAI using <code className="text-xs">gpt-4o-mini</code>.</p>
         </CardContent>
       </Card>
       <div className="flex justify-end">

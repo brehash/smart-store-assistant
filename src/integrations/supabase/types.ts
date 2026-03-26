@@ -181,7 +181,6 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
-          openai_api_key: string | null
           order_statuses: string[]
           response_language: string
           store_name: string | null
@@ -195,7 +194,6 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
-          openai_api_key?: string | null
           order_statuses?: string[]
           response_language?: string
           store_name?: string | null
@@ -209,7 +207,6 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
-          openai_api_key?: string | null
           order_statuses?: string[]
           response_language?: string
           store_name?: string | null

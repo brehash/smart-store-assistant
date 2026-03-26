@@ -749,12 +749,12 @@ serve(async (req) => {
 
     const { data: connData } = await supabase
       .from("woo_connections")
-      .select("response_language, openai_api_key, order_statuses")
+      .select("response_language, order_statuses")
       .eq("user_id", userId)
       .eq("is_active", true)
       .maybeSingle();
     const responseLanguage = connData?.response_language || "English";
-    const userOpenAIKey = connData?.openai_api_key || null;
+    const userOpenAIKey = Deno.env.get("OPENAI_API_KEY") || null;
     const defaultOrderStatuses: string[] = (connData as any)?.order_statuses || [];
 
     // Fetch shared view context if viewId is provided

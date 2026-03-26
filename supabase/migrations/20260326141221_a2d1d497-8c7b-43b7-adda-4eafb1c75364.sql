@@ -1,0 +1,1 @@
+ALTER TABLE public.woo_connections DROP COLUMN IF EXISTS openai_api_key;
