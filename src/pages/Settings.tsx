@@ -460,7 +460,6 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
   const renderTab = () => {
     switch (activeTab) {
       case "general": return renderGeneral();
-      case "settings": return renderSettings();
       case "appearance": return renderAppearance();
       case "connection": return renderConnection();
       case "account": return renderAccount();
