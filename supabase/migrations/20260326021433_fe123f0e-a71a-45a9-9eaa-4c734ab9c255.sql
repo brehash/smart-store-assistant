@@ -1,0 +1,1 @@
+ALTER TABLE public.conversations ADD COLUMN pinned boolean NOT NULL DEFAULT false;
