@@ -37,7 +37,33 @@ export default function Index() {
   const [viewId, setViewId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    return localStorage.getItem("sidebar-collapsed") === "true";
+  });
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [settingsOpen, setSettingsOpen] = useState(() => searchParams.get("settings") === "true");
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const handleToggleSidebar = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("sidebar-collapsed", String(next));
+      return next;
+    });
+  };
+
+  const handleOpenSettings = () => {
+    setSettingsOpen(true);
+    setSearchParams({ settings: "true" }, { replace: true });
+  };
+
+  const handleCloseSettings = (open: boolean) => {
+    setSettingsOpen(open);
+    if (!open) {
+      searchParams.delete("settings");
+      setSearchParams(searchParams, { replace: true });
+    }
+  };
 
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
