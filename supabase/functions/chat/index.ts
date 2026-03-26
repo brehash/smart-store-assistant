@@ -143,6 +143,72 @@ const TOOLS = [
 
 const WRITE_TOOLS = new Set(["create_order", "update_order_status"]);
 
+// ── Deterministic date utilities ──
+function formatDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function clampDay(year: number, month: number, day: number): Date {
+  // month is 0-indexed; clamp day to last day of that month
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  return new Date(year, month, Math.min(day, lastDay));
+}
+
+/**
+ * Normalize date args for get_sales_report / compare_sales so that
+ * "this month vs last month same period" always produces correct ranges.
+ */
+function normalizeSalesReportDates(args: any): any {
+  const now = new Date();
+  const today = formatDate(now);
+  const period = (args.period || "").toLowerCase();
+
+  if (period === "today") return { ...args, date_min: today, date_max: today };
+  if (period === "week") {
+    return { ...args, date_min: formatDate(new Date(now.getTime() - 6 * 864e5)), date_max: today };
+  }
+  if (period === "month") {
+    return { ...args, date_min: formatDate(new Date(now.getFullYear(), now.getMonth(), 1)), date_max: today };
+  }
+  if (period === "year") {
+    return { ...args, date_min: `${now.getFullYear()}-01-01`, date_max: today };
+  }
+  return args;
+}
+
+function normalizeCompareSalesDates(args: any): any {
+  // If both periods are provided, validate and fix "same period" mismatches
+  if (!args.period_a_start || !args.period_a_end || !args.period_b_start || !args.period_b_end) return args;
+
+  const aStart = new Date(args.period_a_start);
+  const aEnd = new Date(args.period_a_end);
+  const bStart = new Date(args.period_b_start);
+  const bEnd = new Date(args.period_b_end);
+
+  // Detect if period A and period B have the same dates (LLM bug)
+  const aSame = aStart.getTime() === bStart.getTime() && aEnd.getTime() === bEnd.getTime();
+  // Detect if period B doesn't match the same day-span as period A
+  const aDays = Math.round((aEnd.getTime() - aStart.getTime()) / 864e5);
+  const bDays = Math.round((bEnd.getTime() - bStart.getTime()) / 864e5);
+  const spanMismatch = Math.abs(aDays - bDays) > 1;
+
+  if (aSame || spanMismatch) {
+    // Assume period A is "current" and period B should be the equivalent previous period
+    // Shift B to one month before A with same day span
+    const prevStart = clampDay(aStart.getFullYear(), aStart.getMonth() - 1, aStart.getDate());
+    const prevEnd = clampDay(aEnd.getFullYear(), aEnd.getMonth() - 1, aEnd.getDate());
+    return {
+      ...args,
+      period_b_start: formatDate(prevStart),
+      period_b_end: formatDate(prevEnd),
+    };
+  }
+  return args;
+}
+
 const TOOL_LABELS: Record<string, string> = {
   search_products: "Searching products",
   get_product: "Getting product details",
@@ -399,6 +465,14 @@ DASHBOARD/REPORT DISPLAY RULES:
 - For grouped_bar charts, use "dataKeys": ["Label A", "Label B"] instead of "dataKey".
 - All currency values should use "lei" suffix.
 
+DATE CALCULATION RULES (CRITICAL):
+- Today's date is: ${formatDate(new Date())}
+- "This month" = first day of current month → today.
+- "Last month same period" = first day of previous month → same day-of-month as today (capped to last day of that month).
+  Example: if today is 2026-03-26, "this month" = 2026-03-01 to 2026-03-26, "last month same period" = 2026-02-01 to 2026-02-26.
+- "This week" = 7 days ago → today. "Last week same period" = 14 days ago → 8 days ago.
+- NEVER use the same dates for both periods in a comparison. Each period must have distinct date ranges.
+
 Be conversational, efficient, and proactive. Use markdown for formatting. Currency is RON (lei).${defaultStatusStr}${prefsContext}${viewContext}`;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -488,7 +562,12 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                   continue;
                 }
 
-                const { result, richContent, requestUri } = await executeTool(toolName, args, supabaseUrl, authHeader, userId, supabase, defaultOrderStatuses);
+                // Normalize dates for sales tools
+                const normalizedArgs = toolName === "get_sales_report" ? normalizeSalesReportDates(args)
+                  : toolName === "compare_sales" ? normalizeCompareSalesDates(args)
+                  : args;
+
+                const { result, richContent, requestUri } = await executeTool(toolName, normalizedArgs, supabaseUrl, authHeader, userId, supabase, defaultOrderStatuses);
 
                 // Emit debug event with raw API response and request URI
                 sendSSE({ type: "debug_api", toolName, args, result, requestUri });
@@ -505,7 +584,14 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
               continue;
             }
 
-            sendSSE({ type: "pipeline_complete", lastStepIndex: stepIndex });
+            // Post-tool synthesis feedback
+            if (planSent && stepIndex > 0) {
+              sendSSE({ type: "pipeline_step", stepIndex, title: "Analyzing received data", status: "running" });
+              // Small delay not needed since the AI response generation IS the analysis
+              sendSSE({ type: "pipeline_step", stepIndex, title: "Analyzing received data", status: "done" });
+              stepIndex++;
+              sendSSE({ type: "pipeline_step", stepIndex, title: "Crafting response", status: "running" });
+            }
 
             if (content) {
               // Parse dashboard blocks from content
@@ -523,6 +609,13 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                 sendSSE({ choices: [{ delta: { content: textContent } }] });
               }
             }
+
+            // Mark crafting step done and send pipeline_complete
+            if (planSent && stepIndex > 0) {
+              sendSSE({ type: "pipeline_step", stepIndex, title: "Crafting response", status: "done" });
+              stepIndex++;
+            }
+            sendSSE({ type: "pipeline_complete", lastStepIndex: stepIndex });
             break;
           }
 
