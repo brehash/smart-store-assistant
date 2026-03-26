@@ -587,6 +587,8 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                 sendSSE({ error: "Credits exhausted" });
                 break;
               }
+              const errBody = await aiResp.text();
+              console.error("AI gateway error:", aiResp.status, errBody);
               throw new Error(`AI gateway error: ${aiResp.status}`);
             }
 
