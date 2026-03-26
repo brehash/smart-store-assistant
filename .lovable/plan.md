@@ -1,69 +1,66 @@
 
 
-# Fix Pipeline Display + Add API Response Debug Panel
+# Pipeline UI Overhaul, Debug URIs, and Structured LLM Responses
 
-## Problem Analysis
+## Overview
 
-### Pipeline not working
-The pipeline UI depends on the AI model outputting a `\`\`\`pipeline` code block with a specific JSON format. If the model doesn't output this (which is unreliable), no `pipeline_plan` event is sent, and subsequent `pipeline_step` events are silently dropped because the frontend checks `if (!m.pipeline) return m;` — no pipeline container exists to receive the steps.
-
-### No visibility into REST API responses
-Currently the WooCommerce API responses are passed directly to the LLM as tool results but never shown to the user, making debugging impossible.
+Four changes: restyle the pipeline to match the screenshot, add WooCommerce request URIs to the debug panel, instruct the LLM to return structured dashboard JSON for reports, and instruct it to return structured product JSON for sliders.
 
 ## Changes
 
-### 1. Edge Function — Auto-generate pipeline from tool calls (`supabase/functions/chat/index.ts`)
+### 1. Pipeline UI — Match Screenshot Style (`src/components/chat/PipelineStep.tsx`, `src/components/chat/PipelinePlan.tsx`)
 
-Stop relying on the AI to output `\`\`\`pipeline` blocks. Instead, when the AI response contains `tool_calls`, automatically generate and emit a `pipeline_plan` event from the tool calls list before executing them. Remove the regex-based plan detection entirely.
+Restyle to match the screenshot: a card with a subtle border, each step as a row with a spinner (running) or circle (pending) on the left, step title text, and the whole thing in a compact vertical list. Remove the vertical connecting line approach and use a simpler list layout. Running steps show a spinning indicator, done steps show a checkmark, pending steps show an empty circle.
+
+### 2. Debug Panel — Show WooCommerce Request URI
+
+**Edge function** (`supabase/functions/chat/index.ts`): In each `executeTool`, capture the full WooCommerce REST API endpoint string (e.g., `products?search=pasta&per_page=10`) and include it in the `debug_api` SSE event as `requestUri`.
+
+**`woo-proxy`**: Return the constructed `wooUrl` (with credentials stripped) in the response so the chat function can capture it. Alternatively, reconstruct the URI in the chat function from the endpoint string — simpler approach: just include the `endpoint` value passed to `callWooProxy` in the debug event.
+
+**`DebugPanel.tsx`**: Show a "Request URI" field displaying the WooCommerce REST endpoint path (e.g., `GET /wp-json/wc/v3/products?search=pasta&per_page=10`).
+
+Update `DebugEntry` interface to include `requestUri?: string`.
+
+### 3. System Prompt — Structured Dashboard JSON for Reports
+
+Add instructions to the system prompt telling the LLM that after calling `get_sales_report` or `compare_sales`, it must include a structured JSON block in its response using a specific format. The frontend will parse this and render dashboard components.
+
+The instruction will tell the LLM to wrap structured output in a ` ```dashboard ... ``` ` code block with this schema:
 
 ```text
-// Before executing tool calls:
-if (toolCalls.length > 0 && !planSent) {
-  const steps = toolCalls.map(tc => TOOL_LABELS[tc.function.name] || tc.function.name);
-  sendSSE({ type: "pipeline_plan", title: "Execution Plan", steps });
-  planSent = true;
+{
+  "cards": [{ "label": "Total Revenue", "value": "1,234 lei", "change": "+12%" }],
+  "charts": [{ "type": "bar", "title": "...", "data": [...] }],
+  "tables": [{ "title": "Top Products", "columns": [...], "rows": [...] }],
+  "lists": [{ "title": "...", "items": [...], "collapsible": true }]
 }
 ```
 
-This guarantees the pipeline UI always appears when tools are called.
+**Edge function**: After the AI responds, parse any ` ```dashboard ``` ` block from the content, emit it as a `rich_content` event with `type: "dashboard"`, and strip it from the text content.
 
-### 2. Edge Function — Send API responses as debug events (`supabase/functions/chat/index.ts`)
+**Frontend**: Create a new `DashboardView` component that renders the structured dashboard (stat cards, charts, tables, lists). Register it in `ChatMessage` for `richContent.type === "dashboard"`.
 
-After each tool execution, emit a new `debug_api` SSE event containing the tool name, args, and raw API result:
+### 4. System Prompt — Structured Product JSON for Sliders
 
-```text
-sendSSE({ type: "debug_api", toolName, args, result });
-```
+Add instructions to the system prompt telling the LLM that when presenting products, it should NOT describe them in text but instead rely on the `rich_content` SSE event that is already emitted by the `search_products` and `get_product` tools. The LLM should provide a brief text summary only.
 
-### 3. Frontend — Handle auto-generated pipeline (`src/pages/Index.tsx`)
+The `rich_content` event for products already sends the full WooCommerce product objects (with `images`, `name`, `price`, etc.), so the `ProductSlider` already works — the issue is the LLM sometimes dumps product details as text. The system prompt update will say: "When products are found, do NOT list product details in text — they are displayed as interactive cards automatically. Just provide a brief summary like 'Found X products matching your search.'"
 
-Update `onPipelineEvent` handler for `pipeline_step`: if no `m.pipeline` exists yet, auto-create one from the step event (add step dynamically). This handles cases where steps arrive before or without a plan.
+### 5. New Component: `DashboardView.tsx`
 
-### 4. Frontend — Debug panel toggle (`src/pages/Index.tsx` + new component)
+Renders a structured dashboard inside the chat:
+- **Stat cards**: Row of cards with label, value, optional change percentage (green/red)
+- **Charts**: Reuses existing `ChatChart` component
+- **Tables**: Simple table with headers and rows
+- **Lists**: Collapsible lists with titles and items
 
-- Add a `debugLogs` array to message state storing `{ toolName, args, result }` objects
-- Handle `debug_api` events in `onPipelineEvent` by appending to the current message's debug logs
-- Store on each message as `debugLogs?: DebugEntry[]`
-
-### 5. New component: `DebugPanel.tsx` (`src/components/chat/DebugPanel.tsx`)
-
-A collapsible panel rendered below each assistant message (when debug logs exist):
-- Toggle button: "API Responses" with expand/collapse
-- Shows each tool call with: tool name, request args (JSON), response (JSON) in a scrollable `<pre>` block
-- Styled as a subtle card with monospace font
-
-### 6. Update `ChatMessage.tsx`
-
-Add `debugLogs` prop and render `<DebugPanel>` when present.
-
-### 7. Remove plan format from system prompt
-
-Remove the instruction telling the AI to output `\`\`\`pipeline` blocks since we auto-generate plans now. Keep the instruction to call tools sequentially.
-
-## Files Modified
-- `supabase/functions/chat/index.ts` — auto-generate pipeline, emit debug events, simplify system prompt
-- `src/pages/Index.tsx` — handle debug_api events, auto-create pipeline on step events
-- `src/components/chat/ChatMessage.tsx` — pass debugLogs to new DebugPanel
-- `src/components/chat/DebugPanel.tsx` — new collapsible API response viewer
-- `src/lib/chat-stream.ts` — add `debug_api` to PipelineEvent type
+### Files Modified
+- `supabase/functions/chat/index.ts` — system prompt updates, dashboard parsing, requestUri in debug events
+- `src/components/chat/PipelineStep.tsx` — restyle to match screenshot
+- `src/components/chat/PipelinePlan.tsx` — restyle container
+- `src/components/chat/DebugPanel.tsx` — show request URI
+- `src/components/chat/ChatMessage.tsx` — add DashboardView rendering
+- `src/components/chat/DashboardView.tsx` — new component
+- `src/lib/chat-stream.ts` — add requestUri to PipelineEvent
 
