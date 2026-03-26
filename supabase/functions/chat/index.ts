@@ -977,6 +977,10 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                 // Emit debug event with raw API response and request URI
                 sendSSE({ type: "debug_api", toolName, args, result, requestUri });
 
+                // Emit reasoning after tool result
+                const reasoningAfter = generateReasoningAfter(toolName, result);
+                if (reasoningAfter) sendSSE({ type: "reasoning", text: reasoningAfter });
+
                 if (richContent) {
                   sendSSE({ type: "rich_content", ...richContent });
                 }
