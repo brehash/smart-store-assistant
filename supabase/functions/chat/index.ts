@@ -220,6 +220,76 @@ const TOOL_LABELS: Record<string, string> = {
   save_preference: "Saving preference",
 };
 
+// ── Semantic pipeline mapper ──
+interface SemanticStep {
+  title: string;
+  details?: string;
+}
+
+function generateSemanticPlan(toolCalls: any[]): SemanticStep[] {
+  const steps: SemanticStep[] = [];
+
+  for (const tc of toolCalls) {
+    const name = tc.function.name;
+    let args: any = {};
+    try { args = JSON.parse(tc.function.arguments); } catch {}
+
+    switch (name) {
+      case "compare_sales": {
+        const normalizedArgs = normalizeCompareSalesDates(args);
+        const labelA = normalizedArgs.period_a_label || "Period A";
+        const labelB = normalizedArgs.period_b_label || "Period B";
+        const dateDetail = `${normalizedArgs.period_a_start} → ${normalizedArgs.period_a_end} vs ${normalizedArgs.period_b_start} → ${normalizedArgs.period_b_end}`;
+        steps.push({ title: "Resolving date ranges", details: dateDetail });
+        steps.push({ title: `Fetching orders for ${labelA}`, details: `${normalizedArgs.period_a_start} → ${normalizedArgs.period_a_end}` });
+        steps.push({ title: `Fetching orders for ${labelB}`, details: `${normalizedArgs.period_b_start} → ${normalizedArgs.period_b_end}` });
+        steps.push({ title: "Comparing periods" });
+        steps.push({ title: "Building dashboard" });
+        steps.push({ title: "Writing explanation" });
+        break;
+      }
+      case "get_sales_report": {
+        const normalizedArgs = normalizeSalesReportDates(args);
+        const period = normalizedArgs.period || "custom";
+        const dateDetail = normalizedArgs.date_min && normalizedArgs.date_max
+          ? `${normalizedArgs.date_min} → ${normalizedArgs.date_max}`
+          : period;
+        steps.push({ title: "Resolving date range", details: dateDetail });
+        steps.push({ title: "Fetching orders" });
+        steps.push({ title: "Calculating metrics", details: "Revenue, order count, AOV, top products" });
+        steps.push({ title: "Building dashboard" });
+        steps.push({ title: "Writing explanation" });
+        break;
+      }
+      case "search_products":
+        steps.push({ title: "Searching product catalog", details: args.search ? `Query: "${args.search}"` : undefined });
+        steps.push({ title: "Rendering results" });
+        break;
+      case "get_product":
+        steps.push({ title: "Fetching product details", details: args.product_id ? `Product #${args.product_id}` : undefined });
+        break;
+      case "search_orders":
+        steps.push({ title: "Searching orders", details: args.search || args.status || undefined });
+        steps.push({ title: "Rendering results" });
+        break;
+      case "create_order":
+        steps.push({ title: "Preparing order", details: `${args.line_items?.length || 0} item(s)` });
+        steps.push({ title: "Awaiting approval" });
+        break;
+      case "update_order_status":
+        steps.push({ title: "Preparing status update", details: `Order #${args.order_id} → ${args.status}` });
+        steps.push({ title: "Awaiting approval" });
+        break;
+      case "save_preference":
+        steps.push({ title: "Saving preference", details: args.key });
+        break;
+      default:
+        steps.push({ title: TOOL_LABELS[name] || name });
+    }
+  }
+  return steps;
+}
+
 async function callWooProxy(supabaseUrl: string, authHeader: string, payload: any) {
   const resp = await fetch(`${supabaseUrl}/functions/v1/woo-proxy`, {
     method: "POST",
