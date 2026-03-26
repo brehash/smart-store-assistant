@@ -129,10 +129,14 @@ export default function Index() {
           scrollToBottom();
         } else if (event.type === "pipeline_step") {
           updateLastAssistant((m) => {
-            if (!m.pipeline) return m;
-            const steps = [...m.pipeline.steps];
-            // Find step by index or add new one
-            if (event.stepIndex !== undefined && event.stepIndex < steps.length) {
+            // Auto-create pipeline if step arrives before plan
+            const pipeline = m.pipeline || { title: "Execution Plan", steps: [] };
+            const steps = [...pipeline.steps];
+            if (event.stepIndex !== undefined) {
+              // Extend steps array if needed
+              while (steps.length <= event.stepIndex) {
+                steps.push({ id: `step-${steps.length}`, title: "...", status: "pending" as const });
+              }
               steps[event.stepIndex] = {
                 ...steps[event.stepIndex],
                 title: event.title || steps[event.stepIndex].title,
@@ -140,7 +144,7 @@ export default function Index() {
                 details: event.details,
               };
             }
-            return { ...m, pipeline: { ...m.pipeline, steps } };
+            return { ...m, pipeline: { ...pipeline, steps } };
           });
           scrollToBottom();
         } else if (event.type === "approval_request") {
