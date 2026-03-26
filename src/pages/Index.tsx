@@ -104,7 +104,7 @@ export default function Index() {
   };
 
   const handleSend = async (input: string) => {
-    if (!user || !session) return;
+    if (!user || !session || isStreaming) return;
 
     let convId = conversationId;
     if (!convId) { convId = await createConversation(); if (!convId) return; }
