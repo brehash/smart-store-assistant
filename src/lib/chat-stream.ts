@@ -86,9 +86,15 @@ export async function streamChat({
             continue;
           }
 
-          // Rich content
+          // Rich content (products, orders, charts)
           if (parsed.type === "rich_content") {
             onToolCall?.(parsed);
+            continue;
+          }
+
+          // Dashboard content
+          if (parsed.type === "dashboard") {
+            onToolCall?.({ type: "dashboard", data: parsed.data });
             continue;
           }
 
