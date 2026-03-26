@@ -162,7 +162,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
     <div
       key={c.id}
       className={cn(
-        "group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors cursor-pointer",
+        "group relative flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors cursor-pointer",
         activeId === c.id
           ? "bg-sidebar-accent text-sidebar-accent-foreground"
           : "hover:bg-sidebar-accent/50 text-sidebar-foreground/70"
