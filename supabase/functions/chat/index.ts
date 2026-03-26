@@ -128,6 +128,24 @@ const TOOLS = [
   {
     type: "function",
     function: {
+      name: "get_product_sales",
+      description:
+        "Get sales history for a specific product over a date range. Returns units sold, daily breakdown, revenue from this product, and orders containing it. Use this to analyze stock burn rate and restock timing. Call this AFTER search_products to get sales velocity data.",
+      parameters: {
+        type: "object",
+        properties: {
+          product_id: { type: "number", description: "WooCommerce product ID" },
+          days: { type: "number", description: "Number of days to look back (default 60)" },
+          date_min: { type: "string", description: "Override start date (YYYY-MM-DD)" },
+          date_max: { type: "string", description: "Override end date (YYYY-MM-DD)" },
+        },
+        required: ["product_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "save_preference",
       description: "Save a user preference/alias.",
       parameters: {
@@ -219,6 +237,7 @@ const TOOL_LABELS: Record<string, string> = {
   update_order_status: "Updating order status",
   get_sales_report: "Generating sales report",
   compare_sales: "Comparing sales periods",
+  get_product_sales: "Analyzing product sales",
   save_preference: "Saving preference",
 };
 
@@ -269,6 +288,13 @@ function generateSemanticPlan(toolCalls: any[]): SemanticStep[] {
         steps.push({ title: "Searching orders", details: args.search || args.status || undefined });
         steps.push({ title: "Rendering results" });
         break;
+      case "get_product_sales": {
+        const daysVal = args.days || 60;
+        steps.push({ title: "Analyzing sales velocity", details: `Product #${args.product_id} — last ${daysVal} days` });
+        steps.push({ title: "Calculating burn rate" });
+        steps.push({ title: "Building inventory report" });
+        break;
+      }
       case "create_order":
       case "update_order_status":
         steps.push({ title: "Preparing order action" });
@@ -456,6 +482,97 @@ async function executeTool(
         requestUri: `GET /wp-json/wc/v3/orders (x2 periods)`,
       };
     }
+    case "get_product_sales": {
+      const days = args.days || 60;
+      const now = new Date();
+      const endDate = args.date_max || formatDate(now);
+      const startDate = args.date_min || formatDate(new Date(now.getTime() - days * 864e5));
+
+      // Fetch orders in the date range (paginated, up to 3 pages of 100)
+      let allOrders: any[] = [];
+      for (let page = 1; page <= 3; page++) {
+        const params = new URLSearchParams();
+        params.set("per_page", "100");
+        params.set("page", String(page));
+        params.set("after", `${startDate}T00:00:00`);
+        params.set("before", `${endDate}T23:59:59`);
+        if (defaultOrderStatuses.length) params.set("status", defaultOrderStatuses.join(","));
+        const orders = await callWooProxy(supabaseUrl, authHeader, { endpoint: `orders?${params.toString()}` });
+        if (!Array.isArray(orders) || orders.length === 0) break;
+        allOrders = allOrders.concat(orders);
+        if (orders.length < 100) break;
+      }
+
+      const productId = args.product_id;
+      let totalUnits = 0;
+      let totalRevenue = 0;
+      const dailyUnits: Record<string, number> = {};
+      const matchingOrders: any[] = [];
+
+      // Fill all days with 0
+      const cur = new Date(startDate);
+      const end = new Date(endDate);
+      while (cur <= end) {
+        dailyUnits[formatDate(cur)] = 0;
+        cur.setDate(cur.getDate() + 1);
+      }
+
+      for (const order of allOrders) {
+        const lineItems = order.line_items || [];
+        for (const li of lineItems) {
+          // Match by product_id or variation parent
+          if (li.product_id === productId || li.variation_id === productId || (li.parent_name && li.product_id === productId)) {
+            const qty = li.quantity || 0;
+            const rev = parseFloat(li.total || "0");
+            totalUnits += qty;
+            totalRevenue += rev;
+            const date = order.date_created?.split("T")[0] || "unknown";
+            dailyUnits[date] = (dailyUnits[date] || 0) + qty;
+            matchingOrders.push({
+              order_id: order.id,
+              date: date,
+              quantity: qty,
+              total: rev,
+              status: order.status,
+            });
+          }
+        }
+      }
+
+      const actualDays = Math.max(1, Math.round((end.getTime() - new Date(startDate).getTime()) / 864e5));
+      const burnRate = Math.round((totalUnits / actualDays) * 100) / 100;
+      const weeklyRate = Math.round(burnRate * 7 * 100) / 100;
+
+      const chartData = Object.entries(dailyUnits)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([name, value]) => ({ name, value }));
+
+      return {
+        result: {
+          product_id: productId,
+          period: `${startDate} → ${endDate}`,
+          total_units_sold: totalUnits,
+          total_revenue: Math.round(totalRevenue * 100) / 100,
+          days_analyzed: actualDays,
+          daily_burn_rate: burnRate,
+          weekly_burn_rate: weeklyRate,
+          daily_breakdown: chartData,
+          matching_orders: matchingOrders.slice(0, 20),
+          orders_scanned: allOrders.length,
+        },
+        richContent: {
+          type: "chart",
+          data: {
+            type: "line",
+            title: `Units Sold — Product #${productId} (${startDate} → ${endDate})`,
+            data: chartData,
+            dataKey: "value",
+            nameKey: "name",
+          },
+        },
+        requestUri: `GET /wp-json/wc/v3/orders (filtered for product #${productId})`,
+      };
+    }
     case "save_preference": {
       await supabase
         .from("user_preferences")
@@ -570,10 +687,29 @@ CRITICAL TOOL USAGE RULES — YOU MUST FOLLOW THESE:
 3. When the user asks for a sales report, revenue, analytics, or dashboard: you MUST call get_sales_report or compare_sales. After receiving the data you MUST also emit a \`\`\`dashboard code block with cards and charts.
 4. When the user asks to compare periods: you MUST call compare_sales with proper date ranges and then emit a \`\`\`dashboard code block.
 5. NEVER respond with plain text summaries of data that should come from a tool. If data is needed, call the tool first.
+6. NEVER ask the user for information you can look up with tools. If you need sales data, order history, or stock info — call the appropriate tools yourself.
+
+STOCK & INVENTORY ANALYSIS (CRITICAL — MULTI-TOOL CHAINING):
+- When the user asks about stock levels, restock timing, inventory, or "when should I buy more":
+  1. FIRST call search_products to find the product and get current stock quantity (stock_quantity field)
+  2. THEN call get_product_sales with the product_id to get sales velocity over the last 60 days
+  3. From the results, calculate:
+     - burn_rate = total_units_sold / days_analyzed
+     - days_of_stock_remaining = current_stock / burn_rate
+     - estimated_stockout_date = today + days_of_stock_remaining
+     - recommended_reorder_date = stockout_date minus ~7-10 days for supplier lead time
+  4. Present a visual \`\`\`dashboard block with:
+     - Stat cards: Current Stock, Units Sold (period), Burn Rate/day, Days Until Stockout, Recommended Reorder Date
+     - The sales velocity chart is rendered automatically from the tool
+     - Table: recent orders containing this product (from get_product_sales results)
+     - Insights list: stockout prediction, reorder recommendation, trend observations
+- You MUST chain these tools automatically. NEVER ask the user how many they sell per week/month — you have the tools to look it up!
+- If multiple product variants match, analyze each one separately and present combined insights.
 
 MULTI-TOOL EXECUTION:
 - When the user's request requires data from multiple sources (e.g. "create a dashboard comparing this month to last month"), call ALL necessary tools. You can call multiple tools in a single response or across multiple turns. Do not stop after one tool call if more data is needed.
 - For comparisons, call tools separately for each period/dataset needed.
+- For inventory analysis, call search_products FIRST, then use the product IDs from the results to call get_product_sales.
 
 When the user refers to a product casually (e.g. "pasta bourbon"), search for it first. If you identify a pattern or alias, save it as a preference.
 
@@ -584,7 +720,7 @@ PRODUCT DISPLAY RULES:
 - Just provide a brief summary like "Found X products matching your search." or "Here are the results:".
 
 DASHBOARD/REPORT DISPLAY RULES:
-- After analyzing sales data (get_sales_report, compare_sales), you MUST include a structured dashboard JSON block in your response.
+- After analyzing sales data (get_sales_report, compare_sales, get_product_sales for inventory), you MUST include a structured dashboard JSON block in your response.
 - Wrap the JSON in a \`\`\`dashboard code block. The frontend will render it as an interactive dashboard.
 - Schema:
 \`\`\`
@@ -781,8 +917,8 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                 // Mark any remaining intermediate semantic steps (e.g. "Comparing periods") as done
                 while (semanticIdx < semanticSteps.length) {
                   const ss = semanticSteps[semanticIdx];
-                  if (ss.title === "Writing explanation" || ss.title === "Building dashboard" || ss.title === "Rendering results") break;
-                  if (ss.title.startsWith("Fetching") || ss.title === "Awaiting approval") break;
+                  if (ss.title === "Writing explanation" || ss.title === "Building dashboard" || ss.title === "Rendering results" || ss.title === "Building inventory report") break;
+                  if (ss.title.startsWith("Fetching") || ss.title === "Awaiting approval" || ss.title.startsWith("Analyzing")) break;
                   sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "running", details: ss.details });
                   sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "done", details: ss.details });
                   stepIndex++;
@@ -797,7 +933,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
               // Mark remaining semantic steps (Building dashboard, Writing explanation)
               for (let i = 0; i < semanticSteps.length; i++) {
                 const ss = semanticSteps[i];
-                if (ss.title === "Building dashboard" || ss.title === "Rendering results") {
+                if (ss.title === "Building dashboard" || ss.title === "Rendering results" || ss.title === "Building inventory report" || ss.title === "Calculating burn rate") {
                   sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "running" });
                   sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "done" });
                   stepIndex++;
