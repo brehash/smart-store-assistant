@@ -1013,6 +1013,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
             }
 
             // Post-tool synthesis: tick remaining semantic steps
+            sendSSE({ type: "reasoning", text: "Preparing your response..." });
             if (planSent && stepIndex > 0) {
               // Mark remaining semantic steps (Building dashboard, Writing explanation)
               for (let i = 0; i < semanticSteps.length; i++) {
