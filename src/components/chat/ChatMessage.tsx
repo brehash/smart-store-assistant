@@ -11,7 +11,7 @@ import { DebugPanel, type DebugEntry } from "./DebugPanel";
 import { DashboardView } from "./DashboardView";
 
 export interface RichContent {
-  type: "products" | "orders" | "chart" | "confirmation" | "pipeline";
+  type: "products" | "orders" | "chart" | "confirmation" | "pipeline" | "dashboard";
   data: any;
 }
 
