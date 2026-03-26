@@ -462,7 +462,20 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
             sendSSE({ type: "pipeline_complete", lastStepIndex: stepIndex });
 
             if (content) {
-              sendSSE({ choices: [{ delta: { content } }] });
+              // Parse dashboard blocks from content
+              const dashboardRegex = /```dashboard\s*\n([\s\S]*?)```/g;
+              let textContent = content;
+              let match;
+              while ((match = dashboardRegex.exec(content)) !== null) {
+                try {
+                  const dashboardData = JSON.parse(match[1].trim());
+                  sendSSE({ type: "rich_content", type: "dashboard", data: dashboardData });
+                  textContent = textContent.replace(match[0], "").trim();
+                } catch { /* ignore malformed JSON */ }
+              }
+              if (textContent) {
+                sendSSE({ choices: [{ delta: { content: textContent } }] });
+              }
             }
             break;
           }
