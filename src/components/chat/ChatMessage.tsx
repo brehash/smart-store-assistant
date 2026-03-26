@@ -8,9 +8,10 @@ import { PipelinePlan, type PipelinePlanData } from "./PipelinePlan";
 import { ApprovalCard } from "./ApprovalCard";
 import { QuestionCard } from "./QuestionCard";
 import { DebugPanel, type DebugEntry } from "./DebugPanel";
+import { DashboardView } from "./DashboardView";
 
 export interface RichContent {
-  type: "products" | "orders" | "chart" | "confirmation" | "pipeline";
+  type: "products" | "orders" | "chart" | "confirmation" | "pipeline" | "dashboard";
   data: any;
 }
 
@@ -118,6 +119,7 @@ export function ChatMessage({
             {rc.type === "products" && <ProductSlider products={rc.data} />}
             {rc.type === "orders" && <OrderTable orders={rc.data} />}
             {rc.type === "chart" && <ChatChart chartData={rc.data} />}
+            {rc.type === "dashboard" && <DashboardView data={rc.data} />}
           </div>
         ))}
 

@@ -165,19 +165,21 @@ async function callWooProxy(supabaseUrl: string, authHeader: string, payload: an
 
 async function executeTool(
   toolName: string, args: any, supabaseUrl: string, authHeader: string, userId: string, supabase: any
-): Promise<{ result: any; richContent?: any }> {
+): Promise<{ result: any; richContent?: any; requestUri?: string }> {
   switch (toolName) {
     case "search_products": {
       const params = new URLSearchParams();
       params.set("search", args.search);
       if (args.category) params.set("category", args.category);
       params.set("per_page", String(args.per_page || 10));
-      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `products?${params.toString()}` });
-      return { result: data, richContent: { type: "products", data: Array.isArray(data) ? data : [] } };
+      const endpoint = `products?${params.toString()}`;
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint });
+      return { result: data, richContent: { type: "products", data: Array.isArray(data) ? data : [] }, requestUri: `GET /wp-json/wc/v3/${endpoint}` };
     }
     case "get_product": {
-      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `products/${args.product_id}` });
-      return { result: data, richContent: { type: "products", data: [data] } };
+      const endpoint = `products/${args.product_id}`;
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint });
+      return { result: data, richContent: { type: "products", data: [data] }, requestUri: `GET /wp-json/wc/v3/${endpoint}` };
     }
     case "search_orders": {
       const params = new URLSearchParams();
@@ -186,21 +188,24 @@ async function executeTool(
       if (args.after) params.set("after", args.after);
       if (args.before) params.set("before", args.before);
       params.set("per_page", String(args.per_page || 10));
-      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `orders?${params.toString()}` });
-      return { result: data, richContent: { type: "orders", data: Array.isArray(data) ? data : [] } };
+      const endpoint = `orders?${params.toString()}`;
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint });
+      return { result: data, richContent: { type: "orders", data: Array.isArray(data) ? data : [] }, requestUri: `GET /wp-json/wc/v3/${endpoint}` };
     }
     case "create_order": {
+      const endpoint = "orders";
       const data = await callWooProxy(supabaseUrl, authHeader, {
-        endpoint: "orders", method: "POST",
+        endpoint, method: "POST",
         body: { line_items: args.line_items, customer_id: args.customer_id || 0, status: args.status || "processing" },
       });
-      return { result: data };
+      return { result: data, requestUri: `POST /wp-json/wc/v3/${endpoint}` };
     }
     case "update_order_status": {
+      const endpoint = `orders/${args.order_id}`;
       const data = await callWooProxy(supabaseUrl, authHeader, {
-        endpoint: `orders/${args.order_id}`, method: "PUT", body: { status: args.status },
+        endpoint, method: "PUT", body: { status: args.status },
       });
-      return { result: data };
+      return { result: data, requestUri: `PUT /wp-json/wc/v3/${endpoint}` };
     }
     case "get_sales_report": {
       const params = new URLSearchParams();
@@ -221,8 +226,9 @@ async function executeTool(
       }
       if (startDate) params.set("after", `${startDate}T00:00:00`);
       if (endDate) params.set("before", `${endDate}T23:59:59`);
-      const orders = await callWooProxy(supabaseUrl, authHeader, { endpoint: `orders?${params.toString()}` });
-      if (!Array.isArray(orders)) return { result: orders };
+      const endpoint = `orders?${params.toString()}`;
+      const orders = await callWooProxy(supabaseUrl, authHeader, { endpoint });
+      if (!Array.isArray(orders)) return { result: orders, requestUri: `GET /wp-json/wc/v3/${endpoint}` };
       const totalRevenue = orders.reduce((s: number, o: any) => s + parseFloat(o.total || "0"), 0);
       const byDate: Record<string, number> = {};
       orders.forEach((o: any) => {
@@ -242,6 +248,7 @@ async function executeTool(
       return {
         result: { totalRevenue: Math.round(totalRevenue * 100) / 100, orderCount: orders.length, dailyBreakdown: chartData },
         richContent: { type: "chart", data: { type: "bar", title: `Sales Report (${args.period || "custom"})`, data: chartData, dataKey: "value", nameKey: "name" } },
+        requestUri: `GET /wp-json/wc/v3/${endpoint}`,
       };
     }
     case "compare_sales": {
@@ -267,6 +274,7 @@ async function executeTool(
       return {
         result: { [labelA]: a, [labelB]: b, change_revenue: a.revenue - b.revenue, change_orders: a.count - b.count },
         richContent: { type: "chart", data: { type: "grouped_bar", title: `${labelA} vs ${labelB}`, data: chartData, dataKeys: [labelA, labelB], nameKey: "name" } },
+        requestUri: `GET /wp-json/wc/v3/orders (x2 periods)`,
       };
     }
     case "save_preference": {
@@ -319,16 +327,37 @@ serve(async (req) => {
     const systemPrompt = `You are a WooCommerce store assistant. You help manage their online store through conversation.${languageInstruction}
 
 Your capabilities:
-- Search and browse products (show them visually with cards)
+- Search and browse products (shown as interactive visual cards automatically)
 - Create and manage orders
-- Provide sales analytics and insights with charts
+- Provide sales analytics and insights with charts and dashboards
 - Learn the user's preferences and product aliases
 
 When the user refers to a product casually (e.g. "pasta bourbon"), search for it first. If you identify a pattern or alias, save it as a preference.
 
 When creating orders, always search for products first to confirm the right items, then create the order.
 
-For analytics, fetch the data and present insights with charts.
+PRODUCT DISPLAY RULES:
+- When products are found, do NOT list product details in text — they are displayed as interactive cards automatically.
+- Just provide a brief summary like "Found X products matching your search." or "Here are the results:".
+
+DASHBOARD/REPORT DISPLAY RULES:
+- After analyzing sales data (get_sales_report, compare_sales), you MUST include a structured dashboard JSON block in your response.
+- Wrap the JSON in a \`\`\`dashboard code block. The frontend will render it as an interactive dashboard.
+- Schema:
+\`\`\`
+{
+  "cards": [{ "label": "Total Revenue", "value": "1,234 lei", "change": "+12%" }],
+  "charts": [{ "type": "bar"|"line"|"pie"|"grouped_bar", "title": "Chart Title", "data": [{"name":"Label","value":100}], "dataKey": "value", "nameKey": "name" }],
+  "tables": [{ "title": "Top Products", "columns": ["Product","Qty","Revenue"], "rows": [["Pasta",10,"500 lei"]] }],
+  "lists": [{ "title": "Insights", "items": ["Revenue increased by 12%","Most popular: Pasta"], "collapsible": true }]
+}
+\`\`\`
+- Include stat cards for key metrics (revenue, order count, avg order value).
+- Include charts when there's time-series or comparative data.
+- Include tables for top products/categories breakdowns.
+- Include lists for insights and recommendations.
+- For grouped_bar charts, use "dataKeys": ["Label A", "Label B"] instead of "dataKey".
+- All currency values should use "lei" suffix.
 
 Be conversational, efficient, and proactive. Use markdown for formatting. Currency is RON (lei).${prefsContext}`;
 
@@ -413,10 +442,10 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                   continue;
                 }
 
-                const { result, richContent } = await executeTool(toolName, args, supabaseUrl, authHeader, userId, supabase);
+                const { result, richContent, requestUri } = await executeTool(toolName, args, supabaseUrl, authHeader, userId, supabase);
 
-                // Emit debug event with raw API response
-                sendSSE({ type: "debug_api", toolName, args, result });
+                // Emit debug event with raw API response and request URI
+                sendSSE({ type: "debug_api", toolName, args, result, requestUri });
 
                 if (richContent) {
                   sendSSE({ type: "rich_content", ...richContent });
@@ -433,7 +462,20 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
             sendSSE({ type: "pipeline_complete", lastStepIndex: stepIndex });
 
             if (content) {
-              sendSSE({ choices: [{ delta: { content } }] });
+              // Parse dashboard blocks from content
+              const dashboardRegex = /```dashboard\s*\n([\s\S]*?)```/g;
+              let textContent = content;
+              let match;
+              while ((match = dashboardRegex.exec(content)) !== null) {
+                try {
+                  const dashboardData = JSON.parse(match[1].trim());
+                  sendSSE({ type: "dashboard", data: dashboardData });
+                  textContent = textContent.replace(match[0], "").trim();
+                } catch { /* ignore malformed JSON */ }
+              }
+              if (textContent) {
+                sendSSE({ choices: [{ delta: { content: textContent } }] });
+              }
             }
             break;
           }

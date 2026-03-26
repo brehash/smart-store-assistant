@@ -7,13 +7,13 @@ export interface PipelinePlanData {
 
 export function PipelinePlan({ plan }: { plan: PipelinePlanData }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4 my-2">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+    <div className="rounded-xl border border-border bg-card px-4 py-3 my-2 w-full max-w-[400px]">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
         {plan.title}
       </p>
       <div>
-        {plan.steps.map((step, i) => (
-          <PipelineStep key={step.id} step={step} isLast={i === plan.steps.length - 1} />
+        {plan.steps.map((step) => (
+          <PipelineStep key={step.id} step={step} />
         ))}
       </div>
     </div>
