@@ -211,7 +211,7 @@ async function executeTool(
     case "get_sales_report": {
       const params = new URLSearchParams();
       params.set("per_page", "100");
-      params.set("status", defaultOrderStatuses.length ? defaultOrderStatuses.join(",") : "completed,processing");
+      if (defaultOrderStatuses.length) params.set("status", defaultOrderStatuses.join(","));
       let startDate = args.date_min;
       let endDate = args.date_max;
       const now = new Date();
