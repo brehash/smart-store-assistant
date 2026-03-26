@@ -17,8 +17,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Settings, Globe, Palette, Store, User,
-  Save, Trash2, CheckCircle2, XCircle, Key, ListChecks, Loader2,
-  Sun, Moon, Monitor, Eye, EyeOff, X,
+  Save, Trash2, CheckCircle2, XCircle, ListChecks, Loader2,
+  Sun, Moon, Monitor, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
