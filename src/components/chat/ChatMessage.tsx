@@ -122,7 +122,13 @@ export function ChatMessage({
 
         {/* Rich content */}
         {richContents?.map((rc, i) => (
-          <div key={`rich-${i}`} className="w-full max-w-[600px]">
+          <div
+            key={`rich-${i}`}
+            className={cn(
+              "w-full",
+              rc.type === "dashboard" ? "max-w-5xl" : rc.type === "chart" ? "max-w-4xl" : "max-w-[600px]",
+            )}
+          >
             {rc.type === "products" && <ProductSlider products={rc.data} />}
             {rc.type === "orders" && <OrderTable orders={rc.data} />}
             {rc.type === "chart" && <ChatChart chartData={rc.data} />}
