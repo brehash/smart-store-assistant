@@ -1,67 +1,55 @@
 
-Root causes I verified in the current code/data:
+Fix both issues in two layers: deterministic backend date logic, and visible post-tool pipeline steps.
 
-- The chat menu is being rendered inside the same flex row as the title, but the title cell has no proper width constraint/reserved action space. With long labels, the row overflows and the 3-dots button gets pushed outside the visible sidebar.
-- View deletion currently does the opposite of what you asked: the database relation is `ON DELETE SET NULL`, and the UI also locally moves chats out of the view instead of deleting them.
-- Rich chat content is not persisted correctly:
-  - only the first `rich_content` item is saved
-  - reloading only reads a single `rich_content` object
-  - pipeline/debug/approval state is saved from React state inside `setMessages`, which is unreliable
-  - the approval continuation path saves only plain text, so metadata/rich content is lost
-- Product/report requests are not enforced strongly enough at the backend, so the model can answer with plain text instead of actually calling tools.
-- The active connection in the database currently has `order_statuses = []`, and the backend still falls back to hardcoded `completed,processing` for reports/comparisons.
+1. Make comparison dates deterministic in `supabase/functions/chat/index.ts`
+- Add a small server-side date utility layer instead of trusting the model’s raw date math.
+- Detect common relative comparison intents from the latest user request and/or tool labels, especially:
+  - this month vs last month same period
+  - this week vs last week same period
+  - year to date vs last year same period
+  - full previous month / full previous week
+- Compute the ranges on the backend using the current server date, so:
+  - “this month” = `2026-03-01 → 2026-03-26`
+  - “last month same period” = `2026-02-01 → 2026-02-26`
+- Cap previous-period end dates safely for shorter months.
+- Normalize or override bad AI-generated tool args before executing `get_sales_report` / `compare_sales`.
+- Also replace fragile `toISOString().split("T")[0]` style formatting with a timezone-safe date formatter so month boundaries don’t drift.
 
-Implementation plan:
+2. Strengthen the AI instructions, but don’t rely on them alone
+- Update the chat function prompt so “same period” is explicitly defined as “same elapsed day span in the previous period”.
+- Include concrete examples in the prompt.
+- Keep backend normalization as the real safety net if the model still sends wrong dates.
 
-1. Fix the sidebar chat row layout so the menu always shows
-- Refactor each conversation row to reserve a fixed right-side action slot.
-- Add proper `min-w-0`/truncate handling for the title so long labels never push actions out.
-- Keep the pin and 3-dots inside that reserved slot, swapping cleanly on hover/open.
-- Also replace the current inline “new view” insert with the modal flow you requested from the Views plus button.
+3. Add real post-tool progress feedback in the chat pipeline
+- In `supabase/functions/chat/index.ts`, emit extra pipeline steps after tool execution and before final assistant text, for example:
+  - “Analyzing received data”
+  - “Crafting dashboard from data”
+  - “Preparing final response”
+- Only send `pipeline_complete` after those synthesis steps are done, not immediately after the last tool call.
 
-2. Make views behave like real folders
-- Add a migration to change `conversations.view_id` from `ON DELETE SET NULL` to `ON DELETE CASCADE`.
-- Update view delete UI/logic so deleting a view deletes its chats, and messages follow via existing conversation cascade.
-- Keep “new chat inside view” working after this change.
+4. Make pipeline feedback actually visible in the UI
+- `src/components/chat/PipelineStep.tsx` currently ignores `step.details`; render it under the step title.
+- Use those details for helpful context like:
+  - compared range labels
+  - final normalized dates
+  - dashboard generation progress
+- Keep the main title short and the details explanatory.
 
-3. Make chat artifacts persist correctly
-- Stop saving the final assistant message from inside a React state setter.
-- Capture stream results in local accumulators and persist them once, explicitly and awaited.
-- Save all rich outputs, not just the first one.
-- Load messages by normalizing `rich_content` as either a single object or an array for backward compatibility.
-- Persist and reload pipeline metadata, approvals, questions, and debug logs consistently.
+5. Keep the frontend pipeline flow compatible
+- Verify `src/pages/Index.tsx` continues appending extra pipeline steps correctly after tool execution.
+- If needed, adjust step indexing so synthesis steps appear after tool steps instead of overwriting them.
 
-4. Fix the approval follow-up path
-- Make approve/edit continuations persist the same full assistant payload shape as normal responses.
-- Ensure follow-up tool results, charts, dashboards, and pipeline updates survive reopening the chat.
-
-5. Enforce actual tool usage for product/order/report requests
-- Tighten the chat function prompt so:
-  - product search must call `search_products`
-  - order lookups must call `search_orders`
-  - sales reports must call `get_sales_report` or `compare_sales`
-  - sales/report answers must include a dashboard block
-- Add a backend fallback pass: if the model returns plain text for a tool-required intent, re-prompt it to use the correct tool before streaming the final answer.
-
-6. Fix dashboard/report rendering persistence
-- Preserve dashboard JSON as rich content on save and restore it on load.
-- Ensure chart/dashboard responses remain visible after reopening the conversation, not only during the first live run.
-
-7. Fix order status behavior end to end
-- Update the backend so reports/comparisons/searches use the saved statuses from settings consistently.
-- Remove the hardcoded `completed,processing` fallback when user-configured statuses should apply; if no statuses are configured, either omit the filter or apply a clearly defined default in one place only.
-- Review the settings save/load flow so selected statuses are actually persisted and hydrated back into the UI.
-
-Files to change:
-- `src/components/chat/ConversationSidebar.tsx`
-- `src/pages/Index.tsx`
+Files to update
 - `supabase/functions/chat/index.ts`
-- `src/pages/Settings.tsx`
-- new migration in `supabase/migrations/...` for the view delete cascade change
+- `src/components/chat/PipelineStep.tsx`
+- possibly `src/pages/Index.tsx` if step append behavior needs a small adjustment
 
-Validation after implementation:
-- Hover a very long chat title and confirm the 3-dots menu remains visible and clickable.
-- Create a view from the plus-button modal, create chats inside it, then delete the view and confirm the chats are deleted too.
-- Run product search and confirm product cards appear live and still appear after reopening the chat.
-- Run a sales report and confirm the dashboard appears live and still appears after reopening the chat.
-- Change default order statuses in settings, save them, then verify report/order tool calls use those exact statuses instead of hardcoded ones.
+Validation after implementation
+- Ask: “sales report this month compared to last month same period”
+- Confirm backend executes with:
+  - current period: `2026-03-01 → 2026-03-26`
+  - previous period: `2026-02-01 → 2026-02-26`
+- Confirm the pipeline visibly continues after tools with steps like:
+  - “Analyzing received data”
+  - “Crafting dashboard from data”
+- Confirm the chat no longer looks “finished” before the final dashboard/text appears.
