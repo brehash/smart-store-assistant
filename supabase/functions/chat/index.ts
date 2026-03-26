@@ -910,7 +910,15 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
               let semanticIdx = 0;
 
               for (const tc of toolCalls) {
-                const args = JSON.parse(tc.function.arguments);
+                let args: any;
+                try {
+                  args = JSON.parse(tc.function.arguments);
+                } catch {
+                  console.error("Failed to parse tool arguments:", tc.function.arguments);
+                  sendSSE({ type: "reasoning", text: `Failed to parse arguments for ${tc.function.name}, skipping...` });
+                  aiMessages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify({ error: "Invalid arguments" }) });
+                  continue;
+                }
                 const toolName = tc.function.name;
                 const stepLabel = TOOL_LABELS[toolName] || toolName;
 
