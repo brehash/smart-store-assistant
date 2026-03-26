@@ -196,8 +196,12 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
       {/* Context menu - visible on hover */}
       {editingConvId !== c.id && (
         <DropdownMenu>
-          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-            <button className="shrink-0 opacity-0 group-hover:opacity-100 hover:text-sidebar-foreground transition-opacity p-0.5 rounded hover:bg-sidebar-accent">
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              onClick={(e) => e.stopPropagation()}
+              className="shrink-0 h-5 w-5 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:text-sidebar-foreground transition-opacity rounded hover:bg-sidebar-accent"
+            >
               <MoreHorizontal className="h-3.5 w-3.5" />
             </button>
           </DropdownMenuTrigger>
