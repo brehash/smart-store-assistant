@@ -172,12 +172,14 @@ async function executeTool(
       params.set("search", args.search);
       if (args.category) params.set("category", args.category);
       params.set("per_page", String(args.per_page || 10));
-      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `products?${params.toString()}` });
-      return { result: data, richContent: { type: "products", data: Array.isArray(data) ? data : [] } };
+      const endpoint = `products?${params.toString()}`;
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint });
+      return { result: data, richContent: { type: "products", data: Array.isArray(data) ? data : [] }, requestUri: `GET /wp-json/wc/v3/${endpoint}` };
     }
     case "get_product": {
-      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `products/${args.product_id}` });
-      return { result: data, richContent: { type: "products", data: [data] } };
+      const endpoint = `products/${args.product_id}`;
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint });
+      return { result: data, richContent: { type: "products", data: [data] }, requestUri: `GET /wp-json/wc/v3/${endpoint}` };
     }
     case "search_orders": {
       const params = new URLSearchParams();
@@ -186,21 +188,24 @@ async function executeTool(
       if (args.after) params.set("after", args.after);
       if (args.before) params.set("before", args.before);
       params.set("per_page", String(args.per_page || 10));
-      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `orders?${params.toString()}` });
-      return { result: data, richContent: { type: "orders", data: Array.isArray(data) ? data : [] } };
+      const endpoint = `orders?${params.toString()}`;
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint });
+      return { result: data, richContent: { type: "orders", data: Array.isArray(data) ? data : [] }, requestUri: `GET /wp-json/wc/v3/${endpoint}` };
     }
     case "create_order": {
+      const endpoint = "orders";
       const data = await callWooProxy(supabaseUrl, authHeader, {
-        endpoint: "orders", method: "POST",
+        endpoint, method: "POST",
         body: { line_items: args.line_items, customer_id: args.customer_id || 0, status: args.status || "processing" },
       });
-      return { result: data };
+      return { result: data, requestUri: `POST /wp-json/wc/v3/${endpoint}` };
     }
     case "update_order_status": {
+      const endpoint = `orders/${args.order_id}`;
       const data = await callWooProxy(supabaseUrl, authHeader, {
-        endpoint: `orders/${args.order_id}`, method: "PUT", body: { status: args.status },
+        endpoint, method: "PUT", body: { status: args.status },
       });
-      return { result: data };
+      return { result: data, requestUri: `PUT /wp-json/wc/v3/${endpoint}` };
     }
     case "get_sales_report": {
       const params = new URLSearchParams();
@@ -221,8 +226,9 @@ async function executeTool(
       }
       if (startDate) params.set("after", `${startDate}T00:00:00`);
       if (endDate) params.set("before", `${endDate}T23:59:59`);
-      const orders = await callWooProxy(supabaseUrl, authHeader, { endpoint: `orders?${params.toString()}` });
-      if (!Array.isArray(orders)) return { result: orders };
+      const endpoint = `orders?${params.toString()}`;
+      const orders = await callWooProxy(supabaseUrl, authHeader, { endpoint });
+      if (!Array.isArray(orders)) return { result: orders, requestUri: `GET /wp-json/wc/v3/${endpoint}` };
       const totalRevenue = orders.reduce((s: number, o: any) => s + parseFloat(o.total || "0"), 0);
       const byDate: Record<string, number> = {};
       orders.forEach((o: any) => {
@@ -242,6 +248,7 @@ async function executeTool(
       return {
         result: { totalRevenue: Math.round(totalRevenue * 100) / 100, orderCount: orders.length, dailyBreakdown: chartData },
         richContent: { type: "chart", data: { type: "bar", title: `Sales Report (${args.period || "custom"})`, data: chartData, dataKey: "value", nameKey: "name" } },
+        requestUri: `GET /wp-json/wc/v3/${endpoint}`,
       };
     }
     case "compare_sales": {
@@ -267,6 +274,7 @@ async function executeTool(
       return {
         result: { [labelA]: a, [labelB]: b, change_revenue: a.revenue - b.revenue, change_orders: a.count - b.count },
         richContent: { type: "chart", data: { type: "grouped_bar", title: `${labelA} vs ${labelB}`, data: chartData, dataKeys: [labelA, labelB], nameKey: "name" } },
+        requestUri: `GET /wp-json/wc/v3/orders (x2 periods)`,
       };
     }
     case "save_preference": {
