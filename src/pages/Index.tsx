@@ -350,7 +350,7 @@ export default function Index() {
       )}
 
       <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform lg:relative lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <ConversationSidebar activeId={conversationId} onSelect={handleSelectConversation} onNew={handleNewChat} />
+        <ConversationSidebar activeId={conversationId} onSelect={handleSelectConversation} onNew={handleNewChat} onViewIdChange={setViewId} />
       </div>
 
       <div className="flex flex-1 flex-col min-w-0">
