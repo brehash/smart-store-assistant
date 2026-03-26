@@ -1,19 +1,28 @@
 
 
-## Two Small Fixes
+## Store OpenAI API Key as a Platform Secret
 
-### 1. OpenAI API Key — toggle visibility
-In `src/pages/Settings.tsx` (line ~282), replace the plain `type="password"` `<Input>` with an input that has a show/hide toggle button (eye icon). Add a `showApiKey` boolean state; when true, render `type="text"`, otherwise `type="password"`. Place an `Eye`/`EyeOff` icon button inside the input wrapper.
+Currently the OpenAI API key is stored per-user in the `woo_connections` table. This change moves it to a platform-level Supabase secret (`OPENAI_API_KEY`), removing it from the database and the Settings UI.
 
-### 2. Move the close "X" button into the settings sidebar
-The current `DialogContent` uses the default Radix close button (top-right corner of the modal). To move it into the settings sidebar:
-- In `Index.tsx`, pass a custom `DialogContent` without the default close button (add `className` to hide it or use a custom wrapper without the auto-close button).
-- In `Settings.tsx`, add a close button (X icon) at the top of the sidebar nav panel, and accept an `onClose` callback prop to trigger it.
+### Changes
+
+#### 1. Add the secret
+- Use `add_secret` tool to prompt user for their `OPENAI_API_KEY` value
+
+#### 2. `supabase/functions/chat/index.ts`
+- Replace `connData?.openai_api_key` with `Deno.env.get("OPENAI_API_KEY")`
+- Remove `openai_api_key` from the `.select()` query on `woo_connections`
+
+#### 3. `src/pages/Settings.tsx`
+- Remove the OpenAI API Key input field, `showApiKey` state, and `openaiApiKey` state
+- Remove `openai_api_key` from the save payload
+
+#### 4. Database migration
+- Drop the `openai_api_key` column from `woo_connections` (optional cleanup)
 
 ### Files to modify
-
 | File | Change |
 |------|--------|
-| `src/pages/Settings.tsx` | Add `showApiKey` state + eye toggle on API key input; add `onClose` prop + X button at top of sidebar nav |
-| `src/pages/Index.tsx` | Pass `onClose` to `SettingsContent`; hide default DialogContent close button |
+| `supabase/functions/chat/index.ts` | Read key from `Deno.env` instead of DB |
+| `src/pages/Settings.tsx` | Remove API key UI |
 
