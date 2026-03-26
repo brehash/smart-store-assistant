@@ -316,9 +316,33 @@ serve(async (req) => {
       prefsContext = "\n\nUser's saved preferences/aliases:\n" + prefs.map((p: any) => `- ${p.preference_type}: "${p.key}" → ${JSON.stringify(p.value)}`).join("\n");
     }
 
-    const { data: connData } = await supabase.from("woo_connections").select("response_language, openai_api_key").eq("user_id", userId).eq("is_active", true).maybeSingle();
+    const { data: connData } = await supabase.from("woo_connections").select("response_language, openai_api_key, order_statuses").eq("user_id", userId).eq("is_active", true).maybeSingle();
     const responseLanguage = connData?.response_language || "English";
     const userOpenAIKey = connData?.openai_api_key || null;
+    const defaultOrderStatuses: string[] = (connData as any)?.order_statuses || [];
+
+    // Fetch shared view context if viewId is provided
+    let viewContext = "";
+    if (viewId) {
+      const { data: siblingConvs } = await supabase
+        .from("conversations")
+        .select("id, title")
+        .eq("view_id", viewId)
+        .neq("id", conversationId);
+      if (siblingConvs?.length) {
+        const siblingIds = siblingConvs.map((c: any) => c.id);
+        const { data: siblingMsgs } = await supabase
+          .from("messages")
+          .select("content, role, conversation_id")
+          .in("conversation_id", siblingIds)
+          .order("created_at", { ascending: false })
+          .limit(30);
+        if (siblingMsgs?.length) {
+          viewContext = "\n\nShared context from related chats in this view:\n" +
+            siblingMsgs.reverse().map((m: any) => `[${m.role}]: ${m.content.slice(0, 200)}`).join("\n");
+        }
+      }
+    }
 
     const languageInstruction = responseLanguage !== "English"
       ? `\n\nIMPORTANT: Always respond in ${responseLanguage}. All plan titles, confirmations, and explanations must also be in ${responseLanguage}.`
