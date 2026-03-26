@@ -262,39 +262,6 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
     </div>
   );
 
-  const renderSettings = () => (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold">Settings</h2>
-        <p className="text-sm text-muted-foreground">AI and language preferences</p>
-      </div>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-primary/10 p-2"><Globe className="h-5 w-5 text-primary" /></div>
-            <div>
-              <CardTitle>AI Response Language</CardTitle>
-              <CardDescription>Choose the language for AI responses</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Select value={responseLanguage} onValueChange={setResponseLanguage}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {LANGUAGES.map((lang) => (<SelectItem key={lang} value={lang}>{lang}</SelectItem>))}
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
-      <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={saving} className="gap-1.5">
-          <Save className="h-4 w-4" /> {saving ? "Saving…" : "Save"}
-        </Button>
-      </div>
-    </div>
-  );
-
   const renderAppearance = () => {
     const options: { value: "system" | "light" | "dark"; label: string; icon: React.ElementType; desc: string }[] = [
       { value: "system", label: "System", icon: Monitor, desc: "Follow your device settings" },
