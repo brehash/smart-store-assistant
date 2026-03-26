@@ -980,20 +980,37 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                       ? normalizeCompareSalesDates(args)
                       : args;
 
-                const { result, richContent, requestUri } = await executeTool(
-                  toolName,
-                  normalizedArgs,
-                  supabaseUrl,
-                  authHeader,
-                  userId,
-                  supabase,
-                  defaultOrderStatuses,
-                );
+                let result: any;
+                let richContent: any;
+                let requestUri: string | undefined;
 
-                // Emit debug event with raw API response and request URI
+                try {
+                  const toolResult = await executeTool(
+                    toolName,
+                    normalizedArgs,
+                    supabaseUrl,
+                    authHeader,
+                    userId,
+                    supabase,
+                    defaultOrderStatuses,
+                  );
+                  result = toolResult.result;
+                  richContent = toolResult.richContent;
+                  requestUri = toolResult.requestUri;
+                } catch (toolErr) {
+                  console.error(`Tool ${toolName} failed:`, toolErr);
+                  const errMsg = toolErr instanceof Error ? toolErr.message : "Unknown tool error";
+                  result = { error: errMsg };
+                  sendSSE({ type: "reasoning", text: `Tool "${toolName}" failed: ${errMsg}. Continuing...` });
+                  sendSSE({ type: "pipeline_step", stepIndex, title: currentSemanticTitle, status: "error", details: errMsg });
+                  aiMessages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify({ error: errMsg }) });
+                  stepIndex++;
+                  semanticIdx++;
+                  continue;
+                }
+
                 sendSSE({ type: "debug_api", toolName, args, result, requestUri });
 
-                // Emit reasoning after tool result
                 const reasoningAfter = generateReasoningAfter(toolName, result);
                 if (reasoningAfter) sendSSE({ type: "reasoning", text: reasoningAfter });
 
