@@ -256,7 +256,7 @@ async function executeTool(
       const fetchPeriod = async (start: string, end: string) => {
         const params = new URLSearchParams();
         params.set("per_page", "100");
-        params.set("status", "completed,processing");
+        params.set("status", defaultOrderStatuses.length ? defaultOrderStatuses.join(",") : "completed,processing");
         params.set("after", `${start}T00:00:00`);
         params.set("before", `${end}T23:59:59`);
         const orders = await callWooProxy(supabaseUrl, authHeader, { endpoint: `orders?${params.toString()}` });
