@@ -56,7 +56,8 @@ export default function Index() {
 
   const handleOpenSettings = () => {
     setSettingsOpen(true);
-    setSearchParams({ settings: "true" }, { replace: true });
+    setSettingsTab("general");
+    setSearchParams({ settings: "general" }, { replace: true });
   };
 
   const handleCloseSettings = (open: boolean) => {
@@ -65,6 +66,11 @@ export default function Index() {
       searchParams.delete("settings");
       setSearchParams(searchParams, { replace: true });
     }
+  };
+
+  const handleSettingsTabChange = (tab: SettingsTab) => {
+    setSettingsTab(tab);
+    setSearchParams({ settings: tab }, { replace: true });
   };
 
   const scrollToBottom = useCallback(() => {
