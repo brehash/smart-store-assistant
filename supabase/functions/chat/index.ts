@@ -442,10 +442,10 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                   continue;
                 }
 
-                const { result, richContent } = await executeTool(toolName, args, supabaseUrl, authHeader, userId, supabase);
+                const { result, richContent, requestUri } = await executeTool(toolName, args, supabaseUrl, authHeader, userId, supabase);
 
-                // Emit debug event with raw API response
-                sendSSE({ type: "debug_api", toolName, args, result });
+                // Emit debug event with raw API response and request URI
+                sendSSE({ type: "debug_api", toolName, args, result, requestUri });
 
                 if (richContent) {
                   sendSSE({ type: "rich_content", ...richContent });
