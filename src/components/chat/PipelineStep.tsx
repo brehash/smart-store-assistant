@@ -26,17 +26,22 @@ export function PipelineStep({ step }: { step: PipelineStepData }) {
       <div className="flex h-5 w-5 items-center justify-center shrink-0">
         {statusIcons[step.status]}
       </div>
-      <span className={cn(
-        "text-sm",
-        step.status === "done" && "text-green-600 dark:text-green-400",
-        step.status === "error" && "text-destructive",
-        step.status === "skipped" && "text-muted-foreground line-through",
-        step.status === "running" && "text-foreground font-medium",
-        step.status === "needs_approval" && "text-amber-600 dark:text-amber-400 font-medium",
-        step.status === "pending" && "text-muted-foreground",
-      )}>
-        {step.title}
-      </span>
+      <div className="flex flex-col">
+        <span className={cn(
+          "text-sm",
+          step.status === "done" && "text-green-600 dark:text-green-400",
+          step.status === "error" && "text-destructive",
+          step.status === "skipped" && "text-muted-foreground line-through",
+          step.status === "running" && "text-foreground font-medium",
+          step.status === "needs_approval" && "text-amber-600 dark:text-amber-400 font-medium",
+          step.status === "pending" && "text-muted-foreground",
+        )}>
+          {step.title}
+        </span>
+        {step.details && (
+          <span className="text-xs text-muted-foreground mt-0.5">{step.details}</span>
+        )}
+      </div>
     </div>
   );
 }

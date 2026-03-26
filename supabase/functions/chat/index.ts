@@ -609,6 +609,13 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                 sendSSE({ choices: [{ delta: { content: textContent } }] });
               }
             }
+
+            // Mark crafting step done and send pipeline_complete
+            if (planSent && stepIndex > 0) {
+              sendSSE({ type: "pipeline_step", stepIndex, title: "Crafting response", status: "done" });
+              stepIndex++;
+            }
+            sendSSE({ type: "pipeline_complete", lastStepIndex: stepIndex });
             break;
           }
 
