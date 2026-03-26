@@ -202,15 +202,26 @@ export default function Index() {
       },
       onDone: async () => {
         setIsStreaming(false);
-        if (assistantContent || richContents.length) {
-          await supabase.from("messages").insert({
-            conversation_id: convId!,
-            user_id: user.id,
-            role: "assistant",
-            content: assistantContent,
-            rich_content: richContents.length ? richContents[0] as any : null,
-          });
-        }
+        // Capture final state for metadata persistence
+        setMessages((prev) => {
+          const lastMsg = prev[prev.length - 1];
+          if (lastMsg?.role === "assistant" && !lastMsg.id) {
+            const metadata: any = {};
+            if (lastMsg.pipeline) metadata.pipeline = lastMsg.pipeline;
+            if (lastMsg.debugLogs?.length) metadata.debugLogs = lastMsg.debugLogs;
+            if (lastMsg.approvals?.length) metadata.approvals = lastMsg.approvals;
+            if (lastMsg.questions?.length) metadata.questions = lastMsg.questions;
+            supabase.from("messages").insert({
+              conversation_id: convId!,
+              user_id: user.id,
+              role: "assistant",
+              content: lastMsg.content || assistantContent,
+              rich_content: richContents.length ? richContents[0] as any : null,
+              metadata: Object.keys(metadata).length ? metadata : null,
+            } as any);
+          }
+          return prev;
+        });
       },
       onError: (error) => {
         setIsStreaming(false);
