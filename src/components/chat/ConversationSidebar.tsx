@@ -270,8 +270,8 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
           <div>
             <div className="flex items-center justify-between px-2 py-1">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">Views</span>
-              <button onClick={handleCreateView} className="p-0.5 rounded hover:bg-sidebar-accent/50 text-sidebar-foreground/40 hover:text-sidebar-foreground transition-colors" title="New View">
-                <FolderPlus className="h-3.5 w-3.5" />
+              <button onClick={handleCreateView} className="p-1 rounded-md hover:bg-sidebar-accent/50 text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors" title="New View">
+                <Plus className="h-4 w-4" />
               </button>
             </div>
             <div className="space-y-0.5">
