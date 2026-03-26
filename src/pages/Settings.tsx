@@ -269,26 +269,6 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
           </Select>
         </CardContent>
       </Card>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-primary/10 p-2"><Key className="h-5 w-5 text-primary" /></div>
-            <div>
-              <CardTitle>OpenAI API Key</CardTitle>
-              <CardDescription>Optional — uses your own OpenAI key. Leave blank for default AI.</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <div className="relative">
-            <Input value={openaiApiKey} onChange={(e) => setOpenaiApiKey(e.target.value)} placeholder="sk-..." type={showApiKey ? "text" : "password"} className="pr-10" />
-            <button type="button" onClick={() => setShowApiKey(!showApiKey)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
-              {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </button>
-          </div>
-          <p className="text-xs text-muted-foreground">When set, chat requests route to OpenAI using <code className="text-xs">gpt-4o-mini</code>.</p>
-        </CardContent>
-      </Card>
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={saving} className="gap-1.5">
           <Save className="h-4 w-4" /> {saving ? "Saving…" : "Save"}
