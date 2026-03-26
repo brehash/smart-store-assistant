@@ -184,6 +184,7 @@ async function executeTool(
     case "search_orders": {
       const params = new URLSearchParams();
       if (args.status) params.set("status", args.status);
+      else if (defaultOrderStatuses.length) params.set("status", defaultOrderStatuses.join(","));
       if (args.search) params.set("search", args.search);
       if (args.after) params.set("after", args.after);
       if (args.before) params.set("before", args.before);
