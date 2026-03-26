@@ -1,90 +1,69 @@
 
+Fix the issue in two layers: backend stream reliability and frontend message lifecycle.
 
-## Fix Reasoning & Pipeline Display Issues
+1. Stabilize the backend stream
+- Fix the tool-response parsing path in `supabase/functions/chat/index.ts`.
+- Right now the stream reaches `search_products`, then crashes while parsing the tool response (`Unexpected end of JSON input`), which is why reasoning stops mid-flow and no final answer renders.
+- Harden `callWooProxy` / tool execution so non-JSON or truncated WooCommerce responses do not kill the whole chat stream.
+- When a tool fails, emit:
+  - a visible `reasoning` update like “The catalog response was incomplete, retrying…”
+  - a `pipeline_step` error state for that step
+  - a final assistant fallback explanation instead of disappearing
+- Keep sending `[DONE]` only after the stream has emitted a user-visible result or error summary.
 
-### Root cause analysis
+2. Surface streamed errors on the frontend
+- Update `src/lib/chat-stream.ts` to recognize SSE payloads shaped like `{ error: "..." }`.
+- Route those to `onError(...)` immediately instead of silently ignoring them.
+- Keep the inactivity timeout, but also treat backend-emitted errors as terminal so the UI does not sit in a fake loading state.
 
-There are **3 bugs** causing the broken experience — none of them require a different AI model.
+3. Prevent the assistant bubble from “vanishing”
+- In `src/pages/Index.tsx`, keep the in-progress assistant message even if the stream fails.
+- On error/timeout, convert the last temporary assistant message into a persisted error-state message instead of leaving a half-built transient message that later disappears on reload or resend.
+- Also guard against duplicate submissions while a previous request is still unresolved, since the network logs show the same prompt being sent twice.
 
-**Bug 1: Pipeline steps reset to "pending"**
-When the AI returns tool calls, line 896 sends a second `pipeline_plan` event with all steps. The frontend handler (Index.tsx line 148) recreates ALL steps with `status: "pending"`, wiping out the already-completed "Understanding request" step. This is why steps show empty circles in the screenshot.
+4. Make reasoning behave like a temporary overlay, then collapse
+- Refine `src/components/chat/ReasoningBubbles.tsx` so live thoughts are treated as transient streaming items.
+- While streaming:
+  - show the latest thought prominently
+  - fade older thoughts
+  - optionally cap to the latest 3–4 lines
+- After completion:
+  - hide the individual live lines
+  - replace them with one compact summary row like “Thought for 8s · 6 steps”
+  - keep the full history available behind expand/collapse
+- After failure:
+  - preserve the summary row too, but label it clearly, e.g. “Process stopped after 4 steps”.
 
-**Bug 2: Edge function uses `stream: false` — response hangs**
-The AI call at line 860 uses `stream: false`, meaning the entire AI round-trip blocks before any SSE events are sent. If the AI model takes 15-30s to think + the WooCommerce API takes time, the SSE connection can appear dead. The frontend shows no activity during this wait. Combined with Supabase edge function timeout limits (~150s), complex multi-tool chains can silently die.
+5. Keep one clean final message layout
+- In `src/components/chat/ChatMessage.tsx`, preserve this order for assistant messages:
+  1. collapsed reasoning summary
+  2. pipeline card
+  3. final rendered explanation/dashboard
+- Ensure the live reasoning lines do not remain permanently visible after success; they should collapse into that single line as you requested.
 
-**Bug 3: No timeout/error detection on frontend**
-If the edge function times out or the SSE stream dies, `onDone` never fires, `onError` never fires, and the UI stays stuck in "streaming" state forever with no feedback.
+6. Clean up pipeline completion states
+- In `src/pages/Index.tsx`, keep merging step states as already done, but add explicit handling for:
+  - failed step
+  - timed out step
+  - partial completion
+- This avoids the current situation where the plan looks half-finished with no explanation.
 
-### Fixes
+7. Expected result after implementation
+- You send one message once.
+- The chat immediately shows thinking/reasoning.
+- Tool activity continues updating instead of freezing.
+- If tools succeed, the thought lines collapse into one summary and the final answer/dashboard remains visible.
+- If tools fail or timeout, the chat still renders a visible explanation and the pipeline shows where it stopped instead of disappearing.
 
-#### 1. Fix pipeline_plan to preserve completed steps (Index.tsx)
-
-When a `pipeline_plan` event arrives, merge with existing step statuses instead of replacing them:
-
-```typescript
-// Before (broken): all steps get "pending"
-const planSteps = (event.steps || []).map((s, i) => ({
-  id: `step-${i}`, title: s, status: "pending"
-}));
-
-// After (fixed): preserve existing step statuses
-const existingSteps = m.pipeline?.steps || [];
-const planSteps = (event.steps || []).map((s, i) => ({
-  id: `step-${i}`,
-  title: s,
-  status: existingSteps[i]?.status || "pending"
-}));
-```
-
-#### 2. Add SSE keepalive heartbeat (edge function)
-
-Send periodic `reasoning` events during long operations so the frontend knows the connection is alive:
-
-```typescript
-// Before each AI call, emit a reasoning event
-sendSSE({ type: "reasoning", text: "Analyzing your request..." });
-
-// During tool execution, emit progress
-sendSSE({ type: "reasoning", text: `Processing ${toolName}...` });
-```
-
-Also add a "thinking" reasoning event before the AI model call itself (the slowest part):
-
-```typescript
-sendSSE({ type: "reasoning", text: "Thinking about how to help..." });
-const aiResp = await fetch(aiBaseUrl, { ... });
-```
-
-#### 3. Add frontend timeout detection (chat-stream.ts + Index.tsx)
-
-Add a 120s inactivity timeout — if no SSE data arrives for 120s, surface an error:
-
-```typescript
-let lastActivity = Date.now();
-// In the read loop: lastActivity = Date.now() after each chunk
-// Timeout check: if (Date.now() - lastActivity > 120_000) onError("Connection timed out")
-```
-
-Also add a cleanup in Index.tsx so if `isStreaming` is true but no events arrive for 2 minutes, reset the state.
-
-#### 4. Emit synthesis reasoning events (edge function)
-
-After all tools complete and before the final AI call, emit reasoning events so the user sees activity:
-
-```typescript
-// Before final AI synthesis call
-sendSSE({ type: "reasoning", text: "Preparing your response..." });
-```
-
-### Files to modify
-
-| File | Changes |
-|------|---------|
-| `src/pages/Index.tsx` | Fix `pipeline_plan` handler to preserve existing step statuses |
-| `src/lib/chat-stream.ts` | Add 120s inactivity timeout detection |
-| `supabase/functions/chat/index.ts` | Add reasoning events before AI calls ("Thinking..."), add keepalive reasoning during long waits |
-
-### Why a reasoning model is NOT needed
-
-The reasoning bubbles feature doesn't use AI model "reasoning mode" (like OpenAI's extended thinking). It's a **UI feature** that shows what the system is doing — which tools it's calling, what data it found, etc. The bugs above are purely SSE streaming and state management issues. The current `gemini-3-flash-preview` model works fine for this.
-
+Technical details
+- Files to update:
+  - `supabase/functions/chat/index.ts`
+  - `supabase/functions/woo-proxy/index.ts`
+  - `src/lib/chat-stream.ts`
+  - `src/pages/Index.tsx`
+  - `src/components/chat/ReasoningBubbles.tsx`
+  - `src/components/chat/ChatMessage.tsx`
+- Confirmed root cause from logs:
+  - backend crash after tool execution: `Stream error: SyntaxError: Unexpected end of JSON input`
+  - client currently ignores SSE `{ error: ... }` payloads
+  - duplicate sends are happening for the same conversation/prompt after failure
