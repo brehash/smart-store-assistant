@@ -443,6 +443,12 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                 const steps = toolCalls.map((tc: any) => TOOL_LABELS[tc.function.name] || tc.function.name);
                 sendSSE({ type: "pipeline_plan", title: "Execution Plan", steps });
                 planSent = true;
+              } else {
+                // Append new steps to existing plan
+                for (const tc of toolCalls) {
+                  const label = TOOL_LABELS[tc.function.name] || tc.function.name;
+                  sendSSE({ type: "pipeline_step", stepIndex, title: label, status: "pending" });
+                }
               }
 
               for (const tc of toolCalls) {
