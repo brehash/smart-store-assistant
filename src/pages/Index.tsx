@@ -70,6 +70,7 @@ export default function Index() {
             debugLogs: meta?.debugLogs || [],
             approvals: meta?.approvals || [],
             questions: meta?.questions || [],
+            reasoningLogs: meta?.reasoningLogs || [],
           };
         }));
         scrollToBottom();
