@@ -219,6 +219,17 @@ export default function Index() {
             ...m,
             debugLogs: [...(m.debugLogs || []), entry],
           }));
+        } else if (event.type === "reasoning") {
+          const rEntry: ReasoningEntry = {
+            text: event.text || "",
+            timestamp: Date.now(),
+          };
+          reasoningEntries = [...reasoningEntries, rEntry];
+          updateLastAssistant((m) => ({
+            ...m,
+            reasoningLogs: [...(m.reasoningLogs || []), rEntry],
+          }));
+          scrollToBottom();
         }
       },
       onDone: async () => {
