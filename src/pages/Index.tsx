@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import type { PipelinePlanData } from "@/components/chat/PipelinePlan";
 import type { PipelineStepData } from "@/components/chat/PipelineStep";
 import type { DebugEntry } from "@/components/chat/DebugPanel";
+import type { ReasoningEntry } from "@/components/chat/ReasoningBubbles";
 
 interface Message {
   id?: string;
@@ -21,6 +22,7 @@ interface Message {
   approvals?: ApprovalRequest[];
   questions?: QuestionRequest[];
   debugLogs?: DebugEntry[];
+  reasoningLogs?: ReasoningEntry[];
 }
 
 export default function Index() {
