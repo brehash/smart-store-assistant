@@ -180,6 +180,16 @@ export default function Index() {
             questions: [...(m.questions || []), question],
           }));
           scrollToBottom();
+        } else if (event.type === "debug_api") {
+          const entry: DebugEntry = {
+            toolName: event.toolName || "",
+            args: event.args,
+            result: event.result,
+          };
+          updateLastAssistant((m) => ({
+            ...m,
+            debugLogs: [...(m.debugLogs || []), entry],
+          }));
         }
       },
       onDone: async () => {
