@@ -222,6 +222,71 @@ const TOOL_LABELS: Record<string, string> = {
   save_preference: "Saving preference",
 };
 
+interface SemanticStep {
+  title: string;
+  details?: string;
+}
+
+function generateSemanticPlan(toolCalls: any[]): SemanticStep[] {
+  const steps: SemanticStep[] = [];
+
+  for (const tc of toolCalls) {
+    const name = tc.function.name;
+    const args = JSON.parse(tc.function.arguments);
+
+    switch (name) {
+      case "compare_sales": {
+        const labelA = args.period_a_label || "Period A";
+        const labelB = args.period_b_label || "Period B";
+        const dateDetail = args.period_a_start && args.period_b_start
+          ? `${args.period_a_start} → ${args.period_a_end} vs ${args.period_b_start} → ${args.period_b_end}`
+          : undefined;
+        steps.push({ title: "Resolving date ranges", details: dateDetail });
+        steps.push({ title: `Fetching orders for ${labelA}` });
+        steps.push({ title: `Fetching orders for ${labelB}` });
+        steps.push({ title: "Comparing periods" });
+        steps.push({ title: "Building dashboard" });
+        break;
+      }
+      case "get_sales_report": {
+        const dateDetail = args.date_min && args.date_max
+          ? `${args.date_min} → ${args.date_max}`
+          : args.period || undefined;
+        steps.push({ title: "Resolving date range", details: dateDetail });
+        steps.push({ title: "Fetching orders" });
+        steps.push({ title: "Calculating metrics" });
+        steps.push({ title: "Building dashboard" });
+        break;
+      }
+      case "search_products":
+        steps.push({ title: "Searching product catalog", details: args.search ? `Query: "${args.search}"` : undefined });
+        steps.push({ title: "Rendering results" });
+        break;
+      case "get_product":
+        steps.push({ title: "Fetching product details", details: args.product_id ? `ID: ${args.product_id}` : undefined });
+        break;
+      case "search_orders":
+        steps.push({ title: "Searching orders", details: args.search || args.status || undefined });
+        steps.push({ title: "Rendering results" });
+        break;
+      case "create_order":
+      case "update_order_status":
+        steps.push({ title: "Preparing order action" });
+        steps.push({ title: "Awaiting approval" });
+        break;
+      case "save_preference":
+        steps.push({ title: "Saving preference", details: args.key || undefined });
+        break;
+      default:
+        steps.push({ title: TOOL_LABELS[name] || name });
+    }
+  }
+
+  // Add post-tool synthesis steps
+  steps.push({ title: "Writing explanation" });
+  return steps;
+}
+
 async function callWooProxy(supabaseUrl: string, authHeader: string, payload: any) {
   const resp = await fetch(`${supabaseUrl}/functions/v1/woo-proxy`, {
     method: "POST",
