@@ -1017,6 +1017,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
               for (let i = 0; i < semanticSteps.length; i++) {
                 const ss = semanticSteps[i];
                 if (ss.title === "Building dashboard" || ss.title === "Rendering results" || ss.title === "Building inventory report" || ss.title === "Calculating burn rate") {
+                  sendSSE({ type: "reasoning", text: `${ss.title}...` });
                   sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "running" });
                   sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "done" });
                   stepIndex++;
