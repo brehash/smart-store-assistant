@@ -50,11 +50,20 @@ export default function Index() {
       if (data) {
         setMessages(data.map((m) => {
           const meta = (m as any).metadata as any;
+          // Normalize rich_content: could be a single object or an array
+          let richContents: RichContent[] = [];
+          if (m.rich_content) {
+            if (Array.isArray(m.rich_content)) {
+              richContents = m.rich_content as unknown as RichContent[];
+            } else {
+              richContents = [m.rich_content as unknown as RichContent];
+            }
+          }
           return {
             id: m.id,
             role: m.role as "user" | "assistant",
             content: m.content,
-            richContents: m.rich_content ? [m.rich_content as unknown as RichContent] : [],
+            richContents,
             pipeline: meta?.pipeline || null,
             debugLogs: meta?.debugLogs || [],
             approvals: meta?.approvals || [],
