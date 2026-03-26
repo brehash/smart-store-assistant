@@ -337,7 +337,11 @@ export default function Index() {
   };
 
   const handleNewChat = () => { setConversationId(null); setMessages([]); setSidebarOpen(false); };
-  const handleSelectConversation = (id: string) => { setConversationId(id); setSidebarOpen(false); };
+  const handleSelectConversation = (id: string, vId?: string | null) => {
+    setConversationId(id);
+    setViewId(vId || null);
+    setSidebarOpen(false);
+  };
 
   return (
     <div className="flex h-screen bg-background">
