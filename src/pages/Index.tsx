@@ -41,7 +41,9 @@ export default function Index() {
     return localStorage.getItem("sidebar-collapsed") === "true";
   });
   const [searchParams, setSearchParams] = useSearchParams();
-  const [settingsOpen, setSettingsOpen] = useState(() => searchParams.get("settings") === "true");
+  const settingsParam = searchParams.get("settings");
+  const [settingsOpen, setSettingsOpen] = useState(() => !!settingsParam);
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>(() => (settingsParam as SettingsTab) || "general");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const handleToggleSidebar = () => {
