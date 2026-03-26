@@ -30,6 +30,7 @@ export async function streamChat({
   onError,
   accessToken,
   approvalResponse,
+  viewId,
 }: {
   messages: Msg[];
   conversationId: string;
@@ -40,6 +41,7 @@ export async function streamChat({
   onError: (error: string) => void;
   accessToken: string;
   approvalResponse?: { toolCallId: string; action: "approve" | "skip" | "edit"; editedArgs?: string };
+  viewId?: string | null;
 }) {
   try {
     const resp = await fetch(CHAT_URL, {
@@ -48,7 +50,7 @@ export async function streamChat({
         "Content-Type": "application/json",
         Authorization: `Bearer ${accessToken}`,
       },
-      body: JSON.stringify({ messages, conversationId, approvalResponse }),
+      body: JSON.stringify({ messages, conversationId, approvalResponse, viewId }),
     });
 
     if (resp.status === 429) { onError("Rate limited — please wait a moment and try again."); return; }

@@ -164,7 +164,7 @@ async function callWooProxy(supabaseUrl: string, authHeader: string, payload: an
 }
 
 async function executeTool(
-  toolName: string, args: any, supabaseUrl: string, authHeader: string, userId: string, supabase: any
+  toolName: string, args: any, supabaseUrl: string, authHeader: string, userId: string, supabase: any, defaultOrderStatuses: string[] = []
 ): Promise<{ result: any; richContent?: any; requestUri?: string }> {
   switch (toolName) {
     case "search_products": {
@@ -184,6 +184,7 @@ async function executeTool(
     case "search_orders": {
       const params = new URLSearchParams();
       if (args.status) params.set("status", args.status);
+      else if (defaultOrderStatuses.length) params.set("status", defaultOrderStatuses.join(","));
       if (args.search) params.set("search", args.search);
       if (args.after) params.set("after", args.after);
       if (args.before) params.set("before", args.before);
@@ -210,7 +211,7 @@ async function executeTool(
     case "get_sales_report": {
       const params = new URLSearchParams();
       params.set("per_page", "100");
-      params.set("status", "completed,processing");
+      params.set("status", defaultOrderStatuses.length ? defaultOrderStatuses.join(",") : "completed,processing");
       let startDate = args.date_min;
       let endDate = args.date_max;
       const now = new Date();
@@ -255,7 +256,7 @@ async function executeTool(
       const fetchPeriod = async (start: string, end: string) => {
         const params = new URLSearchParams();
         params.set("per_page", "100");
-        params.set("status", "completed,processing");
+        params.set("status", defaultOrderStatuses.length ? defaultOrderStatuses.join(",") : "completed,processing");
         params.set("after", `${start}T00:00:00`);
         params.set("before", `${end}T23:59:59`);
         const orders = await callWooProxy(supabaseUrl, authHeader, { endpoint: `orders?${params.toString()}` });
@@ -308,7 +309,7 @@ serve(async (req) => {
     }
     const userId = claimsData.claims.sub;
 
-    const { messages, conversationId, approvalResponse } = await req.json();
+    const { messages, conversationId, approvalResponse, viewId } = await req.json();
 
     const { data: prefs } = await supabase.from("user_preferences").select("preference_type, key, value").eq("user_id", userId);
     let prefsContext = "";
@@ -316,12 +317,40 @@ serve(async (req) => {
       prefsContext = "\n\nUser's saved preferences/aliases:\n" + prefs.map((p: any) => `- ${p.preference_type}: "${p.key}" → ${JSON.stringify(p.value)}`).join("\n");
     }
 
-    const { data: connData } = await supabase.from("woo_connections").select("response_language, openai_api_key").eq("user_id", userId).eq("is_active", true).maybeSingle();
+    const { data: connData } = await supabase.from("woo_connections").select("response_language, openai_api_key, order_statuses").eq("user_id", userId).eq("is_active", true).maybeSingle();
     const responseLanguage = connData?.response_language || "English";
     const userOpenAIKey = connData?.openai_api_key || null;
+    const defaultOrderStatuses: string[] = (connData as any)?.order_statuses || [];
+
+    // Fetch shared view context if viewId is provided
+    let viewContext = "";
+    if (viewId) {
+      const { data: siblingConvs } = await supabase
+        .from("conversations")
+        .select("id, title")
+        .eq("view_id", viewId)
+        .neq("id", conversationId);
+      if (siblingConvs?.length) {
+        const siblingIds = siblingConvs.map((c: any) => c.id);
+        const { data: siblingMsgs } = await supabase
+          .from("messages")
+          .select("content, role, conversation_id")
+          .in("conversation_id", siblingIds)
+          .order("created_at", { ascending: false })
+          .limit(30);
+        if (siblingMsgs?.length) {
+          viewContext = "\n\nShared context from related chats in this view:\n" +
+            siblingMsgs.reverse().map((m: any) => `[${m.role}]: ${m.content.slice(0, 200)}`).join("\n");
+        }
+      }
+    }
 
     const languageInstruction = responseLanguage !== "English"
       ? `\n\nIMPORTANT: Always respond in ${responseLanguage}. All plan titles, confirmations, and explanations must also be in ${responseLanguage}.`
+      : "";
+
+    const defaultStatusStr = defaultOrderStatuses.length
+      ? `\n\nDEFAULT ORDER STATUSES: The user has configured these default order statuses: ${defaultOrderStatuses.join(", ")}. Use these as the status filter when searching orders or generating reports unless the user explicitly specifies different statuses.`
       : "";
 
     const systemPrompt = `You are a WooCommerce store assistant. You help manage their online store through conversation.${languageInstruction}
@@ -331,6 +360,10 @@ Your capabilities:
 - Create and manage orders
 - Provide sales analytics and insights with charts and dashboards
 - Learn the user's preferences and product aliases
+
+MULTI-TOOL EXECUTION:
+- When the user's request requires data from multiple sources (e.g. "create a dashboard comparing this month to last month"), call ALL necessary tools. You can call multiple tools in a single response or across multiple turns. Do not stop after one tool call if more data is needed.
+- For comparisons, call tools separately for each period/dataset needed.
 
 When the user refers to a product casually (e.g. "pasta bourbon"), search for it first. If you identify a pattern or alias, save it as a preference.
 
@@ -359,7 +392,7 @@ DASHBOARD/REPORT DISPLAY RULES:
 - For grouped_bar charts, use "dataKeys": ["Label A", "Label B"] instead of "dataKey".
 - All currency values should use "lei" suffix.
 
-Be conversational, efficient, and proactive. Use markdown for formatting. Currency is RON (lei).${prefsContext}`;
+Be conversational, efficient, and proactive. Use markdown for formatting. Currency is RON (lei).${defaultStatusStr}${prefsContext}${viewContext}`;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY && !userOpenAIKey) throw new Error("No AI API key configured");
@@ -411,6 +444,12 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                 const steps = toolCalls.map((tc: any) => TOOL_LABELS[tc.function.name] || tc.function.name);
                 sendSSE({ type: "pipeline_plan", title: "Execution Plan", steps });
                 planSent = true;
+              } else {
+                // Append new steps to existing plan
+                for (const tc of toolCalls) {
+                  const label = TOOL_LABELS[tc.function.name] || tc.function.name;
+                  sendSSE({ type: "pipeline_step", stepIndex, title: label, status: "pending" });
+                }
               }
 
               for (const tc of toolCalls) {
@@ -442,7 +481,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                   continue;
                 }
 
-                const { result, richContent, requestUri } = await executeTool(toolName, args, supabaseUrl, authHeader, userId, supabase);
+                const { result, richContent, requestUri } = await executeTool(toolName, args, supabaseUrl, authHeader, userId, supabase, defaultOrderStatuses);
 
                 // Emit debug event with raw API response and request URI
                 sendSSE({ type: "debug_api", toolName, args, result, requestUri });

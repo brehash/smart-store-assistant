@@ -28,6 +28,7 @@ export default function Index() {
   const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [viewId, setViewId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -47,12 +48,19 @@ export default function Index() {
         .eq("conversation_id", conversationId)
         .order("created_at", { ascending: true });
       if (data) {
-        setMessages(data.map((m) => ({
-          id: m.id,
-          role: m.role as "user" | "assistant",
-          content: m.content,
-          richContents: m.rich_content ? [m.rich_content as unknown as RichContent] : [],
-        })));
+        setMessages(data.map((m) => {
+          const meta = (m as any).metadata as any;
+          return {
+            id: m.id,
+            role: m.role as "user" | "assistant",
+            content: m.content,
+            richContents: m.rich_content ? [m.rich_content as unknown as RichContent] : [],
+            pipeline: meta?.pipeline || null,
+            debugLogs: meta?.debugLogs || [],
+            approvals: meta?.approvals || [],
+            questions: meta?.questions || [],
+          };
+        }));
         scrollToBottom();
       }
     };
@@ -108,6 +116,7 @@ export default function Index() {
       messages: [...messages, userMsg].map((m) => ({ role: m.role, content: m.content })),
       conversationId: convId,
       accessToken: session.access_token,
+      viewId,
       onDelta: (chunk) => {
         assistantContent += chunk;
         updateLastAssistant((m) => ({ ...m, content: assistantContent }));
@@ -195,15 +204,26 @@ export default function Index() {
       },
       onDone: async () => {
         setIsStreaming(false);
-        if (assistantContent || richContents.length) {
-          await supabase.from("messages").insert({
-            conversation_id: convId!,
-            user_id: user.id,
-            role: "assistant",
-            content: assistantContent,
-            rich_content: richContents.length ? richContents[0] as any : null,
-          });
-        }
+        // Capture final state for metadata persistence
+        setMessages((prev) => {
+          const lastMsg = prev[prev.length - 1];
+          if (lastMsg?.role === "assistant" && !lastMsg.id) {
+            const metadata: any = {};
+            if (lastMsg.pipeline) metadata.pipeline = lastMsg.pipeline;
+            if (lastMsg.debugLogs?.length) metadata.debugLogs = lastMsg.debugLogs;
+            if (lastMsg.approvals?.length) metadata.approvals = lastMsg.approvals;
+            if (lastMsg.questions?.length) metadata.questions = lastMsg.questions;
+            supabase.from("messages").insert({
+              conversation_id: convId!,
+              user_id: user.id,
+              role: "assistant",
+              content: lastMsg.content || assistantContent,
+              rich_content: richContents.length ? richContents[0] as any : null,
+              metadata: Object.keys(metadata).length ? metadata : null,
+            } as any);
+          }
+          return prev;
+        });
       },
       onError: (error) => {
         setIsStreaming(false);
@@ -318,7 +338,11 @@ export default function Index() {
   };
 
   const handleNewChat = () => { setConversationId(null); setMessages([]); setSidebarOpen(false); };
-  const handleSelectConversation = (id: string) => { setConversationId(id); setSidebarOpen(false); };
+  const handleSelectConversation = (id: string, vId?: string | null) => {
+    setConversationId(id);
+    setViewId(vId || null);
+    setSidebarOpen(false);
+  };
 
   return (
     <div className="flex h-screen bg-background">
@@ -327,7 +351,7 @@ export default function Index() {
       )}
 
       <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform lg:relative lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <ConversationSidebar activeId={conversationId} onSelect={handleSelectConversation} onNew={handleNewChat} />
+        <ConversationSidebar activeId={conversationId} onSelect={handleSelectConversation} onNew={handleNewChat} onViewIdChange={setViewId} />
       </div>
 
       <div className="flex flex-1 flex-col min-w-0">
