@@ -1,54 +1,69 @@
 
 
-# Fix: Product Sliders, Charts, Sales Reports & Comparisons
+# Fix Pipeline Display + Add API Response Debug Panel
 
-## Issues Identified
+## Problem Analysis
 
-1. **Products not showing as slider cards** — The `rich_content` SSE event is sent but the frontend `onToolCall` handler in `Index.tsx` overwrites `richContent` on each call. More critically, the rich content is sent as a generic SSE event and may not be properly attached to the assistant message when products are returned from `search_products`.
+### Pipeline not working
+The pipeline UI depends on the AI model outputting a `\`\`\`pipeline` code block with a specific JSON format. If the model doesn't output this (which is unreliable), no `pipeline_plan` event is sent, and subsequent `pipeline_step` events are silently dropped because the frontend checks `if (!m.pipeline) return m;` — no pipeline container exists to receive the steps.
 
-2. **Charts not displaying** — The `chart` rich content is sent via `rich_content` SSE event, but the `onToolCall` callback only sets the last rich content received. The chart data from `get_sales_report` is being overwritten by any subsequent content, or the AI is returning the data as text instead of triggering the tool.
-
-3. **Missing days in sales report** — The `get_sales_report` tool only returns days that have orders. Days with zero sales are skipped because `byDate` only accumulates dates from actual orders. Need to fill in gaps.
-
-4. **No period comparison** — There's no `compare_periods` tool. The AI has no way to fetch two date ranges and compare them.
+### No visibility into REST API responses
+Currently the WooCommerce API responses are passed directly to the LLM as tool results but never shown to the user, making debugging impossible.
 
 ## Changes
 
-### 1. Edge Function (`supabase/functions/chat/index.ts`)
+### 1. Edge Function — Auto-generate pipeline from tool calls (`supabase/functions/chat/index.ts`)
 
-**Fix sales report date gaps**: In `get_sales_report`, after building `byDate`, iterate from `date_min` to `date_max` day by day and fill missing dates with `0` revenue.
-
-**Add `compare_sales` tool**: New tool definition that takes two date ranges (`period_a_start`, `period_a_end`, `period_b_start`, `period_b_end`), fetches orders for both, and returns comparison data with a grouped bar chart rich content.
-
-**Fix rich content for products**: Ensure the `rich_content` event for products is always emitted when `search_products` or `get_product` returns results.
-
-### 2. Frontend — Support Multiple Rich Contents (`Index.tsx`)
-
-Change `richContent` from a single object to an array (`richContents: RichContent[]`) on each message. The `onToolCall` callback appends instead of replacing. This way both a product slider AND a chart can appear in the same message.
-
-### 3. Frontend — ChatMessage & Rendering
-
-Update `ChatMessage` to render an array of `richContents` — iterating and rendering the appropriate component (ProductSlider, OrderTable, ChatChart) for each.
-
-### 4. Edge Function — Fill Missing Dates in Sales Report
+Stop relying on the AI to output `\`\`\`pipeline` blocks. Instead, when the AI response contains `tool_calls`, automatically generate and emit a `pipeline_plan` event from the tool calls list before executing them. Remove the regex-based plan detection entirely.
 
 ```text
-// After building byDate from orders:
-// Generate all dates between start and end
-// For each date not in byDate, set value to 0
+// Before executing tool calls:
+if (toolCalls.length > 0 && !planSent) {
+  const steps = toolCalls.map(tc => TOOL_LABELS[tc.function.name] || tc.function.name);
+  sendSSE({ type: "pipeline_plan", title: "Execution Plan", steps });
+  planSent = true;
+}
 ```
 
-This ensures "sales report for this week" shows all 7 days, including days with 0 revenue.
+This guarantees the pipeline UI always appears when tools are called.
 
-### 5. New Tool: `compare_sales`
+### 2. Edge Function — Send API responses as debug events (`supabase/functions/chat/index.ts`)
 
-Parameters: `period_a_start`, `period_a_end`, `period_b_start`, `period_b_end`, `period_a_label`, `period_b_label`
+After each tool execution, emit a new `debug_api` SSE event containing the tool name, args, and raw API result:
 
-Returns comparison stats (total revenue, order count for each period) plus a grouped bar chart showing both periods side by side.
+```text
+sendSSE({ type: "debug_api", toolName, args, result });
+```
 
-### Files Modified
-- `supabase/functions/chat/index.ts` — fix date gaps, add compare tool, update system prompt
-- `src/pages/Index.tsx` — change richContent to array, append instead of replace
-- `src/components/chat/ChatMessage.tsx` — render array of rich contents
-- `src/components/chat/ChatChart.tsx` — support grouped bar chart for comparisons
+### 3. Frontend — Handle auto-generated pipeline (`src/pages/Index.tsx`)
+
+Update `onPipelineEvent` handler for `pipeline_step`: if no `m.pipeline` exists yet, auto-create one from the step event (add step dynamically). This handles cases where steps arrive before or without a plan.
+
+### 4. Frontend — Debug panel toggle (`src/pages/Index.tsx` + new component)
+
+- Add a `debugLogs` array to message state storing `{ toolName, args, result }` objects
+- Handle `debug_api` events in `onPipelineEvent` by appending to the current message's debug logs
+- Store on each message as `debugLogs?: DebugEntry[]`
+
+### 5. New component: `DebugPanel.tsx` (`src/components/chat/DebugPanel.tsx`)
+
+A collapsible panel rendered below each assistant message (when debug logs exist):
+- Toggle button: "API Responses" with expand/collapse
+- Shows each tool call with: tool name, request args (JSON), response (JSON) in a scrollable `<pre>` block
+- Styled as a subtle card with monospace font
+
+### 6. Update `ChatMessage.tsx`
+
+Add `debugLogs` prop and render `<DebugPanel>` when present.
+
+### 7. Remove plan format from system prompt
+
+Remove the instruction telling the AI to output `\`\`\`pipeline` blocks since we auto-generate plans now. Keep the instruction to call tools sequentially.
+
+## Files Modified
+- `supabase/functions/chat/index.ts` — auto-generate pipeline, emit debug events, simplify system prompt
+- `src/pages/Index.tsx` — handle debug_api events, auto-create pipeline on step events
+- `src/components/chat/ChatMessage.tsx` — pass debugLogs to new DebugPanel
+- `src/components/chat/DebugPanel.tsx` — new collapsible API response viewer
+- `src/lib/chat-stream.ts` — add `debug_api` to PipelineEvent type
 
