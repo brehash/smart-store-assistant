@@ -16,6 +16,7 @@ export interface PipelineEvent {
   question?: string;
   options?: string[];
   toolCallId?: string;
+  result?: any;
 }
 
 export async function streamChat({
