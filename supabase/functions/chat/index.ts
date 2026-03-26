@@ -635,6 +635,11 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
           let maxIterations = 8;
           let stepIndex = 0;
           let planSent = false;
+          let semanticSteps: SemanticStep[] = [];
+
+          // Emit "Understanding request" immediately
+          sendSSE({ type: "pipeline_plan", title: "Execution Plan", steps: ["Understanding request"] });
+          sendSSE({ type: "pipeline_step", stepIndex: 0, title: "Understanding request", status: "running" });
 
           while (maxIterations-- > 0) {
             const aiResp = await fetch(aiBaseUrl, {
@@ -671,31 +676,53 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                 tool_calls: choice.message.tool_calls,
               });
 
-              // Auto-generate pipeline plan from tool calls
+              // Mark "Understanding request" as done and emit semantic plan
               if (!planSent) {
-                const steps = toolCalls.map((tc: any) => TOOL_LABELS[tc.function.name] || tc.function.name);
-                sendSSE({ type: "pipeline_plan", title: "Execution Plan", steps });
+                sendSSE({ type: "pipeline_step", stepIndex: 0, title: "Understanding request", status: "done" });
+                semanticSteps = generateSemanticPlan(toolCalls);
+                const allStepTitles = ["Understanding request", ...semanticSteps.map(s => s.title)];
+                sendSSE({ type: "pipeline_plan", title: "Execution Plan", steps: allStepTitles });
+                stepIndex = 1; // step 0 was "Understanding request"
                 planSent = true;
-              } else {
-                // Append new steps to existing plan
-                for (const tc of toolCalls) {
-                  const label = TOOL_LABELS[tc.function.name] || tc.function.name;
-                  sendSSE({ type: "pipeline_step", stepIndex, title: label, status: "pending" });
-                }
               }
+
+              // Track which semantic step we're on
+              let semanticIdx = 0;
 
               for (const tc of toolCalls) {
                 const args = JSON.parse(tc.function.arguments);
                 const toolName = tc.function.name;
                 const stepLabel = TOOL_LABELS[toolName] || toolName;
 
-                sendSSE({ type: "pipeline_step", stepIndex, title: stepLabel, status: "running", toolName, args });
+                // Advance semantic steps that are pre-tool (e.g. "Resolving date ranges")
+                while (semanticIdx < semanticSteps.length) {
+                  const ss = semanticSteps[semanticIdx];
+                  // Check if this is a "pre-execution" step (resolving, preparing)
+                  if (ss.title.startsWith("Resolving") || ss.title.startsWith("Preparing")) {
+                    sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "running", details: ss.details });
+                    sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "done", details: ss.details });
+                    stepIndex++;
+                    semanticIdx++;
+                  } else {
+                    break;
+                  }
+                }
+
+                // Get the current semantic step title for this tool execution
+                const currentSemanticTitle = semanticIdx < semanticSteps.length
+                  ? semanticSteps[semanticIdx].title
+                  : stepLabel;
+                const currentSemanticDetails = semanticIdx < semanticSteps.length
+                  ? semanticSteps[semanticIdx].details
+                  : undefined;
+
+                sendSSE({ type: "pipeline_step", stepIndex, title: currentSemanticTitle, status: "running", details: currentSemanticDetails, toolName, args });
 
                 if (WRITE_TOOLS.has(toolName) && !approvalResponse) {
                   sendSSE({
                     type: "approval_request",
                     stepIndex,
-                    title: stepLabel,
+                    title: currentSemanticTitle,
                     summary: `${stepLabel} with: ${JSON.stringify(args)}`,
                     toolName,
                     args,
@@ -708,8 +735,9 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                     content: JSON.stringify({ status: "awaiting_approval", message: "Waiting for user approval..." }),
                   });
 
-                  sendSSE({ type: "pipeline_step", stepIndex, title: stepLabel, status: "needs_approval" });
+                  sendSSE({ type: "pipeline_step", stepIndex, title: currentSemanticTitle, status: "needs_approval" });
                   stepIndex++;
+                  semanticIdx++;
                   continue;
                 }
 
@@ -741,16 +769,25 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                 sendSSE({
                   type: "pipeline_step",
                   stepIndex,
-                  title: stepLabel,
+                  title: currentSemanticTitle,
                   status: "done",
-                  details:
-                    typeof result === "object"
-                      ? `Found ${Array.isArray(result) ? result.length : 1} result(s)`
-                      : String(result),
+                  details: currentSemanticDetails,
                 });
 
                 aiMessages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(result) });
                 stepIndex++;
+                semanticIdx++;
+
+                // Mark any remaining intermediate semantic steps (e.g. "Comparing periods") as done
+                while (semanticIdx < semanticSteps.length) {
+                  const ss = semanticSteps[semanticIdx];
+                  if (ss.title === "Writing explanation" || ss.title === "Building dashboard" || ss.title === "Rendering results") break;
+                  if (ss.title.startsWith("Fetching") || ss.title === "Awaiting approval") break;
+                  sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "running", details: ss.details });
+                  sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "done", details: ss.details });
+                  stepIndex++;
+                  semanticIdx++;
+                }
               }
               continue;
             }
