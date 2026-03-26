@@ -7,7 +7,7 @@ export interface PipelinePlanData {
 
 export function PipelinePlan({ plan }: { plan: PipelinePlanData }) {
   return (
-    <div className="rounded-xl border border-border bg-card px-4 py-3 my-2 w-full max-w-[400px]">
+    <div className="rounded-xl border border-border bg-card px-4 py-3 my-2 w-full max-w-[520px]">
       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
         {plan.title}
       </p>
