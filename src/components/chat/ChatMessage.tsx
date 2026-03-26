@@ -120,6 +120,9 @@ export function ChatMessage({
             {rc.type === "chart" && <ChatChart chartData={rc.data} />}
           </div>
         ))}
+
+        {/* Debug panel */}
+        {debugLogs && debugLogs.length > 0 && !isUser && <DebugPanel logs={debugLogs} />}
       </div>
     </div>
   );
