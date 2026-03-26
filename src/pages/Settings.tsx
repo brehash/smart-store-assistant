@@ -2,14 +2,13 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Store, Save, Trash2, CheckCircle2, XCircle, Globe, Key, ListChecks, Loader2 } from "lucide-react";
+import { Store, Save, Trash2, CheckCircle2, XCircle, Globe, Key, ListChecks, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface OrderStatus {
@@ -18,10 +17,9 @@ interface OrderStatus {
   total: number;
 }
 
-export default function Settings() {
+export function SettingsContent() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
   const [storeUrl, setStoreUrl] = useState("https://kspices.ro");
   const [consumerKey, setConsumerKey] = useState("");
   const [consumerSecret, setConsumerSecret] = useState("");
@@ -61,7 +59,6 @@ export default function Settings() {
         setOpenaiApiKey(data.openai_api_key || "");
         const statuses = (data as any).order_statuses as string[] | undefined;
         if (statuses?.length) setSelectedStatuses(statuses);
-        // Fetch order statuses if connection exists
         fetchOrderStatuses(data.store_url, data.consumer_key, data.consumer_secret);
       }
     };
@@ -133,7 +130,6 @@ export default function Settings() {
       setTestResult("success");
       if (data?.name) setStoreName(data.name);
       toast({ title: "Connection successful!", description: `Connected to ${data?.name || storeUrl}` });
-      // Fetch order statuses after successful test
       fetchOrderStatuses(storeUrl, consumerKey, consumerSecret);
     } catch {
       setTestResult("error");
@@ -156,144 +152,144 @@ export default function Settings() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-2xl px-4 py-8 space-y-6">
-        <Button variant="ghost" onClick={() => navigate("/")} className="mb-2 gap-2">
-          <ArrowLeft className="h-4 w-4" /> Back to chat
-        </Button>
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold">Settings</h1>
 
-        <h1 className="text-2xl font-bold">Settings</h1>
-
-        {/* WooCommerce Connection */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-primary/10 p-2"><Store className="h-5 w-5 text-primary" /></div>
-              <div>
-                <CardTitle>WooCommerce Connection</CardTitle>
-                <CardDescription>Connect your WooCommerce store to enable AI management</CardDescription>
-              </div>
+      {/* WooCommerce Connection */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-primary/10 p-2"><Store className="h-5 w-5 text-primary" /></div>
+            <div>
+              <CardTitle>WooCommerce Connection</CardTitle>
+              <CardDescription>Connect your WooCommerce store to enable AI management</CardDescription>
             </div>
+          </div>
+          {existingConnection && (
+            <Badge variant="outline" className="w-fit mt-2 gap-1">
+              <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+              Connected{storeName ? ` — ${storeName}` : ""}
+            </Badge>
+          )}
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Store URL</Label>
+            <Input value={storeUrl} onChange={(e) => setStoreUrl(e.target.value)} placeholder="https://yourstore.com" />
+          </div>
+          <div className="space-y-2">
+            <Label>Consumer Key</Label>
+            <Input value={consumerKey} onChange={(e) => setConsumerKey(e.target.value)} placeholder="ck_..." type="password" />
+          </div>
+          <div className="space-y-2">
+            <Label>Consumer Secret</Label>
+            <Input value={consumerSecret} onChange={(e) => setConsumerSecret(e.target.value)} placeholder="cs_..." type="password" />
+          </div>
+          <div className="flex gap-2 pt-2">
+            <Button onClick={handleTest} variant="outline" disabled={testing || !storeUrl || !consumerKey || !consumerSecret}>
+              {testing ? "Testing..." : "Test Connection"}
+              {testResult === "success" && <CheckCircle2 className="ml-1.5 h-4 w-4 text-emerald-500" />}
+              {testResult === "error" && <XCircle className="ml-1.5 h-4 w-4 text-destructive" />}
+            </Button>
+            <Button onClick={handleSave} disabled={saving || !storeUrl || !consumerKey || !consumerSecret} className="gap-1.5">
+              <Save className="h-4 w-4" /> {saving ? "Saving..." : "Save"}
+            </Button>
             {existingConnection && (
-              <Badge variant="outline" className="w-fit mt-2 gap-1">
-                <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                Connected{storeName ? ` — ${storeName}` : ""}
-              </Badge>
+              <Button onClick={handleDelete} variant="destructive" size="icon"><Trash2 className="h-4 w-4" /></Button>
             )}
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>Store URL</Label>
-              <Input value={storeUrl} onChange={(e) => setStoreUrl(e.target.value)} placeholder="https://yourstore.com" />
-            </div>
-            <div className="space-y-2">
-              <Label>Consumer Key</Label>
-              <Input value={consumerKey} onChange={(e) => setConsumerKey(e.target.value)} placeholder="ck_..." type="password" />
-            </div>
-            <div className="space-y-2">
-              <Label>Consumer Secret</Label>
-              <Input value={consumerSecret} onChange={(e) => setConsumerSecret(e.target.value)} placeholder="cs_..." type="password" />
-            </div>
-            <div className="flex gap-2 pt-2">
-              <Button onClick={handleTest} variant="outline" disabled={testing || !storeUrl || !consumerKey || !consumerSecret}>
-                {testing ? "Testing..." : "Test Connection"}
-                {testResult === "success" && <CheckCircle2 className="ml-1.5 h-4 w-4 text-emerald-500" />}
-                {testResult === "error" && <XCircle className="ml-1.5 h-4 w-4 text-destructive" />}
-              </Button>
-              <Button onClick={handleSave} disabled={saving || !storeUrl || !consumerKey || !consumerSecret} className="gap-1.5">
-                <Save className="h-4 w-4" /> {saving ? "Saving..." : "Save"}
-              </Button>
-              {existingConnection && (
-                <Button onClick={handleDelete} variant="destructive" size="icon"><Trash2 className="h-4 w-4" /></Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+          </div>
+        </CardContent>
+      </Card>
 
-        {/* Order Status Filter */}
-        {orderStatuses.length > 0 && (
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-primary/10 p-2"><ListChecks className="h-5 w-5 text-primary" /></div>
-                <div>
-                  <CardTitle>Default Order Statuses</CardTitle>
-                  <CardDescription>Select which order statuses to include by default in queries</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {loadingStatuses ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Loading statuses...
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  {orderStatuses.map((status) => (
-                    <label key={status.slug} className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 cursor-pointer hover:bg-accent/50 transition-colors">
-                      <Checkbox
-                        checked={selectedStatuses.includes(status.slug)}
-                        onCheckedChange={() => toggleStatus(status.slug)}
-                      />
-                      <span className="text-sm flex-1">{status.name}</span>
-                      <span className="text-xs text-muted-foreground">{status.total}</span>
-                    </label>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Language */}
+      {/* Order Status Filter */}
+      {orderStatuses.length > 0 && (
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-primary/10 p-2"><Globe className="h-5 w-5 text-primary" /></div>
+              <div className="rounded-lg bg-primary/10 p-2"><ListChecks className="h-5 w-5 text-primary" /></div>
               <div>
-                <CardTitle>AI Response Language</CardTitle>
-                <CardDescription>Choose the language for AI responses and pipeline labels</CardDescription>
+                <CardTitle>Default Order Statuses</CardTitle>
+                <CardDescription>Select which order statuses to include by default in queries</CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <Select value={responseLanguage} onValueChange={setResponseLanguage}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {LANGUAGES.map((lang) => (
-                  <SelectItem key={lang} value={lang}>{lang}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </CardContent>
-        </Card>
-
-        {/* OpenAI Key */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-primary/10 p-2"><Key className="h-5 w-5 text-primary" /></div>
-              <div>
-                <CardTitle>OpenAI API Key</CardTitle>
-                <CardDescription>Optional — uses your own OpenAI key with gpt-4o-mini. Leave blank to use the default AI.</CardDescription>
+            {loadingStatuses ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading statuses...
               </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label>API Key</Label>
-              <Input value={openaiApiKey} onChange={(e) => setOpenaiApiKey(e.target.value)} placeholder="sk-..." type="password" />
-            </div>
-            <p className="text-xs text-muted-foreground">When set, all chat requests will be routed to OpenAI directly using model <code className="text-xs">gpt-4o-mini</code>.</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {orderStatuses.map((status) => (
+                  <label key={status.slug} className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 cursor-pointer hover:bg-accent/50 transition-colors">
+                    <Checkbox
+                      checked={selectedStatuses.includes(status.slug)}
+                      onCheckedChange={() => toggleStatus(status.slug)}
+                    />
+                    <span className="text-sm flex-1">{status.name}</span>
+                    <span className="text-xs text-muted-foreground">{status.total}</span>
+                  </label>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
+      )}
 
-        <div className="flex justify-end">
-          <Button onClick={handleSave} disabled={saving || !storeUrl || !consumerKey || !consumerSecret} className="gap-1.5">
-            <Save className="h-4 w-4" /> {saving ? "Saving all settings..." : "Save All Settings"}
-          </Button>
-        </div>
+      {/* Language */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-primary/10 p-2"><Globe className="h-5 w-5 text-primary" /></div>
+            <div>
+              <CardTitle>AI Response Language</CardTitle>
+              <CardDescription>Choose the language for AI responses and pipeline labels</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Select value={responseLanguage} onValueChange={setResponseLanguage}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {LANGUAGES.map((lang) => (
+                <SelectItem key={lang} value={lang}>{lang}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+
+      {/* OpenAI Key */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-primary/10 p-2"><Key className="h-5 w-5 text-primary" /></div>
+            <div>
+              <CardTitle>OpenAI API Key</CardTitle>
+              <CardDescription>Optional — uses your own OpenAI key with gpt-4o-mini. Leave blank to use the default AI.</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>API Key</Label>
+            <Input value={openaiApiKey} onChange={(e) => setOpenaiApiKey(e.target.value)} placeholder="sk-..." type="password" />
+          </div>
+          <p className="text-xs text-muted-foreground">When set, all chat requests will be routed to OpenAI directly using model <code className="text-xs">gpt-4o-mini</code>.</p>
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-end">
+        <Button onClick={handleSave} disabled={saving || !storeUrl || !consumerKey || !consumerSecret} className="gap-1.5">
+          <Save className="h-4 w-4" /> {saving ? "Saving all settings..." : "Save All Settings"}
+        </Button>
       </div>
     </div>
   );
+}
+
+// Default export redirects to home with settings param
+export default function Settings() {
+  // This page is no longer used directly; redirect handled in App.tsx
+  return null;
 }
