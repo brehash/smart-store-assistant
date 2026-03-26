@@ -246,6 +246,82 @@ interface SemanticStep {
   details?: string;
 }
 
+function generateReasoningBefore(toolName: string, args: any): string {
+  switch (toolName) {
+    case "search_products":
+      return `Looking up products matching '${args.search || ""}' in catalog...`;
+    case "get_product":
+      return `Fetching full details for product #${args.product_id}...`;
+    case "search_orders": {
+      const parts: string[] = [];
+      if (args.search) parts.push(`matching '${args.search}'`);
+      if (args.status) parts.push(`with status '${args.status}'`);
+      if (args.after || args.before) parts.push(`in date range`);
+      return `Searching orders ${parts.join(" ") || ""}...`;
+    }
+    case "get_sales_report":
+      return `Pulling sales data${args.date_min ? ` from ${args.date_min} to ${args.date_max}` : ""}...`;
+    case "compare_sales":
+      return `Comparing ${args.period_a_label || "Period A"} vs ${args.period_b_label || "Period B"}...`;
+    case "get_product_sales":
+      return `Fetching sales history for product #${args.product_id} over last ${args.days || 60} days...`;
+    case "create_order":
+      return `Preparing new order with ${args.line_items?.length || 0} items...`;
+    case "update_order_status":
+      return `Updating order #${args.order_id} to '${args.status}'...`;
+    case "save_preference":
+      return `Saving preference: "${args.key}"...`;
+    default:
+      return `Running ${toolName}...`;
+  }
+}
+
+function generateReasoningAfter(toolName: string, result: any): string | null {
+  try {
+    switch (toolName) {
+      case "search_products": {
+        if (Array.isArray(result)) {
+          const count = result.length;
+          if (count === 0) return "No products found.";
+          const first = result[0];
+          return `Found ${count} product${count > 1 ? "s" : ""}. ${first.name ? `First: ${first.name}` : ""}${first.stock_quantity != null ? ` (stock: ${first.stock_quantity})` : ""}`;
+        }
+        return null;
+      }
+      case "get_product": {
+        if (result?.name) return `Got: ${result.name}${result.stock_quantity != null ? ` — ${result.stock_quantity} in stock` : ""}`;
+        return null;
+      }
+      case "search_orders": {
+        if (Array.isArray(result)) return `Found ${result.length} order${result.length !== 1 ? "s" : ""}.`;
+        return null;
+      }
+      case "get_sales_report": {
+        if (result?.orderCount != null) return `${result.orderCount} orders, ${result.totalRevenue} lei total revenue.`;
+        return null;
+      }
+      case "get_product_sales": {
+        if (result?.total_units_sold != null) {
+          return `${result.total_units_sold} units sold over ${result.days_analyzed} days. Burn rate: ${result.daily_burn_rate}/day.`;
+        }
+        return null;
+      }
+      case "compare_sales": {
+        if (result?.change_revenue != null) {
+          const dir = result.change_revenue >= 0 ? "+" : "";
+          return `Revenue difference: ${dir}${result.change_revenue} lei, orders difference: ${result.change_orders >= 0 ? "+" : ""}${result.change_orders}.`;
+        }
+        return null;
+      }
+      default:
+        return null;
+    }
+  } catch {
+    return null;
+  }
+}
+
+
 function generateSemanticPlan(toolCalls: any[]): SemanticStep[] {
   const steps: SemanticStep[] = [];
 
@@ -852,6 +928,9 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                   ? semanticSteps[semanticIdx].details
                   : undefined;
 
+                // Emit reasoning before tool call
+                sendSSE({ type: "reasoning", text: generateReasoningBefore(toolName, args) });
+
                 sendSSE({ type: "pipeline_step", stepIndex, title: currentSemanticTitle, status: "running", details: currentSemanticDetails, toolName, args });
 
                 if (WRITE_TOOLS.has(toolName) && !approvalResponse) {
@@ -898,6 +977,10 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                 // Emit debug event with raw API response and request URI
                 sendSSE({ type: "debug_api", toolName, args, result, requestUri });
 
+                // Emit reasoning after tool result
+                const reasoningAfter = generateReasoningAfter(toolName, result);
+                if (reasoningAfter) sendSSE({ type: "reasoning", text: reasoningAfter });
+
                 if (richContent) {
                   sendSSE({ type: "rich_content", ...richContent });
                 }
@@ -934,6 +1017,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
               for (let i = 0; i < semanticSteps.length; i++) {
                 const ss = semanticSteps[i];
                 if (ss.title === "Building dashboard" || ss.title === "Rendering results" || ss.title === "Building inventory report" || ss.title === "Calculating burn rate") {
+                  sendSSE({ type: "reasoning", text: `${ss.title}...` });
                   sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "running" });
                   sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "done" });
                   stepIndex++;

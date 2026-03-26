@@ -9,6 +9,7 @@ import { ApprovalCard } from "./ApprovalCard";
 import { QuestionCard } from "./QuestionCard";
 import { DebugPanel, type DebugEntry } from "./DebugPanel";
 import { DashboardView } from "./DashboardView";
+import { ReasoningBubbles, type ReasoningEntry } from "./ReasoningBubbles";
 
 export interface RichContent {
   type: "products" | "orders" | "chart" | "confirmation" | "pipeline" | "dashboard";
@@ -39,13 +40,14 @@ interface ChatMessageProps {
   approvals?: ApprovalRequest[];
   questions?: QuestionRequest[];
   debugLogs?: DebugEntry[];
+  reasoningLogs?: ReasoningEntry[];
   onApproval?: (approval: ApprovalRequest, action: "approve" | "skip" | "edit", editedText?: string) => void;
   onQuestionAnswer?: (question: QuestionRequest, answer: string) => void;
 }
 
 export function ChatMessage({
   role, content, richContents, isStreaming,
-  pipeline, approvals, questions, debugLogs,
+  pipeline, approvals, questions, debugLogs, reasoningLogs,
   onApproval, onQuestionAnswer,
 }: ChatMessageProps) {
   const isUser = role === "user";
@@ -62,6 +64,11 @@ export function ChatMessage({
       </div>
 
       <div className={cn("flex max-w-[80%] flex-col gap-2", isUser ? "items-end" : "items-start")}>
+        {/* Reasoning bubbles (above pipeline) */}
+        {reasoningLogs && reasoningLogs.length > 0 && !isUser && (
+          <ReasoningBubbles entries={reasoningLogs} isStreaming={!!isStreaming} />
+        )}
+
         {/* Pipeline plan */}
         {pipeline && !isUser && <PipelinePlan plan={pipeline} />}
 

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import type { PipelinePlanData } from "@/components/chat/PipelinePlan";
 import type { PipelineStepData } from "@/components/chat/PipelineStep";
 import type { DebugEntry } from "@/components/chat/DebugPanel";
+import type { ReasoningEntry } from "@/components/chat/ReasoningBubbles";
 
 interface Message {
   id?: string;
@@ -21,6 +22,7 @@ interface Message {
   approvals?: ApprovalRequest[];
   questions?: QuestionRequest[];
   debugLogs?: DebugEntry[];
+  reasoningLogs?: ReasoningEntry[];
 }
 
 export default function Index() {
@@ -68,6 +70,7 @@ export default function Index() {
             debugLogs: meta?.debugLogs || [],
             approvals: meta?.approvals || [],
             questions: meta?.questions || [],
+            reasoningLogs: meta?.reasoningLogs || [],
           };
         }));
         scrollToBottom();
@@ -124,6 +127,7 @@ export default function Index() {
     let debugEntries: DebugEntry[] = [];
     let approvalsList: ApprovalRequest[] = [];
     let questionsList: QuestionRequest[] = [];
+    let reasoningEntries: ReasoningEntry[] = [];
 
     await streamChat({
       messages: [...messages, userMsg].map((m) => ({ role: m.role, content: m.content })),
@@ -215,6 +219,17 @@ export default function Index() {
             ...m,
             debugLogs: [...(m.debugLogs || []), entry],
           }));
+        } else if (event.type === "reasoning") {
+          const rEntry: ReasoningEntry = {
+            text: event.text || "",
+            timestamp: Date.now(),
+          };
+          reasoningEntries = [...reasoningEntries, rEntry];
+          updateLastAssistant((m) => ({
+            ...m,
+            reasoningLogs: [...(m.reasoningLogs || []), rEntry],
+          }));
+          scrollToBottom();
         }
       },
       onDone: async () => {
@@ -225,6 +240,7 @@ export default function Index() {
         if (debugEntries.length) metadata.debugLogs = debugEntries;
         if (approvalsList.length) metadata.approvals = approvalsList;
         if (questionsList.length) metadata.questions = questionsList;
+        if (reasoningEntries.length) metadata.reasoningLogs = reasoningEntries;
         await supabase.from("messages").insert({
           conversation_id: convId!,
           user_id: user.id,
@@ -418,6 +434,7 @@ export default function Index() {
                   approvals={msg.approvals}
                   questions={msg.questions}
                   debugLogs={msg.debugLogs}
+                  reasoningLogs={msg.reasoningLogs}
                   onApproval={handleApproval}
                   onQuestionAnswer={handleQuestionAnswer}
                 />
