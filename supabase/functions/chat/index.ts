@@ -562,7 +562,12 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                   continue;
                 }
 
-                const { result, richContent, requestUri } = await executeTool(toolName, args, supabaseUrl, authHeader, userId, supabase, defaultOrderStatuses);
+                // Normalize dates for sales tools
+                const normalizedArgs = toolName === "get_sales_report" ? normalizeSalesReportDates(args)
+                  : toolName === "compare_sales" ? normalizeCompareSalesDates(args)
+                  : args;
+
+                const { result, richContent, requestUri } = await executeTool(toolName, normalizedArgs, supabaseUrl, authHeader, userId, supabase, defaultOrderStatuses);
 
                 // Emit debug event with raw API response and request URI
                 sendSSE({ type: "debug_api", toolName, args, result, requestUri });
