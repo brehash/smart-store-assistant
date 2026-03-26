@@ -21,6 +21,7 @@ export type Database = {
           title: string
           updated_at: string
           user_id: string
+          view_id: string | null
         }
         Insert: {
           created_at?: string
@@ -28,6 +29,7 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id: string
+          view_id?: string | null
         }
         Update: {
           created_at?: string
@@ -35,8 +37,17 @@ export type Database = {
           title?: string
           updated_at?: string
           user_id?: string
+          view_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "conversations_view_id_fkey"
+            columns: ["view_id"]
+            isOneToOne: false
+            referencedRelation: "views"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       messages: {
         Row: {
@@ -44,6 +55,7 @@ export type Database = {
           conversation_id: string
           created_at: string
           id: string
+          metadata: Json | null
           rich_content: Json | null
           role: string
           user_id: string
@@ -53,6 +65,7 @@ export type Database = {
           conversation_id: string
           created_at?: string
           id?: string
+          metadata?: Json | null
           rich_content?: Json | null
           role: string
           user_id: string
@@ -62,6 +75,7 @@ export type Database = {
           conversation_id?: string
           created_at?: string
           id?: string
+          metadata?: Json | null
           rich_content?: Json | null
           role?: string
           user_id?: string
@@ -133,6 +147,30 @@ export type Database = {
         }
         Relationships: []
       }
+      views: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       woo_connections: {
         Row: {
           consumer_key: string
@@ -141,6 +179,7 @@ export type Database = {
           id: string
           is_active: boolean
           openai_api_key: string | null
+          order_statuses: string[]
           response_language: string
           store_name: string | null
           store_url: string
@@ -154,6 +193,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           openai_api_key?: string | null
+          order_statuses?: string[]
           response_language?: string
           store_name?: string | null
           store_url: string
@@ -167,6 +207,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           openai_api_key?: string | null
+          order_statuses?: string[]
           response_language?: string
           store_name?: string | null
           store_url?: string
