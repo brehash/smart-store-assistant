@@ -141,10 +141,8 @@ const TOOLS = [
   },
 ];
 
-// Tools that require user approval before execution
 const WRITE_TOOLS = new Set(["create_order", "update_order_status"]);
 
-// Human-readable labels for tool names
 const TOOL_LABELS: Record<string, string> = {
   search_products: "Searching products",
   get_product: "Getting product details",
@@ -231,7 +229,6 @@ async function executeTool(
         const date = o.date_created?.split("T")[0] || "unknown";
         byDate[date] = (byDate[date] || 0) + parseFloat(o.total || "0");
       });
-      // Fill missing dates
       if (startDate && endDate) {
         const cur = new Date(startDate);
         const end = new Date(endDate);
@@ -305,33 +302,21 @@ serve(async (req) => {
 
     const { messages, conversationId, approvalResponse } = await req.json();
 
-    // Load user preferences
     const { data: prefs } = await supabase.from("user_preferences").select("preference_type, key, value").eq("user_id", userId);
     let prefsContext = "";
     if (prefs?.length) {
       prefsContext = "\n\nUser's saved preferences/aliases:\n" + prefs.map((p: any) => `- ${p.preference_type}: "${p.key}" → ${JSON.stringify(p.value)}`).join("\n");
     }
 
-    // Load user's woo_connections settings (language + openai key)
     const { data: connData } = await supabase.from("woo_connections").select("response_language, openai_api_key").eq("user_id", userId).eq("is_active", true).maybeSingle();
     const responseLanguage = connData?.response_language || "English";
     const userOpenAIKey = connData?.openai_api_key || null;
 
     const languageInstruction = responseLanguage !== "English"
-      ? `\n\nIMPORTANT: Always respond in ${responseLanguage}. All pipeline step labels, plan titles, confirmations, and explanations must also be in ${responseLanguage}.`
+      ? `\n\nIMPORTANT: Always respond in ${responseLanguage}. All plan titles, confirmations, and explanations must also be in ${responseLanguage}.`
       : "";
 
     const systemPrompt = `You are a WooCommerce store assistant. You help manage their online store through conversation.${languageInstruction}
-
-IMPORTANT RULES FOR TOOL EXECUTION:
-1. Before executing actions, output a plan in this exact format:
-\`\`\`pipeline
-{"title": "Plan Title", "steps": ["Step 1", "Step 2", "Step 3"]}
-\`\`\`
-2. After outputting the plan, you MUST execute ALL steps by calling the appropriate tools in sequence. Do NOT stop after the first tool call.
-3. Each tool call result will be provided back to you. Continue calling tools until all planned steps are complete.
-4. Only after ALL tools have been called, provide your final summary text response.
-5. If a step doesn't require a tool call (e.g., "communicate result"), still complete all tool-based steps first.
 
 Your capabilities:
 - Search and browse products (show them visually with cards)
@@ -350,7 +335,6 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY && !userOpenAIKey) throw new Error("No AI API key configured");
 
-    // Determine AI provider
     const useOpenAI = !!userOpenAIKey;
     const aiBaseUrl = useOpenAI ? "https://api.openai.com/v1/chat/completions" : "https://ai.gateway.lovable.dev/v1/chat/completions";
     const aiAuthHeader = useOpenAI ? `Bearer ${userOpenAIKey}` : `Bearer ${LOVABLE_API_KEY}`;
@@ -368,6 +352,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
         try {
           let maxIterations = 8;
           let stepIndex = 0;
+          let planSent = false;
 
           while (maxIterations-- > 0) {
             const aiResp = await fetch(aiBaseUrl, {
@@ -387,28 +372,17 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
             if (!choice) break;
 
             const content = choice.message?.content || "";
-            const pipelineBlockMatch = content.match(/```pipeline\s*\n([\s\S]*?)\n```/);
-            const jsonPlanMatch = !pipelineBlockMatch ? content.match(/^\s*(\{\s*"title"\s*:\s*"[\s\S]*?"\s*,\s*"steps"\s*:\s*\[[\s\S]*?\]\s*\})\s*$/) : null;
-            const planPayload = pipelineBlockMatch?.[1] || jsonPlanMatch?.[1];
-            const cleanContent = content
-              .replace(/```pipeline\s*\n[\s\S]*?\n```\s*/g, "")
-              .replace(/^\s*\{\s*"title"\s*:\s*"[\s\S]*?"\s*,\s*"steps"\s*:\s*\[[\s\S]*?\]\s*\}\s*/g, "")
-              .trim();
-
-            if (planPayload) {
-              try {
-                const plan = JSON.parse(planPayload);
-                if (plan?.title && Array.isArray(plan?.steps)) {
-                  sendSSE({ type: "pipeline_plan", title: plan.title, steps: plan.steps });
-                }
-              } catch {
-                // ignore malformed plan payloads
-              }
-            }
 
             if (choice.finish_reason === "tool_calls" || choice.message?.tool_calls?.length) {
               const toolCalls = choice.message.tool_calls;
-              aiMessages.push({ ...choice.message, content: cleanContent || null });
+              aiMessages.push({ ...choice.message, content: content || null });
+
+              // Auto-generate pipeline plan from tool calls
+              if (!planSent) {
+                const steps = toolCalls.map((tc: any) => TOOL_LABELS[tc.function.name] || tc.function.name);
+                sendSSE({ type: "pipeline_plan", title: "Execution Plan", steps });
+                planSent = true;
+              }
 
               for (const tc of toolCalls) {
                 const args = JSON.parse(tc.function.arguments);
@@ -441,6 +415,9 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
 
                 const { result, richContent } = await executeTool(toolName, args, supabaseUrl, authHeader, userId, supabase);
 
+                // Emit debug event with raw API response
+                sendSSE({ type: "debug_api", toolName, args, result });
+
                 if (richContent) {
                   sendSSE({ type: "rich_content", ...richContent });
                 }
@@ -455,8 +432,8 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
 
             sendSSE({ type: "pipeline_complete", lastStepIndex: stepIndex });
 
-            if (cleanContent) {
-              sendSSE({ choices: [{ delta: { content: cleanContent } }] });
+            if (content) {
+              sendSSE({ choices: [{ delta: { content } }] });
             }
             break;
           }

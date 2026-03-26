@@ -7,6 +7,7 @@ import { ChatChart } from "./ChatChart";
 import { PipelinePlan, type PipelinePlanData } from "./PipelinePlan";
 import { ApprovalCard } from "./ApprovalCard";
 import { QuestionCard } from "./QuestionCard";
+import { DebugPanel, type DebugEntry } from "./DebugPanel";
 
 export interface RichContent {
   type: "products" | "orders" | "chart" | "confirmation" | "pipeline";
@@ -36,13 +37,14 @@ interface ChatMessageProps {
   pipeline?: PipelinePlanData | null;
   approvals?: ApprovalRequest[];
   questions?: QuestionRequest[];
+  debugLogs?: DebugEntry[];
   onApproval?: (approval: ApprovalRequest, action: "approve" | "skip" | "edit", editedText?: string) => void;
   onQuestionAnswer?: (question: QuestionRequest, answer: string) => void;
 }
 
 export function ChatMessage({
   role, content, richContents, isStreaming,
-  pipeline, approvals, questions,
+  pipeline, approvals, questions, debugLogs,
   onApproval, onQuestionAnswer,
 }: ChatMessageProps) {
   const isUser = role === "user";
@@ -118,6 +120,9 @@ export function ChatMessage({
             {rc.type === "chart" && <ChatChart chartData={rc.data} />}
           </div>
         ))}
+
+        {/* Debug panel */}
+        {debugLogs && debugLogs.length > 0 && !isUser && <DebugPanel logs={debugLogs} />}
       </div>
     </div>
   );

@@ -3,7 +3,7 @@ type Msg = { role: "user" | "assistant"; content: string };
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
 export interface PipelineEvent {
-  type: "pipeline_plan" | "pipeline_step" | "pipeline_complete" | "approval_request" | "question_request";
+  type: "pipeline_plan" | "pipeline_step" | "pipeline_complete" | "approval_request" | "question_request" | "debug_api";
   title?: string;
   steps?: string[];
   stepIndex?: number;
@@ -16,6 +16,7 @@ export interface PipelineEvent {
   question?: string;
   options?: string[];
   toolCallId?: string;
+  result?: any;
 }
 
 export async function streamChat({
@@ -79,7 +80,7 @@ export async function streamChat({
           const parsed = JSON.parse(jsonStr);
 
           // Pipeline events
-          if (parsed.type === "pipeline_plan" || parsed.type === "pipeline_step" || parsed.type === "pipeline_complete" || parsed.type === "approval_request" || parsed.type === "question_request") {
+          if (parsed.type === "pipeline_plan" || parsed.type === "pipeline_step" || parsed.type === "pipeline_complete" || parsed.type === "approval_request" || parsed.type === "question_request" || parsed.type === "debug_api") {
             onPipelineEvent?.(parsed);
             continue;
           }

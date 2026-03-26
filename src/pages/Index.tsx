@@ -10,6 +10,7 @@ import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { PipelinePlanData } from "@/components/chat/PipelinePlan";
 import type { PipelineStepData } from "@/components/chat/PipelineStep";
+import type { DebugEntry } from "@/components/chat/DebugPanel";
 
 interface Message {
   id?: string;
@@ -19,6 +20,7 @@ interface Message {
   pipeline?: PipelinePlanData | null;
   approvals?: ApprovalRequest[];
   questions?: QuestionRequest[];
+  debugLogs?: DebugEntry[];
 }
 
 export default function Index() {
@@ -127,10 +129,14 @@ export default function Index() {
           scrollToBottom();
         } else if (event.type === "pipeline_step") {
           updateLastAssistant((m) => {
-            if (!m.pipeline) return m;
-            const steps = [...m.pipeline.steps];
-            // Find step by index or add new one
-            if (event.stepIndex !== undefined && event.stepIndex < steps.length) {
+            // Auto-create pipeline if step arrives before plan
+            const pipeline = m.pipeline || { title: "Execution Plan", steps: [] };
+            const steps = [...pipeline.steps];
+            if (event.stepIndex !== undefined) {
+              // Extend steps array if needed
+              while (steps.length <= event.stepIndex) {
+                steps.push({ id: `step-${steps.length}`, title: "...", status: "pending" as const });
+              }
               steps[event.stepIndex] = {
                 ...steps[event.stepIndex],
                 title: event.title || steps[event.stepIndex].title,
@@ -138,7 +144,7 @@ export default function Index() {
                 details: event.details,
               };
             }
-            return { ...m, pipeline: { ...m.pipeline, steps } };
+            return { ...m, pipeline: { ...pipeline, steps } };
           });
           scrollToBottom();
         } else if (event.type === "approval_request") {
@@ -174,6 +180,16 @@ export default function Index() {
             questions: [...(m.questions || []), question],
           }));
           scrollToBottom();
+        } else if (event.type === "debug_api") {
+          const entry: DebugEntry = {
+            toolName: event.toolName || "",
+            args: event.args,
+            result: event.result,
+          };
+          updateLastAssistant((m) => ({
+            ...m,
+            debugLogs: [...(m.debugLogs || []), entry],
+          }));
         }
       },
       onDone: async () => {
@@ -353,6 +369,7 @@ export default function Index() {
                   pipeline={msg.pipeline}
                   approvals={msg.approvals}
                   questions={msg.questions}
+                  debugLogs={msg.debugLogs}
                   onApproval={handleApproval}
                   onQuestionAnswer={handleQuestionAnswer}
                 />
