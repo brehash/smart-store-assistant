@@ -481,7 +481,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                   continue;
                 }
 
-                const { result, richContent, requestUri } = await executeTool(toolName, args, supabaseUrl, authHeader, userId, supabase);
+                const { result, richContent, requestUri } = await executeTool(toolName, args, supabaseUrl, authHeader, userId, supabase, defaultOrderStatuses);
 
                 // Emit debug event with raw API response and request URI
                 sendSSE({ type: "debug_api", toolName, args, result, requestUri });
