@@ -600,7 +600,11 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
 
             if (choice.finish_reason === "tool_calls" || choice.message?.tool_calls?.length) {
               const toolCalls = choice.message.tool_calls;
-              aiMessages.push({ ...choice.message, content: content || null });
+              aiMessages.push({
+                role: "assistant",
+                content: content || "",
+                tool_calls: choice.message.tool_calls,
+              });
 
               // Auto-generate pipeline plan from tool calls
               if (!planSent) {
