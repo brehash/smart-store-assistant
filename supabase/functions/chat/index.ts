@@ -288,6 +288,13 @@ function generateSemanticPlan(toolCalls: any[]): SemanticStep[] {
         steps.push({ title: "Searching orders", details: args.search || args.status || undefined });
         steps.push({ title: "Rendering results" });
         break;
+      case "get_product_sales": {
+        const daysVal = args.days || 60;
+        steps.push({ title: "Analyzing sales velocity", details: `Product #${args.product_id} — last ${daysVal} days` });
+        steps.push({ title: "Calculating burn rate" });
+        steps.push({ title: "Building inventory report" });
+        break;
+      }
       case "create_order":
       case "update_order_status":
         steps.push({ title: "Preparing order action" });
