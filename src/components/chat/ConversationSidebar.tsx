@@ -162,7 +162,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
     <div
       key={c.id}
       className={cn(
-        "group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors cursor-pointer",
+        "group relative flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors cursor-pointer",
         activeId === c.id
           ? "bg-sidebar-accent text-sidebar-accent-foreground"
           : "hover:bg-sidebar-accent/50 text-sidebar-foreground/70"
@@ -196,8 +196,12 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
       {/* Context menu - visible on hover */}
       {editingConvId !== c.id && (
         <DropdownMenu>
-          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-            <button className="shrink-0 opacity-0 group-hover:opacity-100 hover:text-sidebar-foreground transition-opacity p-0.5 rounded hover:bg-sidebar-accent">
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              onClick={(e) => e.stopPropagation()}
+              className="shrink-0 h-5 w-5 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:text-sidebar-foreground transition-opacity rounded hover:bg-sidebar-accent"
+            >
               <MoreHorizontal className="h-3.5 w-3.5" />
             </button>
           </DropdownMenuTrigger>
@@ -266,8 +270,8 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
           <div>
             <div className="flex items-center justify-between px-2 py-1">
               <span className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">Views</span>
-              <button onClick={handleCreateView} className="p-0.5 rounded hover:bg-sidebar-accent/50 text-sidebar-foreground/40 hover:text-sidebar-foreground transition-colors" title="New View">
-                <FolderPlus className="h-3.5 w-3.5" />
+              <button onClick={handleCreateView} className="p-1 rounded-md hover:bg-sidebar-accent/50 text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors" title="New View">
+                <Plus className="h-4 w-4" />
               </button>
             </div>
             <div className="space-y-0.5">
