@@ -82,7 +82,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onViewIdChange 
 
   const handleRenameView = async (viewId: string) => {
     if (!editingName.trim()) return;
-    await supabase.from("views").update({ name: editingName.trim() }).eq("id", viewId);
+    await (supabase as any).from("views").update({ name: editingName.trim() }).eq("id", viewId);
     setViews((prev) => prev.map((v) => v.id === viewId ? { ...v, name: editingName.trim() } : v));
     setEditingViewId(null);
   };
