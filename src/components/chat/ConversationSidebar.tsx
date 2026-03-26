@@ -89,14 +89,13 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onViewIdChange 
 
   const handleDeleteView = async (e: React.MouseEvent, viewId: string) => {
     e.stopPropagation();
-    await supabase.from("views").delete().eq("id", viewId);
+    await (supabase as any).from("views").delete().eq("id", viewId);
     setViews((prev) => prev.filter((v) => v.id !== viewId));
-    // Conversations with this view_id will have view_id set to null via ON DELETE SET NULL
     setConversations((prev) => prev.map((c) => c.view_id === viewId ? { ...c, view_id: null } : c));
   };
 
   const handleMoveToView = async (convId: string, viewId: string | null) => {
-    await supabase.from("conversations").update({ view_id: viewId }).eq("id", convId);
+    await supabase.from("conversations").update({ view_id: viewId } as any).eq("id", convId);
     setConversations((prev) => prev.map((c) => c.id === convId ? { ...c, view_id: viewId } : c));
     if (convId === activeId) onViewIdChange?.(viewId);
   };
