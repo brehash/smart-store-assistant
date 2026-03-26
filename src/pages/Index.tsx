@@ -116,6 +116,7 @@ export default function Index() {
       messages: [...messages, userMsg].map((m) => ({ role: m.role, content: m.content })),
       conversationId: convId,
       accessToken: session.access_token,
+      viewId,
       onDelta: (chunk) => {
         assistantContent += chunk;
         updateLastAssistant((m) => ({ ...m, content: assistantContent }));
