@@ -50,11 +50,20 @@ export default function Index() {
       if (data) {
         setMessages(data.map((m) => {
           const meta = (m as any).metadata as any;
+          // Normalize rich_content: could be a single object or an array
+          let richContents: RichContent[] = [];
+          if (m.rich_content) {
+            if (Array.isArray(m.rich_content)) {
+              richContents = m.rich_content as unknown as RichContent[];
+            } else {
+              richContents = [m.rich_content as unknown as RichContent];
+            }
+          }
           return {
             id: m.id,
             role: m.role as "user" | "assistant",
             content: m.content,
-            richContents: m.rich_content ? [m.rich_content as unknown as RichContent] : [],
+            richContents,
             pipeline: meta?.pipeline || null,
             debugLogs: meta?.debugLogs || [],
             approvals: meta?.approvals || [],
@@ -111,6 +120,10 @@ export default function Index() {
 
     let assistantContent = "";
     let richContents: RichContent[] = [];
+    let pipelineData: PipelinePlanData | null = null;
+    let debugEntries: DebugEntry[] = [];
+    let approvalsList: ApprovalRequest[] = [];
+    let questionsList: QuestionRequest[] = [];
 
     await streamChat({
       messages: [...messages, userMsg].map((m) => ({ role: m.role, content: m.content })),
@@ -133,16 +146,14 @@ export default function Index() {
             title: s,
             status: "pending" as const,
           }));
-          const plan: PipelinePlanData = { title: event.title || "Plan", steps: planSteps };
-          updateLastAssistant((m) => ({ ...m, pipeline: plan }));
+          pipelineData = { title: event.title || "Plan", steps: planSteps };
+          updateLastAssistant((m) => ({ ...m, pipeline: pipelineData }));
           scrollToBottom();
         } else if (event.type === "pipeline_step") {
           updateLastAssistant((m) => {
-            // Auto-create pipeline if step arrives before plan
-            const pipeline = m.pipeline || { title: "Execution Plan", steps: [] };
+            const pipeline = m.pipeline || pipelineData || { title: "Execution Plan", steps: [] };
             const steps = [...pipeline.steps];
             if (event.stepIndex !== undefined) {
-              // Extend steps array if needed
               while (steps.length <= event.stepIndex) {
                 steps.push({ id: `step-${steps.length}`, title: "...", status: "pending" as const });
               }
@@ -153,7 +164,8 @@ export default function Index() {
                 details: event.details,
               };
             }
-            return { ...m, pipeline: { ...pipeline, steps } };
+            pipelineData = { ...pipeline, steps };
+            return { ...m, pipeline: pipelineData };
           });
           scrollToBottom();
         } else if (event.type === "approval_request") {
@@ -164,19 +176,20 @@ export default function Index() {
             args: event.args,
             toolCallId: event.toolCallId || "",
           };
+          approvalsList = [...approvalsList, approval];
           updateLastAssistant((m) => ({
             ...m,
             approvals: [...(m.approvals || []), approval],
           }));
           scrollToBottom();
         } else if (event.type === "pipeline_complete") {
-          // Mark all remaining pending steps as done
           updateLastAssistant((m) => {
             if (!m.pipeline) return m;
             const steps = m.pipeline.steps.map((s) =>
               s.status === "pending" ? { ...s, status: "done" as const } : s
             );
-            return { ...m, pipeline: { ...m.pipeline, steps } };
+            pipelineData = { ...m.pipeline, steps };
+            return { ...m, pipeline: pipelineData };
           });
           scrollToBottom();
         } else if (event.type === "question_request") {
@@ -184,6 +197,7 @@ export default function Index() {
             question: event.question || "",
             options: event.options,
           };
+          questionsList = [...questionsList, question];
           updateLastAssistant((m) => ({
             ...m,
             questions: [...(m.questions || []), question],
@@ -196,6 +210,7 @@ export default function Index() {
             result: event.result,
             requestUri: event.requestUri,
           };
+          debugEntries = [...debugEntries, entry];
           updateLastAssistant((m) => ({
             ...m,
             debugLogs: [...(m.debugLogs || []), entry],
@@ -204,26 +219,20 @@ export default function Index() {
       },
       onDone: async () => {
         setIsStreaming(false);
-        // Capture final state for metadata persistence
-        setMessages((prev) => {
-          const lastMsg = prev[prev.length - 1];
-          if (lastMsg?.role === "assistant" && !lastMsg.id) {
-            const metadata: any = {};
-            if (lastMsg.pipeline) metadata.pipeline = lastMsg.pipeline;
-            if (lastMsg.debugLogs?.length) metadata.debugLogs = lastMsg.debugLogs;
-            if (lastMsg.approvals?.length) metadata.approvals = lastMsg.approvals;
-            if (lastMsg.questions?.length) metadata.questions = lastMsg.questions;
-            supabase.from("messages").insert({
-              conversation_id: convId!,
-              user_id: user.id,
-              role: "assistant",
-              content: lastMsg.content || assistantContent,
-              rich_content: richContents.length ? richContents[0] as any : null,
-              metadata: Object.keys(metadata).length ? metadata : null,
-            } as any);
-          }
-          return prev;
-        });
+        // Persist using local accumulators (not React state)
+        const metadata: any = {};
+        if (pipelineData) metadata.pipeline = pipelineData;
+        if (debugEntries.length) metadata.debugLogs = debugEntries;
+        if (approvalsList.length) metadata.approvals = approvalsList;
+        if (questionsList.length) metadata.questions = questionsList;
+        await supabase.from("messages").insert({
+          conversation_id: convId!,
+          user_id: user.id,
+          role: "assistant",
+          content: assistantContent,
+          rich_content: richContents.length ? richContents as any : null,
+          metadata: Object.keys(metadata).length ? metadata : null,
+        } as any);
       },
       onError: (error) => {
         setIsStreaming(false);

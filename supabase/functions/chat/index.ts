@@ -211,7 +211,7 @@ async function executeTool(
     case "get_sales_report": {
       const params = new URLSearchParams();
       params.set("per_page", "100");
-      params.set("status", defaultOrderStatuses.length ? defaultOrderStatuses.join(",") : "completed,processing");
+      if (defaultOrderStatuses.length) params.set("status", defaultOrderStatuses.join(","));
       let startDate = args.date_min;
       let endDate = args.date_max;
       const now = new Date();
@@ -256,7 +256,7 @@ async function executeTool(
       const fetchPeriod = async (start: string, end: string) => {
         const params = new URLSearchParams();
         params.set("per_page", "100");
-        params.set("status", defaultOrderStatuses.length ? defaultOrderStatuses.join(",") : "completed,processing");
+        if (defaultOrderStatuses.length) params.set("status", defaultOrderStatuses.join(","));
         params.set("after", `${start}T00:00:00`);
         params.set("before", `${end}T23:59:59`);
         const orders = await callWooProxy(supabaseUrl, authHeader, { endpoint: `orders?${params.toString()}` });
@@ -360,6 +360,13 @@ Your capabilities:
 - Create and manage orders
 - Provide sales analytics and insights with charts and dashboards
 - Learn the user's preferences and product aliases
+
+CRITICAL TOOL USAGE RULES — YOU MUST FOLLOW THESE:
+1. When the user asks to search, find, browse, or look up products: you MUST call the search_products tool. NEVER answer with a plain text list of products. The frontend renders product cards from the tool result automatically.
+2. When the user asks about orders, recent orders, or order lookups: you MUST call the search_orders tool.
+3. When the user asks for a sales report, revenue, analytics, or dashboard: you MUST call get_sales_report or compare_sales. After receiving the data you MUST also emit a \`\`\`dashboard code block with cards and charts.
+4. When the user asks to compare periods: you MUST call compare_sales with proper date ranges and then emit a \`\`\`dashboard code block.
+5. NEVER respond with plain text summaries of data that should come from a tool. If data is needed, call the tool first.
 
 MULTI-TOOL EXECUTION:
 - When the user's request requires data from multiple sources (e.g. "create a dashboard comparing this month to last month"), call ALL necessary tools. You can call multiple tools in a single response or across multiple turns. Do not stop after one tool call if more data is needed.
