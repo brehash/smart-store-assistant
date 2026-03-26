@@ -130,7 +130,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
       const payload = {
         store_url: storeUrl, consumer_key: consumerKey, consumer_secret: consumerSecret,
         store_name: storeName, response_language: responseLanguage,
-        openai_api_key: openaiApiKey || null, order_statuses: selectedStatuses,
+        order_statuses: selectedStatuses,
       };
       if (existingConnection) {
         await supabase.from("woo_connections").update(payload as any).eq("id", existingConnection.id);
