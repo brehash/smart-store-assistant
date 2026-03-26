@@ -854,6 +854,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
           sendSSE({ type: "pipeline_step", stepIndex: 0, title: "Understanding request", status: "running" });
 
           while (maxIterations-- > 0) {
+            sendSSE({ type: "reasoning", text: "Thinking..." });
             const aiResp = await fetch(aiBaseUrl, {
               method: "POST",
               headers: { Authorization: aiAuthHeader, "Content-Type": "application/json" },
@@ -1012,6 +1013,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
             }
 
             // Post-tool synthesis: tick remaining semantic steps
+            sendSSE({ type: "reasoning", text: "Preparing your response..." });
             if (planSent && stepIndex > 0) {
               // Mark remaining semantic steps (Building dashboard, Writing explanation)
               for (let i = 0; i < semanticSteps.length; i++) {

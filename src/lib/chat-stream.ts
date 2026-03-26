@@ -62,10 +62,20 @@ export async function streamChat({
     const decoder = new TextDecoder();
     let buffer = "";
     let streamDone = false;
+    let lastActivity = Date.now();
+    const INACTIVITY_TIMEOUT = 120_000; // 120s
 
     while (!streamDone) {
+      // Check for inactivity timeout
+      if (Date.now() - lastActivity > INACTIVITY_TIMEOUT) {
+        reader.cancel();
+        onError("Connection timed out — no data received for 2 minutes. Please try again.");
+        return;
+      }
+
       const { done, value } = await reader.read();
       if (done) break;
+      lastActivity = Date.now();
       buffer += decoder.decode(value, { stream: true });
 
       let newlineIndex: number;

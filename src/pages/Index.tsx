@@ -145,10 +145,11 @@ export default function Index() {
       },
       onPipelineEvent: (event: PipelineEvent) => {
         if (event.type === "pipeline_plan") {
+          const existingSteps = pipelineData?.steps || [];
           const planSteps: PipelineStepData[] = (event.steps || []).map((s, i) => ({
             id: `step-${i}`,
             title: s,
-            status: "pending" as const,
+            status: existingSteps[i]?.status === "done" ? "done" as const : "pending" as const,
           }));
           pipelineData = { title: event.title || "Plan", steps: planSteps };
           updateLastAssistant((m) => ({ ...m, pipeline: pipelineData }));
