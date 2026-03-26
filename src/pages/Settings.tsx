@@ -18,7 +18,7 @@ import {
 import {
   Settings, Globe, Palette, Store, User,
   Save, Trash2, CheckCircle2, XCircle, Key, ListChecks, Loader2,
-  Sun, Moon, Monitor,
+  Sun, Moon, Monitor, Eye, EyeOff, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -42,9 +42,10 @@ const TABS: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
 /*  Main exported component                                            */
 /* ------------------------------------------------------------------ */
 
-export function SettingsContent({ activeTab = "general", onTabChange }: {
+export function SettingsContent({ activeTab = "general", onTabChange, onClose }: {
   activeTab?: SettingsTab;
   onTabChange?: (tab: SettingsTab) => void;
+  onClose?: () => void;
 }) {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
@@ -69,6 +70,9 @@ export function SettingsContent({ activeTab = "general", onTabChange }: {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
+
+  // Misc UI
+  const [showApiKey, setShowApiKey] = useState(false);
 
   // Appearance
   const [theme, setTheme] = useState<"system" | "dark" | "light">(() => {
@@ -279,7 +283,12 @@ export function SettingsContent({ activeTab = "general", onTabChange }: {
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
-          <Input value={openaiApiKey} onChange={(e) => setOpenaiApiKey(e.target.value)} placeholder="sk-..." type="password" />
+          <div className="relative">
+            <Input value={openaiApiKey} onChange={(e) => setOpenaiApiKey(e.target.value)} placeholder="sk-..." type={showApiKey ? "text" : "password"} className="pr-10" />
+            <button type="button" onClick={() => setShowApiKey(!showApiKey)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+              {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
           <p className="text-xs text-muted-foreground">When set, chat requests route to OpenAI using <code className="text-xs">gpt-4o-mini</code>.</p>
         </CardContent>
       </Card>
@@ -472,6 +481,14 @@ export function SettingsContent({ activeTab = "general", onTabChange }: {
     <div className="flex h-full min-h-[500px]">
       {/* Sidebar nav */}
       <nav className="w-52 shrink-0 border-r border-border p-3 space-y-1">
+        <div className="flex items-center justify-between mb-2 px-1">
+          <span className="text-sm font-semibold text-foreground">Settings</span>
+          {onClose && (
+            <button onClick={onClose} className="rounded-sm p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
         {TABS.map((tab) => (
           <button
             key={tab.id}
