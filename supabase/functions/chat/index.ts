@@ -1072,7 +1072,13 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
           controller.close();
         } catch (e) {
           console.error("Stream error:", e);
-          sendSSE({ error: e instanceof Error ? e.message : "Unknown error" });
+          const errMsg = e instanceof Error ? e.message : "Unknown error";
+          // Emit a visible error reasoning so the user sees what happened
+          sendSSE({ type: "reasoning", text: `Error: ${errMsg}` });
+          // Emit error as structured SSE so frontend can handle it
+          sendSSE({ error: errMsg });
+          // Also emit a text delta so the assistant bubble has content
+          sendSSE({ choices: [{ delta: { content: `\n\n⚠️ Something went wrong: ${errMsg}. Please try again.` } }] });
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
         }
