@@ -220,6 +220,76 @@ const TOOL_LABELS: Record<string, string> = {
   save_preference: "Saving preference",
 };
 
+// ── Semantic pipeline mapper ──
+interface SemanticStep {
+  title: string;
+  details?: string;
+}
+
+function generateSemanticPlan(toolCalls: any[]): SemanticStep[] {
+  const steps: SemanticStep[] = [];
+
+  for (const tc of toolCalls) {
+    const name = tc.function.name;
+    let args: any = {};
+    try { args = JSON.parse(tc.function.arguments); } catch {}
+
+    switch (name) {
+      case "compare_sales": {
+        const normalizedArgs = normalizeCompareSalesDates(args);
+        const labelA = normalizedArgs.period_a_label || "Period A";
+        const labelB = normalizedArgs.period_b_label || "Period B";
+        const dateDetail = `${normalizedArgs.period_a_start} → ${normalizedArgs.period_a_end} vs ${normalizedArgs.period_b_start} → ${normalizedArgs.period_b_end}`;
+        steps.push({ title: "Resolving date ranges", details: dateDetail });
+        steps.push({ title: `Fetching orders for ${labelA}`, details: `${normalizedArgs.period_a_start} → ${normalizedArgs.period_a_end}` });
+        steps.push({ title: `Fetching orders for ${labelB}`, details: `${normalizedArgs.period_b_start} → ${normalizedArgs.period_b_end}` });
+        steps.push({ title: "Comparing periods" });
+        steps.push({ title: "Building dashboard" });
+        steps.push({ title: "Writing explanation" });
+        break;
+      }
+      case "get_sales_report": {
+        const normalizedArgs = normalizeSalesReportDates(args);
+        const period = normalizedArgs.period || "custom";
+        const dateDetail = normalizedArgs.date_min && normalizedArgs.date_max
+          ? `${normalizedArgs.date_min} → ${normalizedArgs.date_max}`
+          : period;
+        steps.push({ title: "Resolving date range", details: dateDetail });
+        steps.push({ title: "Fetching orders" });
+        steps.push({ title: "Calculating metrics", details: "Revenue, order count, AOV, top products" });
+        steps.push({ title: "Building dashboard" });
+        steps.push({ title: "Writing explanation" });
+        break;
+      }
+      case "search_products":
+        steps.push({ title: "Searching product catalog", details: args.search ? `Query: "${args.search}"` : undefined });
+        steps.push({ title: "Rendering results" });
+        break;
+      case "get_product":
+        steps.push({ title: "Fetching product details", details: args.product_id ? `Product #${args.product_id}` : undefined });
+        break;
+      case "search_orders":
+        steps.push({ title: "Searching orders", details: args.search || args.status || undefined });
+        steps.push({ title: "Rendering results" });
+        break;
+      case "create_order":
+        steps.push({ title: "Preparing order", details: `${args.line_items?.length || 0} item(s)` });
+        steps.push({ title: "Awaiting approval" });
+        break;
+      case "update_order_status":
+        steps.push({ title: "Preparing status update", details: `Order #${args.order_id} → ${args.status}` });
+        steps.push({ title: "Awaiting approval" });
+        break;
+      case "save_preference":
+        steps.push({ title: "Saving preference", details: args.key });
+        break;
+      default:
+        steps.push({ title: TOOL_LABELS[name] || name });
+    }
+  }
+  return steps;
+}
+
 async function callWooProxy(supabaseUrl: string, authHeader: string, payload: any) {
   const resp = await fetch(`${supabaseUrl}/functions/v1/woo-proxy`, {
     method: "POST",
@@ -496,6 +566,11 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
           let maxIterations = 8;
           let stepIndex = 0;
           let planSent = false;
+          let semanticSteps: SemanticStep[] = [];
+
+          // Emit "Understanding request" immediately
+          sendSSE({ type: "pipeline_plan", title: "Execution Plan", steps: ["Understanding request"] });
+          sendSSE({ type: "pipeline_step", stepIndex: 0, title: "Understanding request", status: "running" });
 
           while (maxIterations-- > 0) {
             const aiResp = await fetch(aiBaseUrl, {
@@ -520,27 +595,48 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
               const toolCalls = choice.message.tool_calls;
               aiMessages.push({ ...choice.message, content: content || null });
 
-              // Auto-generate pipeline plan from tool calls
+              // Mark "Understanding request" as done
               if (!planSent) {
-                const steps = toolCalls.map((tc: any) => TOOL_LABELS[tc.function.name] || tc.function.name);
-                sendSSE({ type: "pipeline_plan", title: "Execution Plan", steps });
+                sendSSE({ type: "pipeline_step", stepIndex: 0, title: "Understanding request", status: "done" });
+                stepIndex = 1;
+
+                // Generate semantic plan from tool calls
+                semanticSteps = generateSemanticPlan(toolCalls);
+                const allStepTitles = ["Understanding request", ...semanticSteps.map(s => s.title)];
+                sendSSE({ type: "pipeline_plan", title: "Execution Plan", steps: allStepTitles });
+
+                // Mark semantic steps as pending with details
+                for (let i = 0; i < semanticSteps.length; i++) {
+                  sendSSE({
+                    type: "pipeline_step",
+                    stepIndex: i + 1,
+                    title: semanticSteps[i].title,
+                    status: "pending",
+                    details: semanticSteps[i].details,
+                  });
+                }
                 planSent = true;
               } else {
-                // Append new steps to existing plan
-                for (const tc of toolCalls) {
-                  const label = TOOL_LABELS[tc.function.name] || tc.function.name;
-                  sendSSE({ type: "pipeline_step", stepIndex, title: label, status: "pending" });
+                // Additional tool calls in subsequent iterations — append new semantic steps
+                const newSteps = generateSemanticPlan(toolCalls);
+                for (const ns of newSteps) {
+                  semanticSteps.push(ns);
+                  sendSSE({ type: "pipeline_step", stepIndex: stepIndex + semanticSteps.length - 1, title: ns.title, status: "pending", details: ns.details });
                 }
               }
 
+              // Execute each tool call, progressing through semantic steps
               for (const tc of toolCalls) {
                 const args = JSON.parse(tc.function.arguments);
                 const toolName = tc.function.name;
-                const stepLabel = TOOL_LABELS[toolName] || toolName;
 
-                sendSSE({ type: "pipeline_step", stepIndex, title: stepLabel, status: "running", toolName, args });
+                // Progress the next pending semantic step to "running"
+                if (stepIndex < semanticSteps.length + 1) {
+                  sendSSE({ type: "pipeline_step", stepIndex, title: semanticSteps[stepIndex - 1]?.title || toolName, status: "running", details: semanticSteps[stepIndex - 1]?.details });
+                }
 
                 if (WRITE_TOOLS.has(toolName) && !approvalResponse) {
+                  const stepLabel = TOOL_LABELS[toolName] || toolName;
                   sendSSE({
                     type: "approval_request",
                     stepIndex,
@@ -557,7 +653,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                     content: JSON.stringify({ status: "awaiting_approval", message: "Waiting for user approval..." }),
                   });
 
-                  sendSSE({ type: "pipeline_step", stepIndex, title: stepLabel, status: "needs_approval" });
+                  sendSSE({ type: "pipeline_step", stepIndex, title: semanticSteps[stepIndex - 1]?.title || stepLabel, status: "needs_approval" });
                   stepIndex++;
                   continue;
                 }
@@ -569,28 +665,43 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
 
                 const { result, richContent, requestUri } = await executeTool(toolName, normalizedArgs, supabaseUrl, authHeader, userId, supabase, defaultOrderStatuses);
 
-                // Emit debug event with raw API response and request URI
-                sendSSE({ type: "debug_api", toolName, args, result, requestUri });
+                // Emit debug event
+                sendSSE({ type: "debug_api", toolName, args: normalizedArgs, result, requestUri });
 
                 if (richContent) {
                   sendSSE({ type: "rich_content", ...richContent });
                 }
 
-                sendSSE({ type: "pipeline_step", stepIndex, title: stepLabel, status: "done", details: typeof result === "object" ? `Found ${Array.isArray(result) ? result.length : 1} result(s)` : String(result) });
+                // Mark current step done
+                sendSSE({ type: "pipeline_step", stepIndex, title: semanticSteps[stepIndex - 1]?.title || toolName, status: "done", details: semanticSteps[stepIndex - 1]?.details });
 
                 aiMessages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(result) });
                 stepIndex++;
+
+                // Auto-progress intermediate semantic steps (e.g. "Comparing periods" after both fetches)
+                while (stepIndex - 1 < semanticSteps.length) {
+                  const nextStep = semanticSteps[stepIndex - 1];
+                  // Skip over analysis/synthesis steps that don't correspond to tool calls
+                  if (["Comparing periods", "Calculating metrics", "Resolving date ranges", "Resolving date range"].includes(nextStep.title)) {
+                    sendSSE({ type: "pipeline_step", stepIndex, title: nextStep.title, status: "running", details: nextStep.details });
+                    sendSSE({ type: "pipeline_step", stepIndex, title: nextStep.title, status: "done", details: nextStep.details });
+                    stepIndex++;
+                  } else {
+                    break;
+                  }
+                }
               }
               continue;
             }
 
-            // Post-tool synthesis feedback
-            if (planSent && stepIndex > 0) {
-              sendSSE({ type: "pipeline_step", stepIndex, title: "Analyzing received data", status: "running" });
-              // Small delay not needed since the AI response generation IS the analysis
-              sendSSE({ type: "pipeline_step", stepIndex, title: "Analyzing received data", status: "done" });
-              stepIndex++;
-              sendSSE({ type: "pipeline_step", stepIndex, title: "Crafting response", status: "running" });
+            // Final text response — progress remaining synthesis steps
+            if (planSent) {
+              while (stepIndex - 1 < semanticSteps.length) {
+                const step = semanticSteps[stepIndex - 1];
+                sendSSE({ type: "pipeline_step", stepIndex, title: step.title, status: "running", details: step.details });
+                sendSSE({ type: "pipeline_step", stepIndex, title: step.title, status: "done", details: step.details });
+                stepIndex++;
+              }
             }
 
             if (content) {
@@ -610,11 +721,6 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
               }
             }
 
-            // Mark crafting step done and send pipeline_complete
-            if (planSent && stepIndex > 0) {
-              sendSSE({ type: "pipeline_step", stepIndex, title: "Crafting response", status: "done" });
-              stepIndex++;
-            }
             sendSSE({ type: "pipeline_complete", lastStepIndex: stepIndex });
             break;
           }
