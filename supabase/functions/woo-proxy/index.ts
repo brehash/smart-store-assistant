@@ -90,7 +90,14 @@ serve(async (req) => {
     }
 
     const wooResp = await fetch(wooUrl, fetchOptions);
-    const wooData = await wooResp.json();
+    let wooData: any;
+    const rawText = await wooResp.text();
+    try {
+      wooData = JSON.parse(rawText);
+    } catch {
+      console.error("woo-proxy: Failed to parse WooCommerce response, length:", rawText.length);
+      wooData = { error: "Invalid JSON from WooCommerce", status: wooResp.status };
+    }
 
     return new Response(JSON.stringify(wooData), {
       status: wooResp.status,

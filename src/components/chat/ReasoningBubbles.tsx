@@ -22,58 +22,49 @@ export function ReasoningBubbles({ entries, isStreaming }: ReasoningBubblesProps
     ? Math.round((entries[entries.length - 1].timestamp - entries[0].timestamp) / 1000)
     : 0;
 
-  // While streaming: show last 4 thoughts
+  const hasError = entries.some((e) => e.text.startsWith("Error:"));
+
+  // While streaming: show only the latest thought as a single fading line
   if (isStreaming) {
-    const visible = entries.slice(-4);
-    const hidden = entries.length - visible.length;
+    const latest = entries[entries.length - 1];
 
     return (
       <div className="flex flex-col gap-0.5 my-1 w-full max-w-[400px]">
-        {hidden > 0 && (
-          <span className="text-[10px] text-muted-foreground/50 italic pl-5">
-            +{hidden} earlier thoughts
+        <div className="flex items-start gap-1.5 animate-reasoning-in">
+          <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary animate-pulse" />
+          <span className="text-xs italic text-muted-foreground leading-snug">
+            {latest.text}
           </span>
-        )}
-        {visible.map((entry, i) => {
-          const isLatest = i === visible.length - 1;
-          return (
-            <div
-              key={`${entry.timestamp}-${i}`}
-              className={cn(
-                "flex items-start gap-1.5 animate-reasoning-in",
-                !isLatest && "opacity-60"
-              )}
-            >
-              {isLatest ? (
-                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary animate-pulse" />
-              ) : (
-                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/30" />
-              )}
-              <span className="text-xs italic text-muted-foreground leading-snug">
-                {entry.text}
-              </span>
-            </div>
-          );
-        })}
+        </div>
       </div>
     );
   }
 
-  // Collapsed state: "Thought for Xs" with expand
+  // Collapsed state: single summary line with expand
+  const summaryLabel = hasError
+    ? `Process stopped after ${entries.length} steps`
+    : `Thought for ${durationSec}s · ${entries.length} steps`;
+
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="my-1 w-full max-w-[400px]">
       <CollapsibleTrigger className="flex items-center gap-1.5 text-xs text-muted-foreground/70 hover:text-muted-foreground transition-colors group cursor-pointer">
         <ChevronRight className={cn("h-3 w-3 transition-transform", isOpen && "rotate-90")} />
         <span className="italic">
-          Thought for {durationSec}s · {entries.length} steps
+          {summaryLabel}
         </span>
       </CollapsibleTrigger>
       <CollapsibleContent className="mt-1">
         <div className="flex flex-col gap-0.5 pl-4 border-l border-border/50">
           {entries.map((entry, i) => (
             <div key={`${entry.timestamp}-${i}`} className="flex items-start gap-1.5">
-              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/30" />
-              <span className="text-xs italic text-muted-foreground leading-snug">
+              <span className={cn(
+                "mt-1 h-1.5 w-1.5 shrink-0 rounded-full",
+                entry.text.startsWith("Error:") ? "bg-destructive" : "bg-muted-foreground/30"
+              )} />
+              <span className={cn(
+                "text-xs italic leading-snug",
+                entry.text.startsWith("Error:") ? "text-destructive" : "text-muted-foreground"
+              )}>
                 {entry.text}
               </span>
             </div>

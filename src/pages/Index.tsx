@@ -104,7 +104,7 @@ export default function Index() {
   };
 
   const handleSend = async (input: string) => {
-    if (!user || !session) return;
+    if (!user || !session || isStreaming) return;
 
     let convId = conversationId;
     if (!convId) { convId = await createConversation(); if (!convId) return; }
@@ -251,9 +251,25 @@ export default function Index() {
           metadata: Object.keys(metadata).length ? metadata : null,
         } as any);
       },
-      onError: (error) => {
+      onError: async (error) => {
         setIsStreaming(false);
         toast({ title: "Error", description: error, variant: "destructive" });
+        // Persist the partial assistant message so it doesn't vanish
+        if (assistantContent || reasoningEntries.length || pipelineData) {
+          const errorContent = assistantContent || `⚠️ ${error}`;
+          const metadata: any = {};
+          if (pipelineData) metadata.pipeline = pipelineData;
+          if (debugEntries.length) metadata.debugLogs = debugEntries;
+          if (reasoningEntries.length) metadata.reasoningLogs = reasoningEntries;
+          updateLastAssistant((m) => ({ ...m, content: errorContent }));
+          await supabase.from("messages").insert({
+            conversation_id: convId!,
+            user_id: user.id,
+            role: "assistant",
+            content: errorContent,
+            metadata: Object.keys(metadata).length ? metadata : null,
+          } as any);
+        }
       },
     });
   };

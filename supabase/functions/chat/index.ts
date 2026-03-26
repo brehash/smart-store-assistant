@@ -395,7 +395,14 @@ async function callWooProxy(supabaseUrl: string, authHeader: string, payload: an
     headers: { "Content-Type": "application/json", Authorization: authHeader },
     body: JSON.stringify(payload),
   });
-  return resp.json();
+  // Harden against truncated/non-JSON responses
+  const text = await resp.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    console.error("callWooProxy: failed to parse response as JSON, length:", text.length, "preview:", text.slice(0, 200));
+    return { error: "Invalid response from store API", raw_preview: text.slice(0, 300) };
+  }
 }
 
 async function executeTool(
@@ -903,7 +910,15 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
               let semanticIdx = 0;
 
               for (const tc of toolCalls) {
-                const args = JSON.parse(tc.function.arguments);
+                let args: any;
+                try {
+                  args = JSON.parse(tc.function.arguments);
+                } catch {
+                  console.error("Failed to parse tool arguments:", tc.function.arguments);
+                  sendSSE({ type: "reasoning", text: `Failed to parse arguments for ${tc.function.name}, skipping...` });
+                  aiMessages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify({ error: "Invalid arguments" }) });
+                  continue;
+                }
                 const toolName = tc.function.name;
                 const stepLabel = TOOL_LABELS[toolName] || toolName;
 
@@ -965,20 +980,37 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                       ? normalizeCompareSalesDates(args)
                       : args;
 
-                const { result, richContent, requestUri } = await executeTool(
-                  toolName,
-                  normalizedArgs,
-                  supabaseUrl,
-                  authHeader,
-                  userId,
-                  supabase,
-                  defaultOrderStatuses,
-                );
+                let result: any;
+                let richContent: any;
+                let requestUri: string | undefined;
 
-                // Emit debug event with raw API response and request URI
+                try {
+                  const toolResult = await executeTool(
+                    toolName,
+                    normalizedArgs,
+                    supabaseUrl,
+                    authHeader,
+                    userId,
+                    supabase,
+                    defaultOrderStatuses,
+                  );
+                  result = toolResult.result;
+                  richContent = toolResult.richContent;
+                  requestUri = toolResult.requestUri;
+                } catch (toolErr) {
+                  console.error(`Tool ${toolName} failed:`, toolErr);
+                  const errMsg = toolErr instanceof Error ? toolErr.message : "Unknown tool error";
+                  result = { error: errMsg };
+                  sendSSE({ type: "reasoning", text: `Tool "${toolName}" failed: ${errMsg}. Continuing...` });
+                  sendSSE({ type: "pipeline_step", stepIndex, title: currentSemanticTitle, status: "error", details: errMsg });
+                  aiMessages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify({ error: errMsg }) });
+                  stepIndex++;
+                  semanticIdx++;
+                  continue;
+                }
+
                 sendSSE({ type: "debug_api", toolName, args, result, requestUri });
 
-                // Emit reasoning after tool result
                 const reasoningAfter = generateReasoningAfter(toolName, result);
                 if (reasoningAfter) sendSSE({ type: "reasoning", text: reasoningAfter });
 
@@ -1065,7 +1097,13 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
           controller.close();
         } catch (e) {
           console.error("Stream error:", e);
-          sendSSE({ error: e instanceof Error ? e.message : "Unknown error" });
+          const errMsg = e instanceof Error ? e.message : "Unknown error";
+          // Emit a visible error reasoning so the user sees what happened
+          sendSSE({ type: "reasoning", text: `Error: ${errMsg}` });
+          // Emit error as structured SSE so frontend can handle it
+          sendSSE({ error: errMsg });
+          // Also emit a text delta so the assistant bubble has content
+          sendSSE({ choices: [{ delta: { content: `\n\n⚠️ Something went wrong: ${errMsg}. Please try again.` } }] });
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
         }

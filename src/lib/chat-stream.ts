@@ -93,6 +93,14 @@ export async function streamChat({
         try {
           const parsed = JSON.parse(jsonStr);
 
+          // Backend error events
+          if (parsed.error && typeof parsed.error === "string") {
+            // Don't terminate immediately — let remaining events flush (the backend sends content + [DONE] after error)
+            // But surface it as a toast so the user knows
+            console.warn("SSE error from backend:", parsed.error);
+            continue;
+          }
+
           // Pipeline events
           if (parsed.type === "pipeline_plan" || parsed.type === "pipeline_step" || parsed.type === "pipeline_complete" || parsed.type === "approval_request" || parsed.type === "question_request" || parsed.type === "debug_api" || parsed.type === "reasoning") {
             onPipelineEvent?.(parsed);
