@@ -43,17 +43,17 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onViewIdChange 
       const [convRes, viewRes] = await Promise.all([
         supabase
           .from("conversations")
-          .select("id, title, updated_at, view_id")
+          .select("id, title, updated_at, view_id" as any)
           .eq("user_id", user.id)
           .order("updated_at", { ascending: false }),
-        supabase
+        (supabase as any)
           .from("views")
           .select("*")
           .eq("user_id", user.id)
           .order("updated_at", { ascending: false }),
       ]);
-      if (convRes.data) setConversations(convRes.data as Conversation[]);
-      if (viewRes.data) setViews(viewRes.data);
+      if (convRes.data) setConversations(convRes.data as unknown as Conversation[]);
+      if (viewRes.data) setViews(viewRes.data as View[]);
     };
     load();
   }, [user, activeId]);
