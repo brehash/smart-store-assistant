@@ -280,7 +280,12 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
-          <Input value={openaiApiKey} onChange={(e) => setOpenaiApiKey(e.target.value)} placeholder="sk-..." type="password" />
+          <div className="relative">
+            <Input value={openaiApiKey} onChange={(e) => setOpenaiApiKey(e.target.value)} placeholder="sk-..." type={showApiKey ? "text" : "password"} className="pr-10" />
+            <button type="button" onClick={() => setShowApiKey(!showApiKey)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+              {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
           <p className="text-xs text-muted-foreground">When set, chat requests route to OpenAI using <code className="text-xs">gpt-4o-mini</code>.</p>
         </CardContent>
       </Card>
