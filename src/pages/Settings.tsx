@@ -26,13 +26,12 @@ import { cn } from "@/lib/utils";
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-export type SettingsTab = "general" | "settings" | "appearance" | "connection" | "account";
+export type SettingsTab = "general" | "appearance" | "connection" | "account";
 
 interface OrderStatus { slug: string; name: string; total: number; }
 
 const TABS: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
   { id: "general", label: "General", icon: Settings },
-  { id: "settings", label: "Settings", icon: Globe },
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "connection", label: "Connection", icon: Store },
   { id: "account", label: "Account", icon: User },
@@ -220,6 +219,25 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
       </Card>
       <Card>
         <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-primary/10 p-2"><Globe className="h-5 w-5 text-primary" /></div>
+            <div>
+              <CardTitle className="text-base">AI Response Language</CardTitle>
+              <CardDescription>Choose the language for AI responses</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Select value={responseLanguage} onValueChange={setResponseLanguage}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {LANGUAGES.map((lang) => (<SelectItem key={lang} value={lang}>{lang}</SelectItem>))}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
           <CardTitle className="text-base">Change Password</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -234,39 +252,6 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
           <Button onClick={handlePasswordChange} disabled={changingPassword || !newPassword} size="sm">
             {changingPassword ? "Updating…" : "Update Password"}
           </Button>
-        </CardContent>
-      </Card>
-      <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={saving} className="gap-1.5">
-          <Save className="h-4 w-4" /> {saving ? "Saving…" : "Save"}
-        </Button>
-      </div>
-    </div>
-  );
-
-  const renderSettings = () => (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold">Settings</h2>
-        <p className="text-sm text-muted-foreground">AI and language preferences</p>
-      </div>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg bg-primary/10 p-2"><Globe className="h-5 w-5 text-primary" /></div>
-            <div>
-              <CardTitle>AI Response Language</CardTitle>
-              <CardDescription>Choose the language for AI responses</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Select value={responseLanguage} onValueChange={setResponseLanguage}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {LANGUAGES.map((lang) => (<SelectItem key={lang} value={lang}>{lang}</SelectItem>))}
-            </SelectContent>
-          </Select>
         </CardContent>
       </Card>
       <div className="flex justify-end">
@@ -442,7 +427,6 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
   const renderTab = () => {
     switch (activeTab) {
       case "general": return renderGeneral();
-      case "settings": return renderSettings();
       case "appearance": return renderAppearance();
       case "connection": return renderConnection();
       case "account": return renderAccount();
