@@ -6,7 +6,7 @@ import { streamChat, type PipelineEvent } from "@/lib/chat-stream";
 import { ChatMessage, type RichContent, type ApprovalRequest, type QuestionRequest } from "@/components/chat/ChatMessage";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { ConversationSidebar } from "@/components/chat/ConversationSidebar";
-import { SettingsContent } from "@/pages/Settings";
+import { SettingsContent, type SettingsTab } from "@/pages/Settings";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -41,7 +41,9 @@ export default function Index() {
     return localStorage.getItem("sidebar-collapsed") === "true";
   });
   const [searchParams, setSearchParams] = useSearchParams();
-  const [settingsOpen, setSettingsOpen] = useState(() => searchParams.get("settings") === "true");
+  const settingsParam = searchParams.get("settings");
+  const [settingsOpen, setSettingsOpen] = useState(() => !!settingsParam);
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>(() => (settingsParam as SettingsTab) || "general");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const handleToggleSidebar = () => {
@@ -54,7 +56,8 @@ export default function Index() {
 
   const handleOpenSettings = () => {
     setSettingsOpen(true);
-    setSearchParams({ settings: "true" }, { replace: true });
+    setSettingsTab("general");
+    setSearchParams({ settings: "general" }, { replace: true });
   };
 
   const handleCloseSettings = (open: boolean) => {
@@ -63,6 +66,11 @@ export default function Index() {
       searchParams.delete("settings");
       setSearchParams(searchParams, { replace: true });
     }
+  };
+
+  const handleSettingsTabChange = (tab: SettingsTab) => {
+    setSettingsTab(tab);
+    setSearchParams({ settings: tab }, { replace: true });
   };
 
   const scrollToBottom = useCallback(() => {
@@ -504,10 +512,8 @@ export default function Index() {
 
       {/* Settings Modal */}
       <Dialog open={settingsOpen} onOpenChange={handleCloseSettings}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden p-0">
-          <ScrollArea className="max-h-[85vh] p-6">
-            <SettingsContent />
-          </ScrollArea>
+        <DialogContent className="max-w-4xl h-[85vh] overflow-hidden p-0">
+          <SettingsContent activeTab={settingsTab} onTabChange={handleSettingsTabChange} />
         </DialogContent>
       </Dialog>
     </div>
