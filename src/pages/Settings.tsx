@@ -18,7 +18,7 @@ import {
 import {
   Settings, Globe, Palette, Store, User,
   Save, Trash2, CheckCircle2, XCircle, Key, ListChecks, Loader2,
-  Sun, Moon, Monitor,
+  Sun, Moon, Monitor, Eye, EyeOff, X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
