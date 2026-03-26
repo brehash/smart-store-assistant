@@ -32,7 +32,6 @@ interface OrderStatus { slug: string; name: string; total: number; }
 
 const TABS: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
   { id: "general", label: "General", icon: Settings },
-  { id: "settings", label: "Settings", icon: Globe },
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "connection", label: "Connection", icon: Store },
   { id: "account", label: "Account", icon: User },
