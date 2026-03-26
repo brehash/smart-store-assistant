@@ -1,46 +1,53 @@
 
 
-## Sidebar Redesign: Collapsible, Avatar Dropup, Settings Modal
+## Settings Modal Redesign: Sidebar Navigation with Sections
 
-### 1. Collapsible sidebar (`ConversationSidebar.tsx`)
+### Overview
+Redesign the settings modal to use a two-panel layout like the ChatGPT screenshot: a left sidebar with navigation items and a right content area showing the active section. Add theme switching (System/Dark/Light), profile display, and account danger zone.
 
-- Add `collapsed` boolean state, persisted in `localStorage`
-- Toggle button at the top (sidebar icon) — always visible
-- **Expanded** (~w-64): current layout but with "New Chat" as a plain menu row (icon + text), not a button
-- **Collapsed** (~w-14): icon-only column showing: toggle, new chat, search icons at top; views/recents hidden; avatar at bottom
-- Wrap all icon buttons with `<Tooltip>` for hover labels when collapsed
-- Accept `collapsed` + `onToggle` as props (state lives in Index.tsx for layout coordination)
+### Sections
 
-### 2. New Chat as plain menu item
+| Tab | Icon | Content |
+|-----|------|---------|
+| **General** | Settings icon | Display name, email (read-only), registered date (read-only), password change |
+| **Settings** | Globe | AI Response Language selector, OpenAI API Key |
+| **Appearance** | Palette | System / Dark / Light theme toggle (new) |
+| **Connection** | Store | WooCommerce connection + Default Order Statuses |
+| **Account** | User | Account info summary + Danger Zone (delete account) |
 
-- Replace the `<Button>` with a simple `<button>` row: `Plus` icon + "New Chat" text, same styling as conversation items (px-3 py-2, hover:bg-sidebar-accent/50)
-- When collapsed, show just the `Plus` icon with tooltip "New Chat"
+### Changes by file
 
-### 3. User avatar dropup (footer)
+#### 1. `src/pages/Settings.tsx` — Full rewrite
+- Replace single-page `SettingsContent` with a tabbed layout component
+- Left panel (~w-56): vertical nav list with icons, highlight active tab
+- Right panel: scrollable content area showing the active section
+- Active tab persisted in URL as `?settings=general` / `?settings=appearance` etc.
+- **General tab**: show user email, created_at from auth, editable display name (stored in woo_connections or a future profiles table — for now just show email + registration date), password change via `supabase.auth.updateUser`
+- **Settings tab**: move Language selector and OpenAI key here
+- **Appearance tab**: three-option selector (System / Dark / Light), apply `.dark` class to `<html>`, persist in localStorage
+- **Connection tab**: existing WooCommerce connection card + order statuses card
+- **Account tab**: account summary + red "Delete Account" button with confirmation dialog
 
-- Remove Settings and Sign Out buttons from footer
-- Add `Avatar` with user initials (from `user.email`) at the bottom
-- On click, open a `DropdownMenu` with `side="top"`:
-  - **Settings** — calls `onOpenSettings()` prop
-  - **Sign Out** — calls `signOut()`
-- When collapsed, show just the avatar circle; tooltip "Account"
+#### 2. `src/pages/Index.tsx` — Minor update
+- Change `?settings=true` to `?settings=general` (default tab)
+- Pass the settings tab value to `SettingsContent`
+- Update `handleOpenSettings` / `handleCloseSettings` accordingly
 
-### 4. Settings modal with URL persistence
+#### 3. `src/index.css` — No changes needed
+- Dark theme variables already defined under `.dark` class
 
-- Extract Settings page content into `SettingsContent` component (same file, exported)
-- In `Index.tsx`:
-  - Read `?settings=true` from URL on mount → open modal
-  - `Dialog` (max-w-2xl, max-h-[85vh] with scroll) wraps `SettingsContent`
-  - Opening pushes `?settings=true`; closing removes it
-  - Pass `onOpenSettings` to sidebar
-- In `App.tsx`: redirect `/settings` to `/?settings=true`
+#### 4. `src/App.tsx` — Minor update
+- Update redirect from `/?settings=true` to `/?settings=general`
+
+### Theme implementation
+- Read from `localStorage("theme")` on app mount (in `App.tsx` or `main.tsx`)
+- Values: `"system"`, `"dark"`, `"light"`
+- Apply/remove `.dark` class on `document.documentElement`
+- For `"system"`: use `matchMedia("(prefers-color-scheme: dark)")` listener
 
 ### Files to modify
-
-| File | Changes |
-|------|---------|
-| `src/components/chat/ConversationSidebar.tsx` | Add collapsed mode, tooltips, plain new-chat row, avatar dropup footer |
-| `src/pages/Index.tsx` | Manage collapsed state + localStorage, settings modal with URL param, pass props to sidebar |
-| `src/pages/Settings.tsx` | Extract `SettingsContent` component, export it |
-| `src/App.tsx` | Redirect `/settings` → `/?settings=true` |
+- `src/pages/Settings.tsx`
+- `src/pages/Index.tsx`
+- `src/App.tsx`
+- `src/main.tsx` (theme init on load)
 
