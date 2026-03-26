@@ -219,6 +219,25 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
       </Card>
       <Card>
         <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-primary/10 p-2"><Globe className="h-5 w-5 text-primary" /></div>
+            <div>
+              <CardTitle className="text-base">AI Response Language</CardTitle>
+              <CardDescription>Choose the language for AI responses</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Select value={responseLanguage} onValueChange={setResponseLanguage}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {LANGUAGES.map((lang) => (<SelectItem key={lang} value={lang}>{lang}</SelectItem>))}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
           <CardTitle className="text-base">Change Password</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
