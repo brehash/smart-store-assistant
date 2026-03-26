@@ -246,6 +246,43 @@ interface SemanticStep {
   details?: string;
 }
 
+function coerceMessageContent(content: unknown): string {
+  if (typeof content === "string") return content;
+  if (content == null) return "";
+  if (Array.isArray(content)) {
+    return content
+      .map((item) => {
+        if (typeof item === "string") return item;
+        if (item && typeof item === "object" && "text" in item && typeof (item as { text?: unknown }).text === "string") {
+          return (item as { text: string }).text;
+        }
+
+        try {
+          return JSON.stringify(item);
+        } catch {
+          return String(item);
+        }
+      })
+      .join("\n")
+      .trim();
+  }
+
+  try {
+    return JSON.stringify(content);
+  } catch {
+    return String(content);
+  }
+}
+
+function sanitizeAiHistory(messages: Array<{ role: string; content: unknown }>) {
+  return messages
+    .filter((message) => message?.role === "user" || message?.role === "assistant")
+    .map((message) => ({
+      role: message.role,
+      content: coerceMessageContent(message.content),
+    }));
+}
+
 function generateReasoningBefore(toolName: string, args: any): string {
   switch (toolName) {
     case "search_products":
