@@ -56,7 +56,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
   const [consumerSecret, setConsumerSecret] = useState("");
   const [storeName, setStoreName] = useState("");
   const [responseLanguage, setResponseLanguage] = useState("English");
-  const [openaiApiKey, setOpenaiApiKey] = useState("");
+  
   const [existingConnection, setExistingConnection] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
