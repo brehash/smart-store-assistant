@@ -9,6 +9,7 @@ import { ApprovalCard } from "./ApprovalCard";
 import { QuestionCard } from "./QuestionCard";
 import { DebugPanel, type DebugEntry } from "./DebugPanel";
 import { DashboardView } from "./DashboardView";
+import { ReasoningBubbles, type ReasoningEntry } from "./ReasoningBubbles";
 
 export interface RichContent {
   type: "products" | "orders" | "chart" | "confirmation" | "pipeline" | "dashboard";
