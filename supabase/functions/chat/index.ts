@@ -482,6 +482,97 @@ async function executeTool(
         requestUri: `GET /wp-json/wc/v3/orders (x2 periods)`,
       };
     }
+    case "get_product_sales": {
+      const days = args.days || 60;
+      const now = new Date();
+      const endDate = args.date_max || formatDate(now);
+      const startDate = args.date_min || formatDate(new Date(now.getTime() - days * 864e5));
+
+      // Fetch orders in the date range (paginated, up to 3 pages of 100)
+      let allOrders: any[] = [];
+      for (let page = 1; page <= 3; page++) {
+        const params = new URLSearchParams();
+        params.set("per_page", "100");
+        params.set("page", String(page));
+        params.set("after", `${startDate}T00:00:00`);
+        params.set("before", `${endDate}T23:59:59`);
+        if (defaultOrderStatuses.length) params.set("status", defaultOrderStatuses.join(","));
+        const orders = await callWooProxy(supabaseUrl, authHeader, { endpoint: `orders?${params.toString()}` });
+        if (!Array.isArray(orders) || orders.length === 0) break;
+        allOrders = allOrders.concat(orders);
+        if (orders.length < 100) break;
+      }
+
+      const productId = args.product_id;
+      let totalUnits = 0;
+      let totalRevenue = 0;
+      const dailyUnits: Record<string, number> = {};
+      const matchingOrders: any[] = [];
+
+      // Fill all days with 0
+      const cur = new Date(startDate);
+      const end = new Date(endDate);
+      while (cur <= end) {
+        dailyUnits[formatDate(cur)] = 0;
+        cur.setDate(cur.getDate() + 1);
+      }
+
+      for (const order of allOrders) {
+        const lineItems = order.line_items || [];
+        for (const li of lineItems) {
+          // Match by product_id or variation parent
+          if (li.product_id === productId || li.variation_id === productId || (li.parent_name && li.product_id === productId)) {
+            const qty = li.quantity || 0;
+            const rev = parseFloat(li.total || "0");
+            totalUnits += qty;
+            totalRevenue += rev;
+            const date = order.date_created?.split("T")[0] || "unknown";
+            dailyUnits[date] = (dailyUnits[date] || 0) + qty;
+            matchingOrders.push({
+              order_id: order.id,
+              date: date,
+              quantity: qty,
+              total: rev,
+              status: order.status,
+            });
+          }
+        }
+      }
+
+      const actualDays = Math.max(1, Math.round((end.getTime() - new Date(startDate).getTime()) / 864e5));
+      const burnRate = Math.round((totalUnits / actualDays) * 100) / 100;
+      const weeklyRate = Math.round(burnRate * 7 * 100) / 100;
+
+      const chartData = Object.entries(dailyUnits)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([name, value]) => ({ name, value }));
+
+      return {
+        result: {
+          product_id: productId,
+          period: `${startDate} → ${endDate}`,
+          total_units_sold: totalUnits,
+          total_revenue: Math.round(totalRevenue * 100) / 100,
+          days_analyzed: actualDays,
+          daily_burn_rate: burnRate,
+          weekly_burn_rate: weeklyRate,
+          daily_breakdown: chartData,
+          matching_orders: matchingOrders.slice(0, 20),
+          orders_scanned: allOrders.length,
+        },
+        richContent: {
+          type: "chart",
+          data: {
+            type: "line",
+            title: `Units Sold — Product #${productId} (${startDate} → ${endDate})`,
+            data: chartData,
+            dataKey: "value",
+            nameKey: "name",
+          },
+        },
+        requestUri: `GET /wp-json/wc/v3/orders (filtered for product #${productId})`,
+      };
+    }
     case "save_preference": {
       await supabase
         .from("user_preferences")
