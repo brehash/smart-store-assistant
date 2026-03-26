@@ -167,7 +167,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
       <div
         key={c.id}
         className={cn(
-          "relative flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors cursor-pointer",
+          "relative flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors cursor-pointer min-w-0",
           activeId === c.id
             ? "bg-sidebar-accent text-sidebar-accent-foreground"
             : "hover:bg-sidebar-accent/50 text-sidebar-foreground/70"
@@ -188,59 +188,60 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
             }}
             onBlur={() => handleRenameConv(c.id)}
             onClick={(e) => e.stopPropagation()}
-            className="h-5 text-xs bg-sidebar-accent border-sidebar-border px-1 flex-1"
+            className="h-5 text-xs bg-sidebar-accent border-sidebar-border px-1 min-w-0 flex-1"
             autoFocus
           />
         ) : (
-          <span className="truncate flex-1">{c.title}</span>
+          <span className="truncate min-w-0 flex-1">{c.title}</span>
         )}
 
-        {c.pinned && !showMenu && editingConvId !== c.id && (
-          <Pin className="h-3 w-3 shrink-0 rotate-45 text-sidebar-foreground/50" />
-        )}
-
-        {showMenu && editingConvId !== c.id && (
-          <DropdownMenu onOpenChange={(open) => setOpenMenuConvId(open ? c.id : null)}>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                onClick={(e) => e.stopPropagation()}
-                className="shrink-0 h-5 w-5 flex items-center justify-center hover:text-sidebar-foreground rounded hover:bg-sidebar-accent"
-              >
-                <MoreHorizontal className="h-3.5 w-3.5" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditingConvId(c.id); setEditingConvTitle(c.title); }}>
-                <Pencil className="h-3.5 w-3.5 mr-2" /> Rename
-              </DropdownMenuItem>
-              <DropdownMenuSub>
-                <DropdownMenuSubTrigger>
-                  <ArrowRight className="h-3.5 w-3.5 mr-2" /> Move to view
-                </DropdownMenuSubTrigger>
-                <DropdownMenuSubContent>
-                  {c.view_id && (
-                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleMoveToView(c.id, null); }}>
-                      <X className="h-3.5 w-3.5 mr-2" /> Remove from view
-                    </DropdownMenuItem>
-                  )}
-                  {views.map((v) => (
-                    <DropdownMenuItem key={v.id} onClick={(e) => { e.stopPropagation(); handleMoveToView(c.id, v.id); }}>
-                      <FolderOpen className="h-3.5 w-3.5 mr-2" /> {v.name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuSubContent>
-              </DropdownMenuSub>
-              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleTogglePin(c); }}>
-                <Pin className="h-3.5 w-3.5 mr-2 rotate-45" /> {c.pinned ? "Unpin chat" : "Pin chat"}
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={(e) => { e.stopPropagation(); handleDelete(c.id); }}>
-                <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+        {/* Fixed-width action slot */}
+        <div className="w-5 h-5 shrink-0 flex items-center justify-center">
+          {editingConvId === c.id ? null : showMenu ? (
+            <DropdownMenu onOpenChange={(open) => setOpenMenuConvId(open ? c.id : null)}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  onClick={(e) => e.stopPropagation()}
+                  className="h-5 w-5 flex items-center justify-center hover:text-sidebar-foreground rounded hover:bg-sidebar-accent"
+                >
+                  <MoreHorizontal className="h-3.5 w-3.5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditingConvId(c.id); setEditingConvTitle(c.title); }}>
+                  <Pencil className="h-3.5 w-3.5 mr-2" /> Rename
+                </DropdownMenuItem>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <ArrowRight className="h-3.5 w-3.5 mr-2" /> Move to view
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    {c.view_id && (
+                      <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleMoveToView(c.id, null); }}>
+                        <X className="h-3.5 w-3.5 mr-2" /> Remove from view
+                      </DropdownMenuItem>
+                    )}
+                    {views.map((v) => (
+                      <DropdownMenuItem key={v.id} onClick={(e) => { e.stopPropagation(); handleMoveToView(c.id, v.id); }}>
+                        <FolderOpen className="h-3.5 w-3.5 mr-2" /> {v.name}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleTogglePin(c); }}>
+                  <Pin className="h-3.5 w-3.5 mr-2 rotate-45" /> {c.pinned ? "Unpin chat" : "Pin chat"}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={(e) => { e.stopPropagation(); handleDelete(c.id); }}>
+                  <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : c.pinned ? (
+            <Pin className="h-3 w-3 rotate-45 text-sidebar-foreground/50" />
+          ) : null}
+        </div>
       </div>
     );
   };
