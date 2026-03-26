@@ -6,7 +6,7 @@ import { streamChat, type PipelineEvent } from "@/lib/chat-stream";
 import { ChatMessage, type RichContent, type ApprovalRequest, type QuestionRequest } from "@/components/chat/ChatMessage";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { ConversationSidebar } from "@/components/chat/ConversationSidebar";
-import { SettingsContent } from "@/pages/Settings";
+import { SettingsContent, type SettingsTab } from "@/pages/Settings";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
