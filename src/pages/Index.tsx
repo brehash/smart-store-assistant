@@ -256,23 +256,22 @@ export default function Index() {
           updateLastAssistant((m) => ({ ...m, pipeline: pipelineData }));
           scrollToBottom();
         } else if (event.type === "pipeline_step") {
-          updateLastAssistant((m) => {
-            const pipeline = m.pipeline || pipelineData || { title: "Execution Plan", steps: [] };
-            const steps = [...pipeline.steps];
-            if (event.stepIndex !== undefined) {
-              while (steps.length <= event.stepIndex) {
-                steps.push({ id: `step-${steps.length}`, title: "...", status: "pending" as const });
-              }
-              steps[event.stepIndex] = {
-                ...steps[event.stepIndex],
-                title: event.title || steps[event.stepIndex].title,
-                status: (event.status as PipelineStepData["status"]) || "running",
-                details: event.details,
-              };
+          // Update pipelineData OUTSIDE the React updater to avoid batching race
+          const pipeline = pipelineData || { title: "Execution Plan", steps: [] };
+          const steps = [...pipeline.steps];
+          if (event.stepIndex !== undefined) {
+            while (steps.length <= event.stepIndex) {
+              steps.push({ id: `step-${steps.length}`, title: "...", status: "pending" as const });
             }
-            pipelineData = { ...pipeline, steps };
-            return { ...m, pipeline: pipelineData };
-          });
+            steps[event.stepIndex] = {
+              ...steps[event.stepIndex],
+              title: event.title || steps[event.stepIndex].title,
+              status: (event.status as PipelineStepData["status"]) || "running",
+              details: event.details,
+            };
+          }
+          pipelineData = { ...pipeline, steps };
+          updateLastAssistant((m) => ({ ...m, pipeline: pipelineData }));
           scrollToBottom();
         } else if (event.type === "approval_request") {
           const approval: ApprovalRequest = {
@@ -289,13 +288,16 @@ export default function Index() {
           }));
           scrollToBottom();
         } else if (event.type === "pipeline_complete") {
-          updateLastAssistant((m) => {
-            if (!m.pipeline) return m;
-            const steps = m.pipeline.steps.map((s) =>
+          // Update pipelineData OUTSIDE the React updater to avoid batching race
+          if (pipelineData) {
+            const doneSteps = pipelineData.steps.map((s) =>
               s.status === "pending" ? { ...s, status: "done" as const } : s
             );
-            pipelineData = { ...m.pipeline, steps };
-            return { ...m, pipeline: pipelineData };
+            pipelineData = { ...pipelineData, steps: doneSteps };
+          }
+          updateLastAssistant((m) => {
+            if (!m.pipeline) return m;
+            return { ...m, pipeline: pipelineData! };
           });
           scrollToBottom();
         } else if (event.type === "question_request") {
