@@ -2116,6 +2116,39 @@ serve(async (req) => {
         prefs.map((p: any) => `- ${p.preference_type}: "${p.key}" → ${JSON.stringify(p.value)}`).join("\n");
     }
 
+    // ── Vector Memory: Retrieve relevant memories ──
+    let memoriesContext = "";
+    const openaiKey = Deno.env.get("OPENAI_API_KEY");
+    if (openaiKey) {
+      try {
+        const lastMsg = (messages as any[]).filter((m: any) => m.role === "user").pop()?.content || "";
+        if (lastMsg.length > 5) {
+          const embResp = await fetch("https://api.openai.com/v1/embeddings", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ model: "text-embedding-3-small", input: lastMsg }),
+          });
+          if (embResp.ok) {
+            const embData = await embResp.json();
+            const queryEmbedding = embData.data[0].embedding;
+            const { data: memories } = await serviceClient.rpc("match_memories", {
+              _user_id: userId,
+              _embedding: JSON.stringify(queryEmbedding),
+              _match_count: 5,
+              _match_threshold: 0.7,
+            });
+            if (memories?.length) {
+              memoriesContext =
+                "\n\nRelevant memories from past conversations:\n" +
+                memories.map((m: any) => `- [${m.memory_type}] ${m.content}`).join("\n");
+            }
+          }
+        }
+      } catch (memErr) {
+        console.error("Memory retrieval error (non-fatal):", memErr);
+      }
+    }
+
     const { data: connData } = await supabase
       .from("woo_connections")
       .select("response_language, order_statuses")
