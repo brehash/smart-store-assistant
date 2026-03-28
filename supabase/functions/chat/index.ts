@@ -2888,7 +2888,7 @@ Be conversational. Currency is RON (lei).${defaultStatusStr}`;
           if (openaiKey && finalAssistantContent && finalAssistantContent.length > 30) {
             const greetingRe = /^(hi|hello|hey|salut|buna|ola|ciao)\b/i;
             if (!greetingRe.test(lastUserMsg.trim())) {
-              const summary = `Q: ${lastUserMsg.slice(0, 200)}\nA: ${content.slice(0, 300)}`;
+              const summary = `Q: ${lastUserMsg.slice(0, 200)}\nA: ${finalAssistantContent.slice(0, 300)}`;
               (async () => {
                 try {
                   const embResp = await fetch("https://api.openai.com/v1/embeddings", {
