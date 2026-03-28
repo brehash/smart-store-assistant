@@ -1058,6 +1058,21 @@ function generateSemanticPlan(toolCalls: any[]): SemanticStep[] {
         steps.push({ title: "Detecting shipping provider" });
         steps.push({ title: "Checking shipment status" });
         break;
+      case "audit_geo":
+        steps.push({ title: "Fetching entity data", details: `${args.entity_type} #${args.entity_id}` });
+        steps.push({ title: "Analyzing GEO readiness" });
+        steps.push({ title: "Building report" });
+        break;
+      case "generate_geo_content":
+        steps.push({ title: "Fetching current content", details: `${args.entity_type} #${args.entity_id}` });
+        steps.push({ title: "Generating optimized content" });
+        steps.push({ title: "Awaiting approval" });
+        break;
+      case "bulk_geo_audit":
+        steps.push({ title: "Fetching products" });
+        steps.push({ title: "Analyzing GEO readiness" });
+        steps.push({ title: "Building summary table" });
+        break;
       default:
         steps.push({ title: TOOL_LABELS[name] || name });
     }
