@@ -298,6 +298,7 @@ export default function Index() {
       },
       onDone: async () => {
         setIsStreaming(false);
+        streamAliveRef.current = false;
         // Persist using local accumulators (not React state)
         const metadata: any = {};
         if (pipelineData) metadata.pipeline = pipelineData;
