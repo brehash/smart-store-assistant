@@ -33,7 +33,7 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
 
   const [creditBalance, setCreditBalance] = useState<CreditBalance | null>(null);
   const [creditTransactions, setCreditTransactions] = useState<CreditTransaction[]>([]);
-  const [creditAdjustAmount, setCreditAdjustAmount] = useState(0);
+  const [creditAdjustInput, setCreditAdjustInput] = useState("");
   const [creditReason, setCreditReason] = useState("");
   const [monthlyAllowance, setMonthlyAllowance] = useState(100);
   const [savingCredits, setSavingCredits] = useState(false);
@@ -81,7 +81,9 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
       try {
         const data = await apiCall(`${baseUrl}/plans`);
         setPlans(data || []);
-      } catch { /* ignore */ }
+      } catch (e: any) {
+        toast({ title: "Failed to load plans", description: e.message, variant: "destructive" });
+      }
     };
     load();
     loadCredits();
@@ -101,15 +103,16 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
   };
 
   const adjustCredits = async () => {
-    if (creditAdjustAmount === 0) return;
+    const amount = parseInt(creditAdjustInput);
+    if (!amount || isNaN(amount)) return;
     setSavingCredits(true);
     try {
       const data = await apiCall(`${baseUrl}/users/${user.user_id}/credits`, {
-        method: "PUT", body: JSON.stringify({ amount: creditAdjustAmount, reason: creditReason || "admin_grant" }),
+        method: "PUT", body: JSON.stringify({ amount, reason: creditReason || "admin_grant" }),
       });
       setCreditBalance((prev) => prev ? { ...prev, balance: data.balance } : null);
-      toast({ title: `${creditAdjustAmount > 0 ? "Added" : "Deducted"} ${Math.abs(creditAdjustAmount)} credits`, description: `New balance: ${data.balance}` });
-      setCreditAdjustAmount(0);
+      toast({ title: `${amount > 0 ? "Added" : "Deducted"} ${Math.abs(amount)} credits`, description: `New balance: ${data.balance}` });
+      setCreditAdjustInput("");
       setCreditReason("");
       const txData = await apiCall(`${baseUrl}/users/${user.user_id}/credits`);
       setCreditTransactions(txData.transactions || []);
@@ -130,6 +133,16 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
     } finally { setSavingAllowance(false); }
   };
 
+  const reloadCredits = async () => {
+    try {
+      const data = await apiCall(`${baseUrl}/users/${user.user_id}/credits`);
+      setCreditBalance(data.balance || null);
+      setCreditTransactions(data.transactions || []);
+      if (data.balance?.monthly_allowance) setMonthlyAllowance(data.balance.monthly_allowance);
+      if (data.balance?.plan_id) setSelectedPlanId(data.balance.plan_id);
+    } catch { /* silent */ }
+  };
+
   const assignPlan = async (planId: string) => {
     setSavingPlan(true);
     setSelectedPlanId(planId);
@@ -140,7 +153,8 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
       const plan = plans.find((p) => p.id === planId);
       toast({ title: "Plan assigned", description: `${plan?.name || "Plan"} assigned. Monthly allowance set to ${data.monthly_allowance}.` });
       setMonthlyAllowance(data.monthly_allowance);
-      setCreditBalance((prev) => prev ? { ...prev, plan_id: planId, monthly_allowance: data.monthly_allowance } : null);
+      setCreditBalance((prev) => prev ? { ...prev, plan_id: planId, monthly_allowance: data.monthly_allowance, balance: data.balance ?? prev.balance } : null);
+      await reloadCredits();
     } catch (e: any) {
       toast({ title: "Failed to assign plan", description: e.message, variant: "destructive" });
     } finally { setSavingPlan(false); }
@@ -227,10 +241,10 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
               <div>
                 <Label>Grant / Deduct Credits</Label>
                 <div className="flex gap-2 mt-1">
-                  <Input type="number" placeholder="Amount (positive to add, negative to deduct)" value={creditAdjustAmount || ""} onChange={(e) => setCreditAdjustAmount(parseInt(e.target.value) || 0)} />
+                  <Input type="text" inputMode="numeric" placeholder="e.g. 50 or -20" value={creditAdjustInput} onChange={(e) => setCreditAdjustInput(e.target.value)} />
                   <Input placeholder="Reason (optional)" value={creditReason} onChange={(e) => setCreditReason(e.target.value)} className="max-w-[200px]" />
-                  <Button onClick={adjustCredits} disabled={savingCredits || creditAdjustAmount === 0}>
-                    {savingCredits ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : creditAdjustAmount >= 0 ? <Plus className="h-4 w-4 mr-1" /> : <Minus className="h-4 w-4 mr-1" />}
+                  <Button onClick={adjustCredits} disabled={savingCredits || !creditAdjustInput || creditAdjustInput === "-"}>
+                    {savingCredits ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : parseInt(creditAdjustInput) >= 0 || !creditAdjustInput ? <Plus className="h-4 w-4 mr-1" /> : <Minus className="h-4 w-4 mr-1" />}
                     {savingCredits ? "Applying..." : "Apply"}
                   </Button>
                 </div>
