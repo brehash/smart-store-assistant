@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-export type SettingsTab = "general" | "appearance" | "connection" | "account";
+export type SettingsTab = "general" | "appearance" | "connection" | "credits" | "account";
 
 interface OrderStatus { slug: string; name: string; total: number; }
 
