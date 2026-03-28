@@ -930,6 +930,21 @@ function generateReasoningAfter(toolName: string, result: any): string | null {
         if (result?.status_name) return `Order #${result.order_id} — AWB: ${result.awb} — Status: ${result.status_name}`;
         return null;
       }
+      case "audit_geo": {
+        if (result?.score != null) return `GEO score: ${result.score}/100 for "${result.entityName || "entity"}".`;
+        if (result?.error) return `Error: ${result.error}`;
+        return null;
+      }
+      case "generate_geo_content": {
+        if (result?.optimized) return `GEO content generated. Awaiting approval to apply changes.`;
+        if (result?.error) return `Error: ${result.error}`;
+        return null;
+      }
+      case "bulk_geo_audit": {
+        if (result?.items?.length) return `Audited ${result.items.length} items. Average score: ${result.averageScore}/100.`;
+        if (result?.error) return `Error: ${result.error}`;
+        return null;
+      }
       default:
         return null;
     }
