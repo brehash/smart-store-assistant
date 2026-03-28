@@ -66,6 +66,7 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
   const [billing, setBilling] = useState({
     first_name: "", last_name: "", email: "", phone: "",
     address_1: "", city: "", state: "", postcode: "", country: "",
+    company: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -378,8 +379,18 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
                 <Input className="h-8 text-sm" value={billing.city} onChange={(e) => setBilling((b) => ({ ...b, city: e.target.value }))} disabled={isDisabled} />
               </div>
               <div>
+                <Label className="text-xs">State / County</Label>
+                <Input className="h-8 text-sm" value={billing.state} onChange={(e) => setBilling((b) => ({ ...b, state: e.target.value }))} disabled={isDisabled} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
                 <Label className="text-xs">Postcode</Label>
                 <Input className="h-8 text-sm" value={billing.postcode} onChange={(e) => setBilling((b) => ({ ...b, postcode: e.target.value }))} disabled={isDisabled} />
+              </div>
+              <div>
+                <Label className="text-xs">Country</Label>
+                <Input className="h-8 text-sm" value={billing.country} onChange={(e) => setBilling((b) => ({ ...b, country: e.target.value }))} disabled={isDisabled} />
               </div>
             </div>
           </CollapsibleContent>
