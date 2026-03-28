@@ -161,6 +161,7 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
         line_items: lineItems.map((li) => ({ product_id: li.product_id, quantity: li.quantity })),
       };
       if (note) orderBody.customer_note = note;
+      if (couponCode.trim()) orderBody.coupon_lines = [{ code: couponCode.trim() }];
       if (paymentMethod) {
         orderBody.payment_method = paymentMethod;
         const pm = paymentMethods?.find((p) => p.id === paymentMethod);
