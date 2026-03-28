@@ -175,6 +175,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
         store_url: storeUrl, consumer_key: consumerKey, consumer_secret: consumerSecret,
         store_name: storeName, response_language: responseLanguage,
         order_statuses: selectedStatuses,
+        active_plugins: selectedPlugins,
       };
       if (existingConnection) {
         await supabase.from("woo_connections").update(payload as any).eq("id", existingConnection.id);
