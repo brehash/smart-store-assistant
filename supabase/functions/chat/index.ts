@@ -1610,15 +1610,20 @@ CRITICAL TOOL USAGE RULES — YOU MUST FOLLOW THESE:
 ORDER META-DATA ANALYSIS:
 - When the user asks about invoices (facturi), AWBs, tracking numbers, or any custom order attributes:
   1. Call get_orders_with_meta for the requested period
-  2. Parse the meta_data array on each order looking for keys containing: invoice, factura, facturi, awb, tracking, colet, curier, and similar patterns (case-insensitive)
-  3. Also check for keys like: _billing_invoice, _invoice_number, _factura_seria, _factura_numar, _awb_number, _tracking_number, invoice_series, invoice_number
-  4. Classify orders as having/not having the requested attribute based on whether the meta_data value is non-empty
-  5. Present results as a \`\`\`dashboard block with:
+  2. Parse the meta_data array on each order. The meta_data is already filtered to relevant keys only.
+  3. CRITICAL INVOICE DETECTION RULES:
+     - "av_facturare" is NOT an invoice. It is a billing TYPE preference (pers-fiz = individual, pers-jur = company). Do NOT count orders as "having invoice" based on this key alone.
+     - An ACTUAL INVOICE is indicated by keys containing: oblio, invoice_number, invoice_series, factura_seria, factura_numar, wc_invoice_number, or meta values that contain invoice serial numbers (e.g., "KSF 0817", "ABC 1234").
+     - Look for Oblio plugin keys: keys starting with "_oblio" or containing "oblio" (e.g., _oblio_invoice_number, _oblio_invoice_series, _oblio_invoice_link).
+     - If a meta value is a URL (starts with http:// or https://), include it in the dashboard table so it renders as a clickable link.
+  4. AWB/TRACKING detection: keys containing awb, tracking, fan_courier, sameday, cargus, coleteonline, dpd, gls.
+  5. Classify orders as having/not having the requested attribute based on whether actual invoice/AWB meta_data exists with non-empty values.
+  6. Present results as a \`\`\`dashboard block with:
      - Stat cards: total orders, orders with attribute, orders without, amounts for each
-     - Table: order details with the relevant meta_data values
+     - Table: order details with the relevant meta_data values. If a value is a URL, include it directly as the cell value — the frontend will render it as a clickable external link icon.
      - If comparing invoiced vs non-invoiced: show "Invoiced Revenue" and "Non-Invoiced Revenue" cards
 - If orders are already in context from a previous tool call that included meta_data, parse them directly without re-fetching
-- Common meta_data keys for Romanian WooCommerce stores: _factura, _invoice, _awb, _tracking, factura_seria, factura_numar, av_factura, av_invoice, _billing_invoice, wc_invoice, _awb_number, fan_courier_awb, sameday_awb
+- Common meta_data keys for Romanian WooCommerce stores: _oblio_invoice_number, _oblio_invoice_series, _oblio_invoice_link, _factura, _invoice, _awb, _tracking, factura_seria, factura_numar, wc_invoice, _awb_number, fan_courier_awb, sameday_awb
 
 AUTONOMOUS DATA GATHERING (ABSOLUTE RULE):
 - You MUST NEVER tell the user you need more data or ask permission to fetch data. If you need product-level data, sales breakdowns, order details, or ANY information available through your tools — CALL THE TOOLS IMMEDIATELY without asking.
