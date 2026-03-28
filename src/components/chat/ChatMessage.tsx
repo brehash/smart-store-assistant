@@ -49,7 +49,7 @@ interface ChatMessageProps {
 
 export function ChatMessage({
   role, content, richContents, isStreaming,
-  pipeline, approvals, questions, debugLogs, reasoningLogs, tokenUsage,
+  pipeline, approvals, questions, debugLogs, reasoningLogs, tokenUsage, creditUsage,
   onApproval, onQuestionAnswer,
 }: ChatMessageProps) {
   const isUser = role === "user";
