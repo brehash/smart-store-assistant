@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { Search, Plus, Minus, X, ChevronDown, ShoppingCart, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -198,7 +198,7 @@ export function OrderFormCard({ data, orderStatuses, disabled, onOrderCreated }:
           </div>
           {showResults && searchResults.length > 0 && (
             <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg">
-              <ScrollArea className="max-h-48">
+              <div className="max-h-48 overflow-y-auto">
                 {searchResults.map((p) => (
                   <button
                     key={p.id}
@@ -215,7 +215,7 @@ export function OrderFormCard({ data, orderStatuses, disabled, onOrderCreated }:
                     <span className="text-xs font-medium shrink-0">{p.price} lei</span>
                   </button>
                 ))}
-              </ScrollArea>
+              </div>
             </div>
           )}
         </div>
