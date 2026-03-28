@@ -970,9 +970,10 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
         };
 
         try {
-          let maxIterations = 8;
+          let maxIterations = 15;
           let stepIndex = 0;
           let planSent = false;
+          let contentSent = false;
           let semanticSteps: SemanticStep[] = [];
 
           // Emit "Understanding request" immediately
