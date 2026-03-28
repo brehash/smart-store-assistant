@@ -1976,27 +1976,20 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
               continue;
             }
 
-            // Post-tool synthesis: tick remaining semantic steps
+            // Post-tool synthesis: tick remaining semantic steps (only those not yet processed)
             sendSSE({ type: "reasoning", text: "Preparing your response..." });
             if (planSent && stepIndex > 0) {
-              // Collect titles of steps already completed (before stepIndex)
-              // Mark all remaining non-"Writing explanation" steps as done
-              const POST_RESPONSE_STEPS = new Set([
-                "Building dashboard", "Rendering results", "Building inventory report",
-                "Calculating burn rate", "Parsing metadata", "Aggregating by product",
-                "Building product report", "Comparing periods",
-              ]);
-              for (let i = 0; i < semanticSteps.length; i++) {
+              // Only process steps from semanticIdx onward (tool phase already handled earlier ones)
+              for (let i = semanticIdx; i < semanticSteps.length; i++) {
                 const ss = semanticSteps[i];
-                if (POST_RESPONSE_STEPS.has(ss.title)) {
-                  sendSSE({ type: "reasoning", text: `${ss.title}...` });
-                  sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "running" });
-                  sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "done" });
-                  stepIndex++;
-                }
                 if (ss.title === "Writing explanation") {
                   sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "running" });
+                  continue;
                 }
+                sendSSE({ type: "reasoning", text: `${ss.title}...` });
+                sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "running" });
+                sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "done" });
+                stepIndex++;
               }
             } else if (!planSent) {
               // No tools were called — mark Understanding request as done
