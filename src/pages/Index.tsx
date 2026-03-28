@@ -73,6 +73,7 @@ export default function Index() {
   const [cachedPaymentMethods, setCachedPaymentMethods] = useState<{ id: string; title: string }[]>([]);
   const [cachedAllStatuses, setCachedAllStatuses] = useState<{ slug: string; name: string }[]>([]);
   const [cachedSelectedStatuses, setCachedSelectedStatuses] = useState<string[]>([]);
+  const [cachedProducts, setCachedProducts] = useState<any[]>([]);
 
   // Fetch credit balance and app settings on mount
   useEffect(() => {
