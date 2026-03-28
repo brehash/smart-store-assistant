@@ -61,6 +61,15 @@ export default function Index() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const streamAliveRef = useRef(false);
 
+  // Fetch credit balance on mount and when user changes
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data } = await supabase.rpc("refill_credits_if_due", { _user_id: user.id });
+      if (data) setCreditBalance(data.balance);
+    })();
+  }, [user]);
+
   const handleToggleSidebar = () => {
     setSidebarCollapsed((prev) => {
       const next = !prev;
