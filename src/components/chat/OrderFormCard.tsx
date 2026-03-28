@@ -271,12 +271,56 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {(orderStatuses?.length ? orderStatuses : ["pending", "processing", "on-hold", "completed"]).map((s) => (
-                <SelectItem key={s} value={s}>{s}</SelectItem>
-              ))}
+              {(() => {
+                const preferred = orderStatuses || [];
+                const all = allOrderStatuses || [];
+                const allSlugs = all.map((s) => s.slug);
+                const preferredSet = new Set(preferred);
+                // Preferred first, then the rest
+                const sorted = [
+                  ...all.filter((s) => preferredSet.has(s.slug)),
+                  ...all.filter((s) => !preferredSet.has(s.slug)),
+                ];
+                if (sorted.length === 0) {
+                  return ["pending", "processing", "on-hold", "completed"].map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ));
+                }
+                return sorted.map((s, i) => {
+                  const isPreferred = preferredSet.has(s.slug);
+                  const isFirstNonPreferred = !isPreferred && (i === 0 || preferredSet.has(sorted[i - 1].slug));
+                  return (
+                    <React.Fragment key={s.slug}>
+                      {isFirstNonPreferred && preferred.length > 0 && (
+                        <div className="my-1 h-px bg-border mx-2" />
+                      )}
+                      <SelectItem value={s.slug}>
+                        <span className={isPreferred ? "font-medium" : ""}>{s.name}</span>
+                      </SelectItem>
+                    </React.Fragment>
+                  );
+                });
+              })()}
             </SelectContent>
           </Select>
         </div>
+
+        {/* Payment Method */}
+        {paymentMethods && paymentMethods.length > 0 && (
+          <div>
+            <Label className="text-xs font-medium mb-1.5 block">Payment Method</Label>
+            <Select value={paymentMethod} onValueChange={setPaymentMethod} disabled={isDisabled}>
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue placeholder="Select payment method..." />
+              </SelectTrigger>
+              <SelectContent>
+                {paymentMethods.map((pm) => (
+                  <SelectItem key={pm.id} value={pm.id}>{pm.title}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Note */}
         <div>
