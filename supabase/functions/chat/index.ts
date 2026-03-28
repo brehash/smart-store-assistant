@@ -1723,7 +1723,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
 
           // ── Order-creation intent detection ──
           const lastUserMsg = (messages as any[]).filter((m: any) => m.role === "user").pop()?.content || "";
-          const orderIntentRe = /\b(cre(?:ea)?z[aă]|f[aă]|plaseaz[aă]|adaug[aă]|pune|place|create|make|add|new)\b.*\b(comand[aă]|order)\b/i;
+          const orderIntentRe = /(cre(?:ea)?z[aă]|f[aă]|plaseaz[aă]|adaug[aă]|pune|place|create|make|add|new)\s.*?(comand[aă]|order)/i;
           if (orderIntentRe.test(lastUserMsg)) {
             sendSSE({ type: "pipeline_plan", title: "Execution Plan", steps: ["Creating order form"] });
             sendSSE({ type: "pipeline_step", stepIndex: 0, title: "Creating order form", status: "done" });
