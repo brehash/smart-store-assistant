@@ -702,27 +702,28 @@ export default function Index() {
           ) : (
             <div className="mx-auto max-w-3xl py-4">
               {messages.map((msg, i) => (
-                <ChatMessage
-                  key={i}
-                  role={msg.role}
-                  content={msg.content}
-                  richContents={msg.richContents}
-                  isStreaming={isStreaming && i === messages.length - 1 && msg.role === "assistant"}
-                  pipeline={msg.pipeline}
-                  approvals={msg.approvals}
-                  questions={msg.questions}
-                  orderForms={msg.orderForms}
-                  debugLogs={msg.debugLogs}
-                  reasoningLogs={msg.reasoningLogs}
-                  tokenUsage={msg.tokenUsage}
-                  creditUsage={msg.creditUsage}
-                  orderStatuses={cachedSelectedStatuses}
-                  allOrderStatuses={cachedAllStatuses}
-                  paymentMethods={cachedPaymentMethods}
-                  onApproval={handleApproval}
-                  onQuestionAnswer={handleQuestionAnswer}
-                  onOrderCreated={handleOrderCreated}
-                />
+                 <ChatMessage
+                   key={i}
+                   role={msg.role}
+                   content={msg.content}
+                   richContents={msg.richContents}
+                   isStreaming={isStreaming && i === messages.length - 1 && msg.role === "assistant"}
+                   pipeline={msg.pipeline}
+                   approvals={msg.approvals}
+                   questions={msg.questions}
+                   orderForms={msg.orderForms}
+                   debugLogs={msg.debugLogs}
+                   reasoningLogs={msg.reasoningLogs}
+                   tokenUsage={msg.tokenUsage}
+                   creditUsage={msg.creditUsage}
+                   orderStatuses={cachedSelectedStatuses}
+                   allOrderStatuses={cachedAllStatuses}
+                   paymentMethods={cachedPaymentMethods}
+                   cachedProducts={cachedProducts}
+                   onApproval={handleApproval}
+                   onQuestionAnswer={handleQuestionAnswer}
+                   onOrderCreated={handleOrderCreated}
+                 />
               ))}
             </div>
           )}

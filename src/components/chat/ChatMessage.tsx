@@ -115,6 +115,7 @@ export function ChatMessage({
             orderStatuses={orderStatuses}
             allOrderStatuses={allOrderStatuses}
             paymentMethods={paymentMethods}
+            cachedProducts={cachedProducts}
             disabled={isStreaming}
             onOrderCreated={onOrderCreated}
           />
