@@ -11,10 +11,17 @@ interface StatCard {
   change?: string;
 }
 
+interface CellWithUrl {
+  text: string;
+  url?: string;
+}
+
+type CellValue = string | number | null | CellWithUrl;
+
 interface DashboardTable {
   title: string;
   columns: string[];
-  rows: Array<Array<string | number | null>>;
+  rows: Array<Array<CellValue>>;
 }
 
 interface DashboardList {
