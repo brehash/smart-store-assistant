@@ -1905,7 +1905,7 @@ SHIPPING STATUS TRACKING:
 - If the user provides an AWB number instead of an order number, WARN THEM that you need the WooCommerce order number (not the AWB) and ask them for it. AWB numbers are typically longer numeric strings, while order numbers are shorter.
 - NEVER ask the user for a uniqueId — the tool extracts it automatically from the order metadata.
 - The tool automatically detects the shipping provider (Colete Online, etc.) from the order metadata. If the integration is not enabled, the tool will inform the user to enable it in Settings > Integrations.
-- Present the tracking history in a clear timeline format with dates, status names, and locations.
+- Do NOT list the tracking history as text. The visual shipping timeline component shows the history automatically. Just provide a brief summary (current status, courier, AWB).
 
 Be conversational, efficient, and proactive. Use markdown for formatting. Currency is RON (lei).${defaultStatusStr}${prefsContext}${viewContext}`;
 
