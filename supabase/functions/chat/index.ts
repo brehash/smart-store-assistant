@@ -518,6 +518,7 @@ const TOOL_LABELS: Record<string, string> = {
   get_product_sales_report: "Analyzing product performance",
   get_orders_with_meta: "Fetching orders with metadata",
   save_preference: "Saving preference",
+  check_shipping_status: "Checking shipping status",
 };
 
 interface SemanticStep {
