@@ -973,11 +973,22 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
 
           while (maxIterations-- > 0) {
             sendSSE({ type: "reasoning", text: "Thinking..." });
-            const aiResp = await fetch(aiBaseUrl, {
+
+            // Keep-alive: send periodic pings during AI fetch to prevent connection drops
+            const aiRequest = fetch(aiBaseUrl, {
               method: "POST",
               headers: { Authorization: aiAuthHeader, "Content-Type": "application/json" },
               body: JSON.stringify({ model: aiModel, messages: aiMessages, tools: TOOLS, stream: false }),
             });
+            const keepAliveInterval = setInterval(() => {
+              sendSSE({ type: "reasoning", text: "Still processing..." });
+            }, 15000);
+            let aiResp: Response;
+            try {
+              aiResp = await aiRequest;
+            } finally {
+              clearInterval(keepAliveInterval);
+            }
 
             if (!aiResp.ok) {
               if (aiResp.status === 429) {
