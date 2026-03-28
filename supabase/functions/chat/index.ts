@@ -1597,6 +1597,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
           let planSent = false;
           let contentSent = false;
           let semanticSteps: SemanticStep[] = [];
+          const totalUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
 
           // Emit "Understanding request" immediately
           sendSSE({ type: "pipeline_plan", title: "Execution Plan", steps: ["Understanding request"] });
