@@ -392,6 +392,33 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_events: {
+        Row: {
+          created_at: string
+          id: string
+          payload: Json
+          read: boolean
+          topic: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          payload?: Json
+          read?: boolean
+          topic: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          payload?: Json
+          read?: boolean
+          topic?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       woo_connections: {
         Row: {
           active_plugins: string[]
