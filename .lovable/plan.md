@@ -1,62 +1,77 @@
 
 
-## Interactive Order Creation Form in Chat
+## Onboarding Flow + Webhook Setup
 
-### Problem
-1. When the user asks to create an order, the AI should show an interactive form instead of raw JSON approval cards
-2. The approval card system for write operations (including `create_order`) never renders — likely because the AI model doesn't reliably call the `create_order` tool when asked in natural language, or there's a timing issue with the SSE stream
-
-### Solution
-Instead of relying on the AI to call `create_order` as a tool and then showing an approval card, we intercept the intent on the backend and emit an `order_form` SSE event. The frontend renders a rich interactive form with searchable products, quantity controls, customer fields, and a submit button. On submit, the form calls `woo-proxy` directly to create the order.
+### Overview
+Two features: (1) When a user has no WooCommerce connection, show an interactive setup wizard in the chat area instead of the empty state. (2) After a successful connection, prompt the user to create WooCommerce webhooks for real-time notifications (new order, customer created), and show toast notifications when webhook events arrive.
 
 ### Changes
 
-#### 1. New Component: `src/components/chat/OrderFormCard.tsx`
-- **Product search**: Debounced text input that calls `woo-proxy` with `endpoint: "products?search=..."` to autocomplete products. Shows results in a dropdown with name, SKU, price.
-- **Line items table**: Selected products with quantity +/- controls, price display, remove button, running total
-- **Customer fields**: First name, last name, email, phone, billing address (collapsible)
-- **Order status**: Dropdown populated from the user's configured `order_statuses`
-- **Order notes**: Optional text field
-- **Submit button**: Calls `woo-proxy` with `endpoint: "orders", method: "POST", body: {...}` directly using the auth token. Shows success (order number + link) or error state
-- **Resolved state**: After submission, collapses into a summary showing order number, items, and total
+#### 1. Connection Onboarding Wizard: `src/components/chat/ConnectionSetupCard.tsx` (New)
+- A step-by-step card rendered in the chat empty state when no `woo_connections` row exists
+- **Step 1**: Store URL input
+- **Step 2**: Consumer Key + Consumer Secret inputs (with helper text on where to find them in WooCommerce > Settings > REST API)
+- **Step 3**: Test Connection button (calls `woo-proxy` with `action: "test"`)
+- **Step 4**: On success, auto-save the connection to `woo_connections`, fetch order statuses + plugins, show success state
+- Reuses the same logic currently in Settings (`handleTest`, `handleSave`)
+- On completion, triggers a callback to refresh the connection state in Index
 
-#### 2. Backend: `supabase/functions/chat/index.ts`
-- In the write-tools approval check (line 1860), when `toolName === "create_order"`, emit `type: "order_form"` event instead of `approval_request`:
-  ```
-  sendSSE({ type: "order_form", toolCallId: tc.id, stepIndex, prefill: args })
-  ```
-- The `prefill` includes any data the AI extracted (product IDs, customer info) so the form can pre-populate
-- Keep the existing approval flow for all other write tools (`update_order`, `delete_order`, etc.)
-- Also fix the general approval flow: ensure `approval_request` events are emitted and the stream doesn't terminate prematurely before the frontend processes them
+#### 2. Index Page: `src/pages/Index.tsx`
+- On mount, check if user has an active `woo_connections` row (query once, store in state: `hasConnection`)
+- If no connection exists and `messages.length === 0`, render `<ConnectionSetupCard>` instead of the current empty state
+- After setup completes, set `hasConnection = true` and show the normal chat interface
+- After connection is established (either from setup card or on load if already connected), check if webhooks exist; if not, show a `WebhookSetupCard` in messages
 
-#### 3. Stream Parser: `src/lib/chat-stream.ts`
-- Add `"order_form"` to the recognized `PipelineEvent` types (line 49-57)
-- Add `prefill` field to `PipelineEvent` interface
+#### 3. Webhook Setup Card: `src/components/chat/WebhookSetupCard.tsx` (New)
+- Shows after successful connection with a list of recommended webhook topics:
+  - `order.created` — New order placed
+  - `order.updated` — Order status changed
+  - `customer.created` — New customer registered
+- User can check/uncheck which webhooks to create
+- "Create Webhooks" button calls `woo-proxy` to POST to `webhooks` endpoint for each selected topic
+- The webhook `delivery_url` points to a new edge function `webhook-receiver`
+- Shows success/error state per webhook
 
-#### 4. Chat Message: `src/components/chat/ChatMessage.tsx`
-- Add `orderForms` to the `ChatMessageProps` interface
-- Render `OrderFormCard` components (similar to how `ApprovalCard` is rendered)
-- Add `onOrderCreated` callback prop
+#### 4. Webhook Receiver Edge Function: `supabase/functions/webhook-receiver/index.ts` (New)
+- Receives POST requests from WooCommerce webhooks
+- Parses the `X-WC-Webhook-Topic` header to determine event type
+- Stores events in a new `webhook_events` table
+- Returns 200 OK
 
-#### 5. Message State: `src/pages/Index.tsx`
-- Add `orderForms` to `Message` interface
-- Handle `order_form` pipeline events — store in message state
-- When form is submitted successfully, append a user message with the result so the AI can respond with confirmation
-- Persist `orderForms` in message metadata (like approvals)
+#### 5. Database: `webhook_events` table (New migration)
+```sql
+CREATE TABLE public.webhook_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  topic text NOT NULL,
+  payload jsonb NOT NULL DEFAULT '{}',
+  read boolean NOT NULL DEFAULT false,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+ALTER TABLE public.webhook_events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own events" ON public.webhook_events FOR SELECT TO authenticated USING (auth.uid() = user_id);
+CREATE POLICY "Service can insert events" ON public.webhook_events FOR INSERT TO public WITH CHECK (true);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.webhook_events;
+```
 
-#### 6. Fix Approval Card Rendering (for non-order write tools)
-- Debug and fix why `approval_request` events don't result in visible cards. Root cause investigation:
-  - Verify the SSE event is actually emitted by adding a console.log in the backend
-  - Ensure the frontend `approval_request` handler in `onPipelineEvent` runs (the code at line 276-289 looks correct)
-  - Check if there's a race condition where `pipeline_complete` fires and overwrites the approval state
+#### 6. Real-time Toast Notifications: `src/pages/Index.tsx`
+- Subscribe to `webhook_events` realtime channel filtered by `user_id`
+- On new insert, show a toast with event summary:
+  - `order.created`: "New order #123 — $45.00 from John Doe"
+  - `customer.created`: "New customer: john@example.com"
+  - `order.updated`: "Order #123 status changed to processing"
+
+#### 7. Webhook Receiver: Identify User
+- When creating webhooks via `woo-proxy`, include the `user_id` in the delivery URL as a query param (e.g., `?uid=xxx`)
+- The receiver edge function reads this to associate events with users
 
 ### Files to Create/Modify
 
 | File | Change |
 |------|--------|
-| `src/components/chat/OrderFormCard.tsx` | **Create** — Interactive order form with product search, line items, customer fields |
-| `supabase/functions/chat/index.ts` | Emit `order_form` event for `create_order` instead of `approval_request` |
-| `src/lib/chat-stream.ts` | Add `order_form` to recognized event types |
-| `src/components/chat/ChatMessage.tsx` | Render `OrderFormCard`, add interface fields |
-| `src/pages/Index.tsx` | Handle `order_form` events, persist state, handle form submission callback |
+| `src/components/chat/ConnectionSetupCard.tsx` | **New** — Step-by-step connection wizard |
+| `src/components/chat/WebhookSetupCard.tsx` | **New** — Webhook creation approval card |
+| `supabase/functions/webhook-receiver/index.ts` | **New** — Receives WooCommerce webhook POSTs |
+| `src/pages/Index.tsx` | Check connection on mount, render setup card, realtime webhook subscription + toasts |
+| Migration | New `webhook_events` table with RLS + realtime |
 
