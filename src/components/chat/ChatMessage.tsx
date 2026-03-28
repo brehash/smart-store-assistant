@@ -49,6 +49,7 @@ interface ChatMessageProps {
   orderStatuses?: string[];
   allOrderStatuses?: { slug: string; name: string }[];
   paymentMethods?: { id: string; title: string }[];
+  cachedProducts?: any[];
   onApproval?: (approval: ApprovalRequest, action: "approve" | "skip" | "edit", editedText?: string) => void;
   onQuestionAnswer?: (question: QuestionRequest, answer: string) => void;
   onOrderCreated?: (data: OrderFormData, result: { orderNumber: string; orderId: number; total: string }) => void;
