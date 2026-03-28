@@ -1588,7 +1588,7 @@ async function executeTool(
 
         // Authenticate with Colete Online
         const basicAuth = btoa(`${clientId}:${clientSecret}`);
-        const tokenResp = await fetch("https://auth.colete-online.ro/token", {
+        const tokenResp = await fetchWithRetry("https://auth.colete-online.ro/token", {
           method: "POST",
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
@@ -1597,6 +1597,10 @@ async function executeTool(
           body: "grant_type=client_credentials",
         });
 
+        if (tokenResp.status === 429) {
+          const retryAfter = tokenResp.headers.get("Retry-After") || "unknown";
+          return { result: { error: `Rate limited by Colete Online. Please try again in ${retryAfter} seconds.` } };
+        }
         if (!tokenResp.ok) {
           return { result: { error: `${detectedProvider.provider} authentication failed (${tokenResp.status}). Check your credentials in Settings > Integrations.` } };
         }
