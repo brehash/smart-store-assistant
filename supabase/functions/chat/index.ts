@@ -668,6 +668,19 @@ function truncateForAI(toolName: string, result: any): any {
       }));
     }
 
+    if (toolName === "check_shipping_status") {
+      return {
+        order_id: result.order_id,
+        awb: result.awb,
+        courier: result.courier,
+        service: result.service,
+        status_name: result.status_name,
+        is_delivered: result.is_delivered,
+        current_status: result.current_status,
+        history_count: Array.isArray(result.history) ? result.history.length : 0,
+      };
+    }
+
     // Generic fallback: truncate string
     if (str.length > 4000) {
       return { summary: `Data received (${str.length} chars, truncated for context). Key fields preserved above.` };
