@@ -1503,6 +1503,72 @@ async function executeTool(
         requestUri: `GET /wp-json/wc/v3/orders (aggregated by product)`,
       };
     }
+    case "get_top_customers": {
+      const startDate = args.date_min;
+      const endDate = args.date_max;
+      const limit = args.limit || 5;
+
+      let allOrders: any[] = [];
+      for (let page = 1; page <= 5; page++) {
+        const params = new URLSearchParams();
+        params.set("per_page", "100");
+        params.set("page", String(page));
+        params.set("after", `${startDate}T00:00:00`);
+        params.set("before", `${endDate}T23:59:59`);
+        if (defaultOrderStatuses.length) params.set("status", defaultOrderStatuses.join(","));
+        const orders = await callWooProxy(supabaseUrl, authHeader, { endpoint: `orders?${params.toString()}` });
+        if (!Array.isArray(orders) || orders.length === 0) break;
+        allOrders = allOrders.concat(orders);
+        if (orders.length < 100) break;
+      }
+
+      const customerMap: Record<string, { customer_name: string; total_revenue: number; order_count: number; email: string }> = {};
+
+      for (const order of allOrders) {
+        const b = order.billing || {};
+        const name = `${b.first_name || ""} ${b.last_name || ""}`.trim() || b.email || `Customer #${order.customer_id || "unknown"}`;
+        const key = name.toLowerCase();
+        if (!customerMap[key]) {
+          customerMap[key] = { customer_name: name, total_revenue: 0, order_count: 0, email: b.email || "" };
+        }
+        customerMap[key].total_revenue += parseFloat(order.total || "0");
+        customerMap[key].order_count++;
+      }
+
+      const customers = Object.values(customerMap)
+        .map((c) => ({
+          customer_name: c.customer_name,
+          email: c.email,
+          total_revenue: Math.round(c.total_revenue * 100) / 100,
+          order_count: c.order_count,
+          average_order_value: c.order_count > 0 ? Math.round((c.total_revenue / c.order_count) * 100) / 100 : 0,
+        }))
+        .sort((a, b) => b.total_revenue - a.total_revenue)
+        .slice(0, limit);
+
+      const totalRevenue = customers.reduce((s, c) => s + c.total_revenue, 0);
+
+      return {
+        result: {
+          period: `${startDate} → ${endDate}`,
+          total_revenue: Math.round(totalRevenue * 100) / 100,
+          total_orders: allOrders.length,
+          customer_count: customers.length,
+          customers,
+        },
+        richContent: {
+          type: "chart",
+          data: {
+            type: "bar",
+            title: `Top Customers (${startDate} → ${endDate})`,
+            data: customers.map((c) => ({ name: c.customer_name.slice(0, 25), value: c.total_revenue })),
+            dataKey: "value",
+            nameKey: "name",
+          },
+        },
+        requestUri: `GET /wp-json/wc/v3/orders (aggregated by customer)`,
+      };
+    }
     case "save_preference": {
       await supabase
         .from("user_preferences")
