@@ -714,6 +714,9 @@ export default function Index() {
                   reasoningLogs={msg.reasoningLogs}
                   tokenUsage={msg.tokenUsage}
                   creditUsage={msg.creditUsage}
+                  orderStatuses={cachedSelectedStatuses}
+                  allOrderStatuses={cachedAllStatuses}
+                  paymentMethods={cachedPaymentMethods}
                   onApproval={handleApproval}
                   onQuestionAnswer={handleQuestionAnswer}
                   onOrderCreated={handleOrderCreated}
