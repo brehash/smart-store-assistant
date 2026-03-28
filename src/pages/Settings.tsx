@@ -147,8 +147,25 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
     } catch { /* silent */ } finally { setLoadingStatuses(false); }
   };
 
+  const fetchPlugins = async (url: string, ck: string, cs: string) => {
+    setLoadingPlugins(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("woo-proxy", {
+        body: { endpoint: "plugins?status=active", apiPrefix: "wp/v2", storeUrl: url, consumerKey: ck, consumerSecret: cs },
+      });
+      if (error) throw error;
+      if (Array.isArray(data)) {
+        setPlugins(data.map((p: any) => ({ plugin: p.plugin, name: p.name, version: p.version })));
+      }
+    } catch { /* silent — endpoint may require higher permissions */ }
+    finally { setLoadingPlugins(false); }
+  };
+
   const toggleStatus = (slug: string) =>
     setSelectedStatuses((prev) => prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]);
+
+  const togglePlugin = (slug: string) =>
+    setSelectedPlugins((prev) => prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]);
 
   const handleSave = async () => {
     if (!user) return;
