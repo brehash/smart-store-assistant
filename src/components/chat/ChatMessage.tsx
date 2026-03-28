@@ -11,9 +11,10 @@ import { DebugPanel, type DebugEntry } from "./DebugPanel";
 import { DashboardView } from "./DashboardView";
 import { ReasoningBubbles, type ReasoningEntry } from "./ReasoningBubbles";
 import { OrderFormCard, type OrderFormData } from "./OrderFormCard";
+import { ShippingTimeline } from "./ShippingTimeline";
 
 export interface RichContent {
-  type: "products" | "orders" | "chart" | "confirmation" | "pipeline" | "dashboard";
+  type: "products" | "orders" | "chart" | "confirmation" | "pipeline" | "dashboard" | "shipping";
   data: any;
 }
 
@@ -154,6 +155,7 @@ export function ChatMessage({
             {rc.type === "orders" && <OrderTable orders={rc.data} />}
             {rc.type === "chart" && <ChatChart chartData={rc.data} />}
             {rc.type === "dashboard" && <DashboardView data={rc.data} />}
+            {rc.type === "shipping" && <ShippingTimeline data={rc.data} />}
           </div>
         ))}
 
