@@ -111,6 +111,8 @@ export function ChatMessage({
             key={`order-form-${i}`}
             data={of}
             orderStatuses={orderStatuses}
+            allOrderStatuses={allOrderStatuses}
+            paymentMethods={paymentMethods}
             disabled={isStreaming}
             onOrderCreated={onOrderCreated}
           />
