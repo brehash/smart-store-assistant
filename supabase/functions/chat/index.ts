@@ -1718,6 +1718,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
           let planSent = false;
           let contentSent = false;
           let semanticSteps: SemanticStep[] = [];
+          let semanticIdx = 0; // Track across tool-phase and post-response phase
           const totalUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
 
           // Emit "Understanding request" immediately
