@@ -2102,11 +2102,25 @@ Be conversational. Currency is RON (lei).${defaultStatusStr}`;
             }
             sendSSE({ type: "reasoning", text: "Thinking..." });
 
+            // Select tools based on intent — shipping queries get minimal tool set
+            const hasToolResult = aiMessages.some((m: any) => m.role === "tool");
+            const iterationTools = shippingQuery
+              ? selectToolsForIntent(lastUserMsg, hasToolResult, activeTools)
+              : activeTools;
+
+            // For follow-up iterations in shipping queries, trim history aggressively
+            if (shippingQuery && hasToolResult) {
+              // Keep system prompt + last 6 messages (tool results + context)
+              const sysMsg = aiMessages[0];
+              const recentMsgs = aiMessages.slice(1).slice(-6);
+              aiMessages = [sysMsg, ...recentMsgs];
+            }
+
             // Keep-alive: send periodic pings during AI fetch to prevent connection drops
             const aiRequest = fetch(aiBaseUrl, {
               method: "POST",
               headers: { Authorization: aiAuthHeader, "Content-Type": "application/json" },
-              body: JSON.stringify({ model: aiModel, messages: aiMessages, tools: activeTools, stream: false }),
+              body: JSON.stringify({ model: aiModel, messages: aiMessages, tools: iterationTools, stream: false }),
             });
             const keepAliveInterval = setInterval(() => {
               sendSSE({ type: "reasoning", text: "Still processing..." });
