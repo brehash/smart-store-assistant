@@ -181,12 +181,16 @@ const TOOLS = [
     type: "function",
     function: {
       name: "update_order",
-      description: "Update an existing WooCommerce order. Can change status, billing, shipping, line_items, or add a note.",
+      description:
+        "Update an existing WooCommerce order. Can change status, billing, shipping, line_items, or add a note.",
       parameters: {
         type: "object",
         properties: {
           order_id: { type: "number", description: "Order ID to update" },
-          status: { type: "string", description: "New status: pending, processing, on-hold, completed, cancelled, refunded, failed" },
+          status: {
+            type: "string",
+            description: "New status: pending, processing, on-hold, completed, cancelled, refunded, failed",
+          },
           billing: { type: "object", description: "Billing address fields to update" },
           shipping: { type: "object", description: "Shipping address fields to update" },
           line_items: { type: "array", description: "Line items to add/update", items: { type: "object" } },
@@ -228,8 +232,16 @@ const TOOLS = [
           sku: { type: "string", description: "SKU" },
           stock_quantity: { type: "number", description: "Stock quantity" },
           manage_stock: { type: "boolean", description: "Whether to manage stock (default: false)" },
-          categories: { type: "array", items: { type: "object", properties: { id: { type: "number" } } }, description: "Category IDs" },
-          images: { type: "array", items: { type: "object", properties: { src: { type: "string" } } }, description: "Image URLs" },
+          categories: {
+            type: "array",
+            items: { type: "object", properties: { id: { type: "number" } } },
+            description: "Category IDs",
+          },
+          images: {
+            type: "array",
+            items: { type: "object", properties: { src: { type: "string" } } },
+            description: "Image URLs",
+          },
           status: { type: "string", description: "Status: draft, pending, publish (default: publish)" },
         },
         required: ["name"],
@@ -254,7 +266,11 @@ const TOOLS = [
           stock_quantity: { type: "number", description: "New stock quantity" },
           manage_stock: { type: "boolean", description: "Whether to manage stock" },
           status: { type: "string", description: "Status: draft, pending, publish, private" },
-          categories: { type: "array", items: { type: "object", properties: { id: { type: "number" } } }, description: "Category IDs" },
+          categories: {
+            type: "array",
+            items: { type: "object", properties: { id: { type: "number" } } },
+            description: "Category IDs",
+          },
         },
         required: ["product_id"],
       },
@@ -380,10 +396,19 @@ const TOOLS = [
 ];
 
 const WRITE_TOOLS = new Set([
-  "create_order", "update_order_status", "update_order", "delete_order",
-  "create_product", "update_product", "delete_product",
-  "create_page", "update_page", "delete_page",
-  "create_post", "update_post", "delete_post",
+  "create_order",
+  "update_order_status",
+  "update_order",
+  "delete_order",
+  "create_product",
+  "update_product",
+  "delete_product",
+  "create_page",
+  "update_page",
+  "delete_page",
+  "create_post",
+  "update_post",
+  "delete_post",
 ]);
 
 // ── Deterministic date utilities ──
@@ -488,7 +513,12 @@ function coerceMessageContent(content: unknown): string {
     return content
       .map((item) => {
         if (typeof item === "string") return item;
-        if (item && typeof item === "object" && "text" in item && typeof (item as { text?: unknown }).text === "string") {
+        if (
+          item &&
+          typeof item === "object" &&
+          "text" in item &&
+          typeof (item as { text?: unknown }).text === "string"
+        ) {
           return (item as { text: string }).text;
         }
 
@@ -620,7 +650,7 @@ function generateReasoningBefore(toolName: string, args: any): string {
       return `Fetching sales history for product #${args.product_id} over last ${args.days || 60} days...`;
     case "get_product_sales_report":
       return `Aggregating per-product sales from ${args.date_min} to ${args.date_max}...`;
-     case "create_order":
+    case "create_order":
       return `Preparing new order with ${args.line_items?.length || 0} items...`;
     case "update_order_status":
       return `Updating order #${args.order_id} to '${args.status}'...`;
@@ -666,7 +696,8 @@ function generateReasoningAfter(toolName: string, result: any): string | null {
         return null;
       }
       case "get_product": {
-        if (result?.name) return `Got: ${result.name}${result.stock_quantity != null ? ` — ${result.stock_quantity} in stock` : ""}`;
+        if (result?.name)
+          return `Got: ${result.name}${result.stock_quantity != null ? ` — ${result.stock_quantity} in stock` : ""}`;
         return null;
       }
       case "search_orders": {
@@ -703,25 +734,37 @@ function generateReasoningAfter(toolName: string, result: any): string | null {
         if (result?.id) return `Order #${result.id} updated (status: ${result.status}).`;
         return result?.error ? `Error: ${result.error}` : null;
       case "delete_order":
-        return result?.id ? `Order #${result.id} deleted.` : (result?.error ? `Error: ${result.error}` : null);
+        return result?.id ? `Order #${result.id} deleted.` : result?.error ? `Error: ${result.error}` : null;
       case "create_product":
-        return result?.id ? `Product created: #${result.id} "${result.name}".` : (result?.error ? `Error: ${result.error}` : null);
+        return result?.id
+          ? `Product created: #${result.id} "${result.name}".`
+          : result?.error
+            ? `Error: ${result.error}`
+            : null;
       case "update_product":
-        return result?.id ? `Product #${result.id} updated.` : (result?.error ? `Error: ${result.error}` : null);
+        return result?.id ? `Product #${result.id} updated.` : result?.error ? `Error: ${result.error}` : null;
       case "delete_product":
-        return result?.id ? `Product #${result.id} deleted.` : (result?.error ? `Error: ${result.error}` : null);
+        return result?.id ? `Product #${result.id} deleted.` : result?.error ? `Error: ${result.error}` : null;
       case "create_page":
-        return result?.id ? `Page created: #${result.id} "${result.title?.rendered || result.title}".` : (result?.error ? `Error: ${result.error}` : null);
+        return result?.id
+          ? `Page created: #${result.id} "${result.title?.rendered || result.title}".`
+          : result?.error
+            ? `Error: ${result.error}`
+            : null;
       case "update_page":
-        return result?.id ? `Page #${result.id} updated.` : (result?.error ? `Error: ${result.error}` : null);
+        return result?.id ? `Page #${result.id} updated.` : result?.error ? `Error: ${result.error}` : null;
       case "delete_page":
-        return result?.id ? `Page #${result.id} deleted.` : (result?.error ? `Error: ${result.error}` : null);
+        return result?.id ? `Page #${result.id} deleted.` : result?.error ? `Error: ${result.error}` : null;
       case "create_post":
-        return result?.id ? `Post created: #${result.id} "${result.title?.rendered || result.title}".` : (result?.error ? `Error: ${result.error}` : null);
+        return result?.id
+          ? `Post created: #${result.id} "${result.title?.rendered || result.title}".`
+          : result?.error
+            ? `Error: ${result.error}`
+            : null;
       case "update_post":
-        return result?.id ? `Post #${result.id} updated.` : (result?.error ? `Error: ${result.error}` : null);
+        return result?.id ? `Post #${result.id} updated.` : result?.error ? `Error: ${result.error}` : null;
       case "delete_post":
-        return result?.id ? `Post #${result.id} deleted.` : (result?.error ? `Error: ${result.error}` : null);
+        return result?.id ? `Post #${result.id} deleted.` : result?.error ? `Error: ${result.error}` : null;
       default:
         return null;
     }
@@ -729,7 +772,6 @@ function generateReasoningAfter(toolName: string, result: any): string | null {
     return null;
   }
 }
-
 
 function generateSemanticPlan(toolCalls: any[]): SemanticStep[] {
   const steps: SemanticStep[] = [];
@@ -742,9 +784,10 @@ function generateSemanticPlan(toolCalls: any[]): SemanticStep[] {
       case "compare_sales": {
         const labelA = args.period_a_label || "Period A";
         const labelB = args.period_b_label || "Period B";
-        const dateDetail = args.period_a_start && args.period_b_start
-          ? `${args.period_a_start} → ${args.period_a_end} vs ${args.period_b_start} → ${args.period_b_end}`
-          : undefined;
+        const dateDetail =
+          args.period_a_start && args.period_b_start
+            ? `${args.period_a_start} → ${args.period_a_end} vs ${args.period_b_start} → ${args.period_b_end}`
+            : undefined;
         steps.push({ title: "Resolving date ranges", details: dateDetail });
         steps.push({ title: `Fetching orders for ${labelA}` });
         steps.push({ title: `Fetching orders for ${labelB}` });
@@ -753,9 +796,8 @@ function generateSemanticPlan(toolCalls: any[]): SemanticStep[] {
         break;
       }
       case "get_sales_report": {
-        const dateDetail = args.date_min && args.date_max
-          ? `${args.date_min} → ${args.date_max}`
-          : args.period || undefined;
+        const dateDetail =
+          args.date_min && args.date_max ? `${args.date_min} → ${args.date_max}` : args.period || undefined;
         steps.push({ title: "Resolving date range", details: dateDetail });
         steps.push({ title: "Fetching orders" });
         steps.push({ title: "Calculating metrics" });
@@ -763,11 +805,17 @@ function generateSemanticPlan(toolCalls: any[]): SemanticStep[] {
         break;
       }
       case "search_products":
-        steps.push({ title: "Searching product catalog", details: args.search ? `Query: "${args.search}"` : undefined });
+        steps.push({
+          title: "Searching product catalog",
+          details: args.search ? `Query: "${args.search}"` : undefined,
+        });
         steps.push({ title: "Rendering results" });
         break;
       case "get_product":
-        steps.push({ title: "Fetching product details", details: args.product_id ? `ID: ${args.product_id}` : undefined });
+        steps.push({
+          title: "Fetching product details",
+          details: args.product_id ? `ID: ${args.product_id}` : undefined,
+        });
         break;
       case "search_orders":
         steps.push({ title: "Searching orders", details: args.search || args.status || undefined });
@@ -775,15 +823,16 @@ function generateSemanticPlan(toolCalls: any[]): SemanticStep[] {
         break;
       case "get_product_sales": {
         const daysVal = args.days || 60;
-        steps.push({ title: "Analyzing sales velocity", details: `Product #${args.product_id} — last ${daysVal} days` });
+        steps.push({
+          title: "Analyzing sales velocity",
+          details: `Product #${args.product_id} — last ${daysVal} days`,
+        });
         steps.push({ title: "Calculating burn rate" });
         steps.push({ title: "Building inventory report" });
         break;
       }
       case "get_product_sales_report": {
-        const dateDetail = args.date_min && args.date_max
-          ? `${args.date_min} → ${args.date_max}`
-          : undefined;
+        const dateDetail = args.date_min && args.date_max ? `${args.date_min} → ${args.date_max}` : undefined;
         steps.push({ title: "Fetching orders for period", details: dateDetail });
         steps.push({ title: "Aggregating by product" });
         steps.push({ title: "Building product report" });
@@ -838,7 +887,12 @@ async function callWooProxy(supabaseUrl: string, authHeader: string, payload: an
   try {
     return JSON.parse(text);
   } catch {
-    console.error("callWooProxy: failed to parse response as JSON, length:", text.length, "preview:", text.slice(0, 200));
+    console.error(
+      "callWooProxy: failed to parse response as JSON, length:",
+      text.length,
+      "preview:",
+      text.slice(0, 200),
+    );
     return { error: "Invalid response from store API", raw_preview: text.slice(0, 300) };
   }
 }
@@ -1042,7 +1096,11 @@ async function executeTool(
         const lineItems = order.line_items || [];
         for (const li of lineItems) {
           // Match by product_id or variation parent
-          if (li.product_id === productId || li.variation_id === productId || (li.parent_name && li.product_id === productId)) {
+          if (
+            li.product_id === productId ||
+            li.variation_id === productId ||
+            (li.parent_name && li.product_id === productId)
+          ) {
             const qty = li.quantity || 0;
             const rev = parseFloat(li.total || "0");
             totalUnits += qty;
@@ -1115,16 +1173,33 @@ async function executeTool(
       }
 
       // Aggregate by product
-      const productMap: Record<number, { product_id: number; product_name: string; total_revenue: number; total_quantity: number; order_count: number; order_ids: Set<number> }> = {};
+      const productMap: Record<
+        number,
+        {
+          product_id: number;
+          product_name: string;
+          total_revenue: number;
+          total_quantity: number;
+          order_count: number;
+          order_ids: Set<number>;
+        }
+      > = {};
 
       for (const order of allOrders) {
-        for (const li of (order.line_items || [])) {
+        for (const li of order.line_items || []) {
           const pid = li.product_id;
           if (!productMap[pid]) {
-            productMap[pid] = { product_id: pid, product_name: li.name || `Product #${pid}`, total_revenue: 0, total_quantity: 0, order_count: 0, order_ids: new Set() };
+            productMap[pid] = {
+              product_id: pid,
+              product_name: li.name || `Product #${pid}`,
+              total_revenue: 0,
+              total_quantity: 0,
+              order_count: 0,
+              order_ids: new Set(),
+            };
           }
           productMap[pid].total_revenue += parseFloat(li.total || "0");
-          productMap[pid].total_quantity += (li.quantity || 0);
+          productMap[pid].total_quantity += li.quantity || 0;
           if (!productMap[pid].order_ids.has(order.id)) {
             productMap[pid].order_ids.add(order.id);
             productMap[pid].order_count++;
@@ -1133,7 +1208,7 @@ async function executeTool(
       }
 
       const products = Object.values(productMap)
-        .map(p => ({
+        .map((p) => ({
           product_id: p.product_id,
           product_name: p.product_name,
           total_revenue: Math.round(p.total_revenue * 100) / 100,
@@ -1159,7 +1234,7 @@ async function executeTool(
           data: {
             type: "bar",
             title: `Product Sales (${startDate} → ${endDate})`,
-            data: products.slice(0, 15).map(p => ({ name: p.product_name.slice(0, 25), value: p.total_revenue })),
+            data: products.slice(0, 15).map((p) => ({ name: p.product_name.slice(0, 25), value: p.total_revenue })),
             dataKey: "value",
             nameKey: "name",
           },
@@ -1186,7 +1261,11 @@ async function executeTool(
       if (args.line_items) body.line_items = args.line_items;
       const data = await callWooProxy(supabaseUrl, authHeader, { endpoint, method: "PUT", body });
       if (args.note) {
-        await callWooProxy(supabaseUrl, authHeader, { endpoint: `orders/${args.order_id}/notes`, method: "POST", body: { note: args.note } });
+        await callWooProxy(supabaseUrl, authHeader, {
+          endpoint: `orders/${args.order_id}/notes`,
+          method: "POST",
+          body: { note: args.note },
+        });
       }
       return { result: data, requestUri: `PUT /wp-json/wc/v3/${endpoint}` };
     }
@@ -1210,13 +1289,21 @@ async function executeTool(
       if (args.images) body.images = args.images;
       if (args.status) body.status = args.status;
       const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: "products", method: "POST", body });
-      return { result: data, richContent: data?.id ? { type: "products", data: [data] } : undefined, requestUri: `POST /wp-json/wc/v3/products` };
+      return {
+        result: data,
+        richContent: data?.id ? { type: "products", data: [data] } : undefined,
+        requestUri: `POST /wp-json/wc/v3/products`,
+      };
     }
     case "update_product": {
       const endpoint = `products/${args.product_id}`;
       const { product_id, ...rest } = args;
       const data = await callWooProxy(supabaseUrl, authHeader, { endpoint, method: "PUT", body: rest });
-      return { result: data, richContent: data?.id ? { type: "products", data: [data] } : undefined, requestUri: `PUT /wp-json/wc/v3/${endpoint}` };
+      return {
+        result: data,
+        richContent: data?.id ? { type: "products", data: [data] } : undefined,
+        requestUri: `PUT /wp-json/wc/v3/${endpoint}`,
+      };
     }
     case "delete_product": {
       const endpoint = `products/${args.product_id}`;
@@ -1228,17 +1315,31 @@ async function executeTool(
     case "create_page": {
       const body: any = { title: args.title, status: args.status || "draft" };
       if (args.content) body.content = args.content;
-      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: "pages", method: "POST", body, apiPrefix: "wp/v2" });
+      const data = await callWooProxy(supabaseUrl, authHeader, {
+        endpoint: "pages",
+        method: "POST",
+        body,
+        apiPrefix: "wp/v2",
+      });
       return { result: data, requestUri: `POST /wp-json/wp/v2/pages` };
     }
     case "update_page": {
       const { page_id, ...rest } = args;
-      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `pages/${page_id}`, method: "PUT", body: rest, apiPrefix: "wp/v2" });
+      const data = await callWooProxy(supabaseUrl, authHeader, {
+        endpoint: `pages/${page_id}`,
+        method: "PUT",
+        body: rest,
+        apiPrefix: "wp/v2",
+      });
       return { result: data, requestUri: `PUT /wp-json/wp/v2/pages/${page_id}` };
     }
     case "delete_page": {
       const force = args.force ? "?force=true" : "";
-      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `pages/${args.page_id}${force}`, method: "DELETE", apiPrefix: "wp/v2" });
+      const data = await callWooProxy(supabaseUrl, authHeader, {
+        endpoint: `pages/${args.page_id}${force}`,
+        method: "DELETE",
+        apiPrefix: "wp/v2",
+      });
       return { result: data, requestUri: `DELETE /wp-json/wp/v2/pages/${args.page_id}` };
     }
     // ── CRUD: Posts (WordPress) ──
@@ -1247,17 +1348,31 @@ async function executeTool(
       if (args.content) body.content = args.content;
       if (args.categories) body.categories = args.categories;
       if (args.tags) body.tags = args.tags;
-      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: "posts", method: "POST", body, apiPrefix: "wp/v2" });
+      const data = await callWooProxy(supabaseUrl, authHeader, {
+        endpoint: "posts",
+        method: "POST",
+        body,
+        apiPrefix: "wp/v2",
+      });
       return { result: data, requestUri: `POST /wp-json/wp/v2/posts` };
     }
     case "update_post": {
       const { post_id, ...rest } = args;
-      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `posts/${post_id}`, method: "PUT", body: rest, apiPrefix: "wp/v2" });
+      const data = await callWooProxy(supabaseUrl, authHeader, {
+        endpoint: `posts/${post_id}`,
+        method: "PUT",
+        body: rest,
+        apiPrefix: "wp/v2",
+      });
       return { result: data, requestUri: `PUT /wp-json/wp/v2/posts/${post_id}` };
     }
     case "delete_post": {
       const force = args.force ? "?force=true" : "";
-      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `posts/${args.post_id}${force}`, method: "DELETE", apiPrefix: "wp/v2" });
+      const data = await callWooProxy(supabaseUrl, authHeader, {
+        endpoint: `posts/${args.post_id}${force}`,
+        method: "DELETE",
+        apiPrefix: "wp/v2",
+      });
       return { result: data, requestUri: `DELETE /wp-json/wp/v2/posts/${args.post_id}` };
     }
     default:
@@ -1447,62 +1562,17 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY && !userOpenAIKey) throw new Error("No AI API key configured");
 
-    // ── Message limit enforcement ──
-    const serviceClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {});
-    const { data: limitData } = await serviceClient
-      .from("message_limits")
-      .select("daily_limit, monthly_limit")
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (limitData) {
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
-      const monthStart = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1);
-
-      const { count: dailyCount } = await serviceClient
-        .from("messages")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", userId)
-        .eq("role", "user")
-        .gte("created_at", todayStart.toISOString());
-
-      const { count: monthlyCount } = await serviceClient
-        .from("messages")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", userId)
-        .eq("role", "user")
-        .gte("created_at", monthStart.toISOString());
-
-      if (limitData.daily_limit && (dailyCount || 0) >= limitData.daily_limit) {
-        return new Response(JSON.stringify({ error: "You've reached your daily message limit." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (limitData.monthly_limit && (monthlyCount || 0) >= limitData.monthly_limit) {
-        return new Response(JSON.stringify({ error: "You've reached your monthly message limit." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-    }
-
     const useOpenAI = !!userOpenAIKey;
     const aiBaseUrl = useOpenAI
       ? "https://api.openai.com/v1/chat/completions"
       : "https://ai.gateway.lovable.dev/v1/chat/completions";
     const aiAuthHeader = useOpenAI ? `Bearer ${userOpenAIKey}` : `Bearer ${LOVABLE_API_KEY}`;
-    const aiModel = useOpenAI ? "gpt-5.4-nano" : "google/gemini-3-flash-preview";
+    const aiModel = useOpenAI ? "gpt-5.4-mini" : "google/gemini-3-flash-preview";
 
     // Trim conversation history to last 20 messages to prevent context bloat
     const trimmedHistory = sanitizeAiHistory(messages).slice(-20);
     let aiMessages: any[] = [{ role: "system", content: systemPrompt }, ...trimmedHistory];
     const encoder = new TextEncoder();
-    // Token usage accumulator
-    let totalPromptTokens = 0;
-    let totalCompletionTokens = 0;
-    let totalTokens = 0;
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -1526,7 +1596,8 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
             if (maxIterations <= 2) {
               aiMessages.push({
                 role: "system",
-                content: "CRITICAL: You are running low on processing steps. You MUST produce your final answer NOW using the data you already have. Do NOT call any more tools. Summarize and present what you have.",
+                content:
+                  "CRITICAL: You are running low on processing steps. You MUST produce your final answer NOW using the data you already have. Do NOT call any more tools. Summarize and present what you have.",
               });
             }
             sendSSE({ type: "reasoning", text: "Thinking..." });
@@ -1562,12 +1633,6 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
             }
 
             const aiData = await aiResp.json();
-            // Accumulate token usage
-            if (aiData.usage) {
-              totalPromptTokens += aiData.usage.prompt_tokens || 0;
-              totalCompletionTokens += aiData.usage.completion_tokens || 0;
-              totalTokens += aiData.usage.total_tokens || 0;
-            }
             const choice = aiData.choices?.[0];
             if (!choice) break;
 
@@ -1575,17 +1640,17 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
 
             if (choice.finish_reason === "tool_calls" || choice.message?.tool_calls?.length) {
               const toolCalls = choice.message.tool_calls;
-               aiMessages.push({
-                 role: "assistant",
-                 content: coerceMessageContent(content),
-                 tool_calls: choice.message.tool_calls,
-               });
+              aiMessages.push({
+                role: "assistant",
+                content: coerceMessageContent(content),
+                tool_calls: choice.message.tool_calls,
+              });
 
               // Mark "Understanding request" as done and emit semantic plan
               if (!planSent) {
                 sendSSE({ type: "pipeline_step", stepIndex: 0, title: "Understanding request", status: "done" });
                 semanticSteps = generateSemanticPlan(toolCalls);
-                const allStepTitles = ["Understanding request", ...semanticSteps.map(s => s.title)];
+                const allStepTitles = ["Understanding request", ...semanticSteps.map((s) => s.title)];
                 sendSSE({ type: "pipeline_plan", title: "Execution Plan", steps: allStepTitles });
                 stepIndex = 1; // step 0 was "Understanding request"
                 planSent = true;
@@ -1600,8 +1665,15 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                   args = JSON.parse(tc.function.arguments);
                 } catch {
                   console.error("Failed to parse tool arguments:", tc.function.arguments);
-                  sendSSE({ type: "reasoning", text: `Failed to parse arguments for ${tc.function.name}, skipping...` });
-                  aiMessages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify({ error: "Invalid arguments" }) });
+                  sendSSE({
+                    type: "reasoning",
+                    text: `Failed to parse arguments for ${tc.function.name}, skipping...`,
+                  });
+                  aiMessages.push({
+                    role: "tool",
+                    tool_call_id: tc.id,
+                    content: JSON.stringify({ error: "Invalid arguments" }),
+                  });
                   continue;
                 }
                 const toolName = tc.function.name;
@@ -1612,7 +1684,13 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                   const ss = semanticSteps[semanticIdx];
                   // Check if this is a "pre-execution" step (resolving, preparing)
                   if (ss.title.startsWith("Resolving") || ss.title.startsWith("Preparing")) {
-                    sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "running", details: ss.details });
+                    sendSSE({
+                      type: "pipeline_step",
+                      stepIndex,
+                      title: ss.title,
+                      status: "running",
+                      details: ss.details,
+                    });
                     sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "done", details: ss.details });
                     stepIndex++;
                     semanticIdx++;
@@ -1622,17 +1700,23 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                 }
 
                 // Get the current semantic step title for this tool execution
-                const currentSemanticTitle = semanticIdx < semanticSteps.length
-                  ? semanticSteps[semanticIdx].title
-                  : stepLabel;
-                const currentSemanticDetails = semanticIdx < semanticSteps.length
-                  ? semanticSteps[semanticIdx].details
-                  : undefined;
+                const currentSemanticTitle =
+                  semanticIdx < semanticSteps.length ? semanticSteps[semanticIdx].title : stepLabel;
+                const currentSemanticDetails =
+                  semanticIdx < semanticSteps.length ? semanticSteps[semanticIdx].details : undefined;
 
                 // Emit reasoning before tool call
                 sendSSE({ type: "reasoning", text: generateReasoningBefore(toolName, args) });
 
-                sendSSE({ type: "pipeline_step", stepIndex, title: currentSemanticTitle, status: "running", details: currentSemanticDetails, toolName, args });
+                sendSSE({
+                  type: "pipeline_step",
+                  stepIndex,
+                  title: currentSemanticTitle,
+                  status: "running",
+                  details: currentSemanticDetails,
+                  toolName,
+                  args,
+                });
 
                 if (WRITE_TOOLS.has(toolName) && !approvalResponse) {
                   sendSSE({
@@ -1687,7 +1771,13 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                   const errMsg = toolErr instanceof Error ? toolErr.message : "Unknown tool error";
                   result = { error: errMsg };
                   sendSSE({ type: "reasoning", text: `Tool "${toolName}" failed: ${errMsg}. Continuing...` });
-                  sendSSE({ type: "pipeline_step", stepIndex, title: currentSemanticTitle, status: "error", details: errMsg });
+                  sendSSE({
+                    type: "pipeline_step",
+                    stepIndex,
+                    title: currentSemanticTitle,
+                    status: "error",
+                    details: errMsg,
+                  });
                   aiMessages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify({ error: errMsg }) });
                   stepIndex++;
                   semanticIdx++;
@@ -1712,16 +1802,37 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                 });
 
                 // Truncate large results before feeding back to AI to prevent context bloat
-                aiMessages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(truncateForAI(toolName, result)) });
+                aiMessages.push({
+                  role: "tool",
+                  tool_call_id: tc.id,
+                  content: JSON.stringify(truncateForAI(toolName, result)),
+                });
                 stepIndex++;
                 semanticIdx++;
 
                 // Mark any remaining intermediate semantic steps (e.g. "Comparing periods") as done
                 while (semanticIdx < semanticSteps.length) {
                   const ss = semanticSteps[semanticIdx];
-                  if (ss.title === "Writing explanation" || ss.title === "Building dashboard" || ss.title === "Rendering results" || ss.title === "Building inventory report") break;
-                  if (ss.title.startsWith("Fetching") || ss.title === "Awaiting approval" || ss.title.startsWith("Analyzing")) break;
-                  sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "running", details: ss.details });
+                  if (
+                    ss.title === "Writing explanation" ||
+                    ss.title === "Building dashboard" ||
+                    ss.title === "Rendering results" ||
+                    ss.title === "Building inventory report"
+                  )
+                    break;
+                  if (
+                    ss.title.startsWith("Fetching") ||
+                    ss.title === "Awaiting approval" ||
+                    ss.title.startsWith("Analyzing")
+                  )
+                    break;
+                  sendSSE({
+                    type: "pipeline_step",
+                    stepIndex,
+                    title: ss.title,
+                    status: "running",
+                    details: ss.details,
+                  });
                   sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "done", details: ss.details });
                   stepIndex++;
                   semanticIdx++;
@@ -1736,7 +1847,12 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
               // Mark remaining semantic steps (Building dashboard, Writing explanation)
               for (let i = 0; i < semanticSteps.length; i++) {
                 const ss = semanticSteps[i];
-                if (ss.title === "Building dashboard" || ss.title === "Rendering results" || ss.title === "Building inventory report" || ss.title === "Calculating burn rate") {
+                if (
+                  ss.title === "Building dashboard" ||
+                  ss.title === "Rendering results" ||
+                  ss.title === "Building inventory report" ||
+                  ss.title === "Calculating burn rate"
+                ) {
                   sendSSE({ type: "reasoning", text: `${ss.title}...` });
                   sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "running" });
                   sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "done" });
@@ -1784,13 +1900,17 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
           // Fallback: if loop exhausted without sending content, notify the user
           if (!contentSent) {
             sendSSE({ type: "reasoning", text: "Error: Ran out of processing steps before generating a response." });
-            sendSSE({ choices: [{ delta: { content: "⚠️ Am adunat datele dar am epuizat pașii de procesare înainte de a putea scrie analiza. Te rog încearcă din nou — voi fi mai concis de data aceasta." } }] });
+            sendSSE({
+              choices: [
+                {
+                  delta: {
+                    content:
+                      "⚠️ Am adunat datele dar am epuizat pașii de procesare înainte de a putea scrie analiza. Te rog încearcă din nou — voi fi mai concis de data aceasta.",
+                  },
+                },
+              ],
+            });
             sendSSE({ type: "pipeline_complete", lastStepIndex: stepIndex });
-          }
-
-          // Emit token usage before DONE
-          if (totalTokens > 0) {
-            sendSSE({ type: "token_usage", prompt_tokens: totalPromptTokens, completion_tokens: totalCompletionTokens, total_tokens: totalTokens });
           }
 
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
