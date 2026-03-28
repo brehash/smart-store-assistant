@@ -216,6 +216,72 @@ serve(async (req) => {
       });
     }
 
+    // Route: GET /users/:id/credits
+    const creditsGetMatch = path.match(/^users\/([^/]+)\/credits$/);
+    if (req.method === "GET" && creditsGetMatch) {
+      const targetUserId = creditsGetMatch[1];
+      const { data: balance } = await serviceClient
+        .from("credit_balances")
+        .select("*")
+        .eq("user_id", targetUserId)
+        .maybeSingle();
+      const { data: transactions } = await serviceClient
+        .from("credit_transactions")
+        .select("*")
+        .eq("user_id", targetUserId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      return new Response(JSON.stringify({ balance, transactions }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Route: PUT /users/:id/credits (grant/deduct)
+    const creditsPutMatch = path.match(/^users\/([^/]+)\/credits$/);
+    if (req.method === "PUT" && creditsPutMatch) {
+      const targetUserId = creditsPutMatch[1];
+      const body = await req.json();
+      const { amount, reason } = body;
+      // Get current balance
+      let { data: bal } = await serviceClient
+        .from("credit_balances")
+        .select("balance")
+        .eq("user_id", targetUserId)
+        .maybeSingle();
+      if (!bal) {
+        await serviceClient.from("credit_balances").insert({ user_id: targetUserId });
+        bal = { balance: 100 };
+      }
+      const newBalance = Math.max(0, (bal.balance || 0) + amount);
+      await serviceClient
+        .from("credit_balances")
+        .update({ balance: newBalance })
+        .eq("user_id", targetUserId);
+      await serviceClient.from("credit_transactions").insert({
+        user_id: targetUserId,
+        amount,
+        balance_after: newBalance,
+        reason: reason || "admin_grant",
+      });
+      return new Response(JSON.stringify({ balance: newBalance }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Route: PUT /users/:id/allowance
+    const allowanceMatch = path.match(/^users\/([^/]+)\/allowance$/);
+    if (req.method === "PUT" && allowanceMatch) {
+      const targetUserId = allowanceMatch[1];
+      const body = await req.json();
+      const { monthly_allowance } = body;
+      await serviceClient
+        .from("credit_balances")
+        .upsert({ user_id: targetUserId, monthly_allowance }, { onConflict: "user_id" });
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ error: "Not found" }), {
       status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
