@@ -815,6 +815,11 @@ function generateReasoningAfter(toolName: string, result: any): string | null {
         return result?.id ? `Post #${result.id} updated.` : result?.error ? `Error: ${result.error}` : null;
       case "delete_post":
         return result?.id ? `Post #${result.id} deleted.` : result?.error ? `Error: ${result.error}` : null;
+      case "check_shipping_status": {
+        if (result?.error) return `Error: ${result.error}`;
+        if (result?.status_name) return `Order #${result.order_id} — AWB: ${result.awb} — Status: ${result.status_name}`;
+        return null;
+      }
       default:
         return null;
     }
