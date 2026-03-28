@@ -115,12 +115,13 @@ export default function Index() {
       .from("woo_cache" as any)
       .select("cache_key, data")
       .eq("user_id", user.id)
-      .in("cache_key", ["payment_methods", "order_statuses"])
+      .in("cache_key", ["payment_methods", "order_statuses", "products"])
       .then(({ data }: any) => {
         if (Array.isArray(data)) {
           for (const row of data) {
             if (row.cache_key === "payment_methods") setCachedPaymentMethods(row.data || []);
             if (row.cache_key === "order_statuses") setCachedAllStatuses(row.data || []);
+            if (row.cache_key === "products") setCachedProducts(row.data || []);
           }
         }
       });
