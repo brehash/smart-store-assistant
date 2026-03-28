@@ -16,7 +16,7 @@ import {
   AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Settings, Globe, Palette, Store, User,
+  Settings, Globe, Palette, Store, User, Coins,
   Save, Trash2, CheckCircle2, XCircle, ListChecks, Loader2,
   Sun, Moon, Monitor, X,
 } from "lucide-react";
