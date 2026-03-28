@@ -1306,6 +1306,15 @@ async function executeTool(
       return { result: { success: true, message: `Saved preference: "${args.key}"` } };
     }
     case "get_orders_with_meta": {
+      const RELEVANT_META_KEYS = [
+        'invoice', 'factura', 'facturi', 'oblio', 'awb', 'tracking', 'colet',
+        'curier', 'fan_courier', 'sameday', 'cargus', 'dpd', 'gls',
+        'wc_invoice', 'billing_invoice', 'serie', 'numar',
+      ];
+      const isRelevantMetaKey = (key: string) => {
+        const k = key.toLowerCase();
+        return RELEVANT_META_KEYS.some(prefix => k.includes(prefix));
+      };
       const perPage = Math.min(args.per_page || 100, 100);
       let allOrders: any[] = [];
       for (let page = 1; page <= 5; page++) {
@@ -1321,19 +1330,24 @@ async function executeTool(
         allOrders = allOrders.concat(orders);
         if (orders.length < perPage) break;
       }
-      // Return orders with meta_data, line_items (name+quantity), billing, and key fields
-      const cleaned = allOrders.map((o: any) => ({
-        id: o.id,
-        status: o.status,
-        total: o.total,
-        currency: o.currency,
-        date_created: o.date_created,
-        billing: o.billing ? { first_name: o.billing.first_name, last_name: o.billing.last_name, email: o.billing.email, company: o.billing.company } : undefined,
-        meta_data: o.meta_data || [],
-        line_items: Array.isArray(o.line_items)
-          ? o.line_items.map((li: any) => ({ name: li.name, quantity: li.quantity, total: li.total }))
-          : [],
-      }));
+      // Filter meta_data to only relevant keys to reduce token usage
+      const cleaned = allOrders.map((o: any) => {
+        const filteredMeta = Array.isArray(o.meta_data)
+          ? o.meta_data.filter((m: any) => isRelevantMetaKey(m.key || ""))
+          : [];
+        return {
+          id: o.id,
+          status: o.status,
+          total: o.total,
+          currency: o.currency,
+          date_created: o.date_created,
+          billing: o.billing ? { first_name: o.billing.first_name, last_name: o.billing.last_name, email: o.billing.email, company: o.billing.company } : undefined,
+          meta_data: filteredMeta,
+          line_items: Array.isArray(o.line_items)
+            ? o.line_items.map((li: any) => ({ name: li.name, quantity: li.quantity, total: li.total }))
+            : [],
+        };
+      });
       return {
         result: cleaned,
         richContent: { type: "orders", data: allOrders },
@@ -1596,15 +1610,20 @@ CRITICAL TOOL USAGE RULES — YOU MUST FOLLOW THESE:
 ORDER META-DATA ANALYSIS:
 - When the user asks about invoices (facturi), AWBs, tracking numbers, or any custom order attributes:
   1. Call get_orders_with_meta for the requested period
-  2. Parse the meta_data array on each order looking for keys containing: invoice, factura, facturi, awb, tracking, colet, curier, and similar patterns (case-insensitive)
-  3. Also check for keys like: _billing_invoice, _invoice_number, _factura_seria, _factura_numar, _awb_number, _tracking_number, invoice_series, invoice_number
-  4. Classify orders as having/not having the requested attribute based on whether the meta_data value is non-empty
-  5. Present results as a \`\`\`dashboard block with:
+  2. Parse the meta_data array on each order. The meta_data is already filtered to relevant keys only.
+  3. CRITICAL INVOICE DETECTION RULES:
+     - "av_facturare" is NOT an invoice. It is a billing TYPE preference (pers-fiz = individual, pers-jur = company). Do NOT count orders as "having invoice" based on this key alone.
+     - An ACTUAL INVOICE is indicated by keys containing: oblio, invoice_number, invoice_series, factura_seria, factura_numar, wc_invoice_number, or meta values that contain invoice serial numbers (e.g., "KSF 0817", "ABC 1234").
+     - Look for Oblio plugin keys: keys starting with "_oblio" or containing "oblio" (e.g., _oblio_invoice_number, _oblio_invoice_series, _oblio_invoice_link).
+     - If a meta value is a URL (starts with http:// or https://), include it in the dashboard table so it renders as a clickable link.
+  4. AWB/TRACKING detection: keys containing awb, tracking, fan_courier, sameday, cargus, coleteonline, dpd, gls.
+  5. Classify orders as having/not having the requested attribute based on whether actual invoice/AWB meta_data exists with non-empty values.
+  6. Present results as a \`\`\`dashboard block with:
      - Stat cards: total orders, orders with attribute, orders without, amounts for each
-     - Table: order details with the relevant meta_data values
+     - Table: order details with the relevant meta_data values. If a value is a URL, include it directly as the cell value — the frontend will render it as a clickable external link icon.
      - If comparing invoiced vs non-invoiced: show "Invoiced Revenue" and "Non-Invoiced Revenue" cards
 - If orders are already in context from a previous tool call that included meta_data, parse them directly without re-fetching
-- Common meta_data keys for Romanian WooCommerce stores: _factura, _invoice, _awb, _tracking, factura_seria, factura_numar, av_factura, av_invoice, _billing_invoice, wc_invoice, _awb_number, fan_courier_awb, sameday_awb
+- Common meta_data keys for Romanian WooCommerce stores: _oblio_invoice_number, _oblio_invoice_series, _oblio_invoice_link, _factura, _invoice, _awb, _tracking, factura_seria, factura_numar, wc_invoice, _awb_number, fan_courier_awb, sameday_awb
 
 AUTONOMOUS DATA GATHERING (ABSOLUTE RULE):
 - You MUST NEVER tell the user you need more data or ask permission to fetch data. If you need product-level data, sales breakdowns, order details, or ANY information available through your tools — CALL THE TOOLS IMMEDIATELY without asking.
@@ -1931,15 +1950,11 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                 semanticIdx++;
 
                 // Mark any remaining intermediate semantic steps (e.g. "Comparing periods") as done
+                // But skip post-processing steps that should be marked after the AI responds
                 while (semanticIdx < semanticSteps.length) {
                   const ss = semanticSteps[semanticIdx];
-                  if (
-                    ss.title === "Writing explanation" ||
-                    ss.title === "Building dashboard" ||
-                    ss.title === "Rendering results" ||
-                    ss.title === "Building inventory report"
-                  )
-                    break;
+                  // Stop at steps that need to wait for next tool call or post-response
+                  if (ss.title === "Writing explanation") break;
                   if (
                     ss.title.startsWith("Fetching") ||
                     ss.title === "Awaiting approval" ||
@@ -1964,16 +1979,16 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
             // Post-tool synthesis: tick remaining semantic steps
             sendSSE({ type: "reasoning", text: "Preparing your response..." });
             if (planSent && stepIndex > 0) {
-              // Mark remaining semantic steps (Building dashboard, Writing explanation)
+              // Collect titles of steps already completed (before stepIndex)
+              // Mark all remaining non-"Writing explanation" steps as done
+              const POST_RESPONSE_STEPS = new Set([
+                "Building dashboard", "Rendering results", "Building inventory report",
+                "Calculating burn rate", "Parsing metadata", "Aggregating by product",
+                "Building product report", "Comparing periods",
+              ]);
               for (let i = 0; i < semanticSteps.length; i++) {
                 const ss = semanticSteps[i];
-                if (
-                  ss.title === "Building dashboard" ||
-                  ss.title === "Rendering results" ||
-                  ss.title === "Building inventory report" ||
-                  ss.title === "Calculating burn rate" ||
-                  ss.title === "Parsing metadata"
-                ) {
+                if (POST_RESPONSE_STEPS.has(ss.title)) {
                   sendSSE({ type: "reasoning", text: `${ss.title}...` });
                   sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "running" });
                   sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "done" });

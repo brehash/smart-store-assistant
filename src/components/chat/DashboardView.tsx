@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChatChart } from "./ChatChart";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChevronDown, ChevronRight, TrendingUp, TrendingDown } from "lucide-react";
+import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface StatCard {
@@ -11,10 +11,17 @@ interface StatCard {
   change?: string;
 }
 
+interface CellWithUrl {
+  text: string;
+  url?: string;
+}
+
+type CellValue = string | number | null | CellWithUrl;
+
 interface DashboardTable {
   title: string;
   columns: string[];
-  rows: Array<Array<string | number | null>>;
+  rows: Array<Array<CellValue>>;
 }
 
 interface DashboardList {
@@ -85,7 +92,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
                     <TableRow key={ri}>
                       {row.map((cell, ci) => (
                         <TableCell key={ci} className="min-w-[140px] py-3 text-xs sm:text-sm align-top whitespace-normal">
-                          {cell == null || cell === "" ? "—" : String(cell)}
+                          <CellRenderer cell={cell} />
                         </TableCell>
                       ))}
                     </TableRow>
@@ -102,6 +109,44 @@ export function DashboardView({ data }: { data: DashboardData }) {
       ))}
     </div>
   );
+}
+
+function isUrl(value: string): boolean {
+  return value.startsWith("http://") || value.startsWith("https://");
+}
+
+function CellRenderer({ cell }: { cell: CellValue }) {
+  if (cell == null || cell === "") return <>{"—"}</>;
+
+  // Handle object cells with { text, url }
+  if (typeof cell === "object" && cell !== null && "text" in cell) {
+    const obj = cell as CellWithUrl;
+    if (obj.url) {
+      return (
+        <span className="flex items-center gap-1.5">
+          <span>{obj.text}</span>
+          <a href={obj.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80 shrink-0">
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        </span>
+      );
+    }
+    return <>{obj.text}</>;
+  }
+
+  const str = String(cell);
+
+  // Detect plain URL strings
+  if (isUrl(str)) {
+    return (
+      <a href={str} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:text-primary/80">
+        <ExternalLink className="h-3.5 w-3.5" />
+        <span className="text-xs">Link</span>
+      </a>
+    );
+  }
+
+  return <>{str}</>;
 }
 
 function CollapsibleList({ list }: { list: DashboardList }) {
