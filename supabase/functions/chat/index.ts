@@ -811,6 +811,79 @@ async function executeTool(
         requestUri: `GET /wp-json/wc/v3/orders (filtered for product #${productId})`,
       };
     }
+    case "get_product_sales_report": {
+      const startDate = args.date_min;
+      const endDate = args.date_max;
+      const limit = args.limit || 50;
+
+      // Fetch orders in the date range (paginated, up to 5 pages of 100)
+      let allOrders: any[] = [];
+      for (let page = 1; page <= 5; page++) {
+        const params = new URLSearchParams();
+        params.set("per_page", "100");
+        params.set("page", String(page));
+        params.set("after", `${startDate}T00:00:00`);
+        params.set("before", `${endDate}T23:59:59`);
+        if (defaultOrderStatuses.length) params.set("status", defaultOrderStatuses.join(","));
+        const orders = await callWooProxy(supabaseUrl, authHeader, { endpoint: `orders?${params.toString()}` });
+        if (!Array.isArray(orders) || orders.length === 0) break;
+        allOrders = allOrders.concat(orders);
+        if (orders.length < 100) break;
+      }
+
+      // Aggregate by product
+      const productMap: Record<number, { product_id: number; product_name: string; total_revenue: number; total_quantity: number; order_count: number; order_ids: Set<number> }> = {};
+
+      for (const order of allOrders) {
+        for (const li of (order.line_items || [])) {
+          const pid = li.product_id;
+          if (!productMap[pid]) {
+            productMap[pid] = { product_id: pid, product_name: li.name || `Product #${pid}`, total_revenue: 0, total_quantity: 0, order_count: 0, order_ids: new Set() };
+          }
+          productMap[pid].total_revenue += parseFloat(li.total || "0");
+          productMap[pid].total_quantity += (li.quantity || 0);
+          if (!productMap[pid].order_ids.has(order.id)) {
+            productMap[pid].order_ids.add(order.id);
+            productMap[pid].order_count++;
+          }
+        }
+      }
+
+      const products = Object.values(productMap)
+        .map(p => ({
+          product_id: p.product_id,
+          product_name: p.product_name,
+          total_revenue: Math.round(p.total_revenue * 100) / 100,
+          total_quantity: p.total_quantity,
+          order_count: p.order_count,
+          average_price: p.total_quantity > 0 ? Math.round((p.total_revenue / p.total_quantity) * 100) / 100 : 0,
+        }))
+        .sort((a, b) => b.total_revenue - a.total_revenue)
+        .slice(0, limit);
+
+      const totalRevenue = products.reduce((s, p) => s + p.total_revenue, 0);
+
+      return {
+        result: {
+          period: `${startDate} → ${endDate}`,
+          total_revenue: Math.round(totalRevenue * 100) / 100,
+          total_orders: allOrders.length,
+          product_count: products.length,
+          products,
+        },
+        richContent: {
+          type: "chart",
+          data: {
+            type: "bar",
+            title: `Product Sales (${startDate} → ${endDate})`,
+            data: products.slice(0, 15).map(p => ({ name: p.product_name.slice(0, 25), value: p.total_revenue })),
+            dataKey: "value",
+            nameKey: "name",
+          },
+        },
+        requestUri: `GET /wp-json/wc/v3/orders (aggregated by product)`,
+      };
+    }
     case "save_preference": {
       await supabase
         .from("user_preferences")
