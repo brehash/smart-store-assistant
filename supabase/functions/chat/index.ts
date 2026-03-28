@@ -146,6 +146,23 @@ const TOOLS = [
   {
     type: "function",
     function: {
+      name: "get_product_sales_report",
+      description:
+        "Get per-product sales breakdown for a date range. Returns each product with its total revenue, units sold, order count, and average price. Use for product dominance, top sellers, best/worst performers, and product-level analysis questions.",
+      parameters: {
+        type: "object",
+        properties: {
+          date_min: { type: "string", description: "Start date (YYYY-MM-DD)" },
+          date_max: { type: "string", description: "End date (YYYY-MM-DD)" },
+          limit: { type: "number", description: "Max products to return (default 50)" },
+        },
+        required: ["date_min", "date_max"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "save_preference",
       description: "Save a user preference/alias.",
       parameters: {
