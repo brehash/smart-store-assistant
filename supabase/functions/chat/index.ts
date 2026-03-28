@@ -1234,6 +1234,13 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
             break;
           }
 
+          // Fallback: if loop exhausted without sending content, notify the user
+          if (!contentSent) {
+            sendSSE({ type: "reasoning", text: "Error: Ran out of processing steps before generating a response." });
+            sendSSE({ choices: [{ delta: { content: "⚠️ Am adunat datele dar am epuizat pașii de procesare înainte de a putea scrie analiza. Te rog încearcă din nou — voi fi mai concis de data aceasta." } }] });
+            sendSSE({ type: "pipeline_complete", lastStepIndex: stepIndex });
+          }
+
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
         } catch (e) {
