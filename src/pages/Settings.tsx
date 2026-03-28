@@ -15,10 +15,11 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Switch } from "@/components/ui/switch";
 import {
-  Settings, Globe, Palette, Store, User, Coins,
+  Settings, Globe, Palette, Store, User, Coins, Plug,
   Save, Trash2, CheckCircle2, XCircle, ListChecks, Loader2,
-  Sun, Moon, Monitor, X, RefreshCw,
+  Sun, Moon, Monitor, X, RefreshCw, Package,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,7 +27,7 @@ import { cn } from "@/lib/utils";
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-export type SettingsTab = "general" | "appearance" | "connection" | "credits" | "account";
+export type SettingsTab = "general" | "appearance" | "connection" | "integrations" | "credits" | "account";
 
 interface OrderStatus { slug: string; name: string; total: number; }
 
@@ -34,6 +35,7 @@ const TABS: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
   { id: "general", label: "General", icon: Settings },
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "connection", label: "Connection", icon: Store },
+  { id: "integrations", label: "Integrations", icon: Plug },
   { id: "credits", label: "Credits", icon: Coins },
   { id: "account", label: "Account", icon: User },
 ];
@@ -83,6 +85,13 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
   const [loadingCredits, setLoadingCredits] = useState(true);
 
 
+  // Integrations state
+  const [coleteOnlineEnabled, setColeteOnlineEnabled] = useState(false);
+  const [coleteClientId, setColeteClientId] = useState("");
+  const [coleteClientSecret, setColeteClientSecret] = useState("");
+  const [savingIntegration, setSavingIntegration] = useState(false);
+  const [integrationLoaded, setIntegrationLoaded] = useState(false);
+
   // Appearance
   const [theme, setTheme] = useState<"system" | "dark" | "light">(() => {
     return (localStorage.getItem("theme") as any) || "system";
@@ -117,6 +126,16 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
         fetchOrderStatuses(data.store_url, data.consumer_key, data.consumer_secret);
         fetchPlugins(data.store_url, data.consumer_key, data.consumer_secret);
       }
+    });
+    // Load integrations
+    supabase.from("woo_integrations").select("*").eq("user_id", user.id).eq("integration_key", "colete_online").maybeSingle().then(({ data }) => {
+      if (data) {
+        setColeteOnlineEnabled(data.is_enabled);
+        const cfg = (data.config as any) || {};
+        setColeteClientId(cfg.client_id || "");
+        setColeteClientSecret(cfg.client_secret || "");
+      }
+      setIntegrationLoaded(true);
     });
     // Load credits
     const loadCredits = async () => {
@@ -620,11 +639,74 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
     );
   };
 
+  const handleSaveIntegration = async () => {
+    if (!user) return;
+    setSavingIntegration(true);
+    try {
+      const payload = {
+        user_id: user.id,
+        integration_key: "colete_online",
+        is_enabled: coleteOnlineEnabled,
+        config: { client_id: coleteClientId, client_secret: coleteClientSecret },
+        updated_at: new Date().toISOString(),
+      };
+      await supabase.from("woo_integrations").upsert(payload as any, { onConflict: "user_id,integration_key" });
+      toast({ title: "Saved!", description: "Colete Online integration updated." });
+    } catch {
+      toast({ title: "Error", description: "Failed to save integration.", variant: "destructive" });
+    } finally {
+      setSavingIntegration(false);
+    }
+  };
+
+  const renderIntegrations = () => (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold">Integrations</h2>
+        <p className="text-sm text-muted-foreground">Connect third-party services to automate your workflow</p>
+      </div>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-primary/10 p-2"><Package className="h-5 w-5 text-primary" /></div>
+              <div>
+                <CardTitle className="text-base">Colete Online</CardTitle>
+                <CardDescription>Automatic shipment tracking &amp; order status updates</CardDescription>
+              </div>
+            </div>
+            <Switch checked={coleteOnlineEnabled} onCheckedChange={setColeteOnlineEnabled} />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            When enabled, the system checks every 2 hours for orders with AWBs from Colete Online. 
+            Orders are automatically marked as "completed" once the shipment is delivered.
+          </p>
+          <div className="space-y-2">
+            <Label>Client ID</Label>
+            <Input value={coleteClientId} onChange={(e) => setColeteClientId(e.target.value)} placeholder="Your Colete Online Client ID" />
+          </div>
+          <div className="space-y-2">
+            <Label>Client Secret</Label>
+            <Input type="password" value={coleteClientSecret} onChange={(e) => setColeteClientSecret(e.target.value)} placeholder="Your Colete Online Client Secret" />
+          </div>
+          <div className="flex justify-end pt-2">
+            <Button onClick={handleSaveIntegration} disabled={savingIntegration} className="gap-1.5">
+              <Save className="h-4 w-4" /> {savingIntegration ? "Saving…" : "Save Integration"}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+
   const renderTab = () => {
     switch (activeTab) {
       case "general": return renderGeneral();
       case "appearance": return renderAppearance();
       case "connection": return renderConnection();
+      case "integrations": return renderIntegrations();
       case "credits": return renderCredits();
       case "account": return renderAccount();
       default: return renderGeneral();
