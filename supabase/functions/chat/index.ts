@@ -1785,7 +1785,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                 // Fetch order statuses
                 let allStatuses: any[] = [];
                 try {
-                  const stResp = await wooFetch(conn.store_url, "reports/orders/totals", conn.consumer_key, conn.consumer_secret);
+                  const stResp = await callWooProxy(supabaseUrl, authHeader, { endpoint: "reports/orders/totals", storeUrl: conn.store_url, consumerKey: conn.consumer_key, consumerSecret: conn.consumer_secret });
                   allStatuses = Array.isArray(stResp) ? stResp.map((s: any) => ({ slug: s.slug, name: s.name })) : [];
                 } catch { /* silent */ }
                 // Upsert cache
