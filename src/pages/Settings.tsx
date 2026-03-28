@@ -151,11 +151,11 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
     setLoadingPlugins(true);
     try {
       const { data, error } = await supabase.functions.invoke("woo-proxy", {
-        body: { endpoint: "plugins?status=active", apiPrefix: "wp/v2", storeUrl: url, consumerKey: ck, consumerSecret: cs },
+        body: { endpoint: "system_status", storeUrl: url, consumerKey: ck, consumerSecret: cs },
       });
       if (error) throw error;
-      if (Array.isArray(data)) {
-        setPlugins(data.map((p: any) => ({ plugin: p.plugin, name: p.name, version: p.version })));
+      if (data?.active_plugins && Array.isArray(data.active_plugins)) {
+        setPlugins(data.active_plugins.map((p: any) => ({ plugin: p.plugin, name: p.name, version: p.version })));
       }
     } catch { /* silent — endpoint may require higher permissions */ }
     finally { setLoadingPlugins(false); }
