@@ -90,6 +90,8 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
   const [coleteClientId, setColeteClientId] = useState("");
   const [coleteClientSecret, setColeteClientSecret] = useState("");
   const [savingIntegration, setSavingIntegration] = useState(false);
+  const [testingColete, setTestingColete] = useState(false);
+  const [coleteTestResult, setColeteTestResult] = useState<"success" | "error" | null>(null);
   const [integrationLoaded, setIntegrationLoaded] = useState(false);
 
   // Appearance
@@ -659,6 +661,41 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
     }
   };
 
+  const handleTestColeteOnline = async () => {
+    if (!coleteClientId || !coleteClientSecret) {
+      toast({ title: "Error", description: "Enter Client ID and Client Secret first.", variant: "destructive" });
+      return;
+    }
+    setTestingColete(true);
+    setColeteTestResult(null);
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      const resp = await fetch(`${supabaseUrl}/functions/v1/colete-online-tracker?action=test`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({ client_id: coleteClientId, client_secret: coleteClientSecret }),
+      });
+      const result = await resp.json();
+      if (result.success) {
+        setColeteTestResult("success");
+        toast({ title: "Connection successful!", description: "Colete Online credentials are valid." });
+      } else {
+        setColeteTestResult("error");
+        toast({ title: "Connection failed", description: result.error || "Invalid credentials.", variant: "destructive" });
+      }
+    } catch {
+      setColeteTestResult("error");
+      toast({ title: "Connection failed", description: "Could not reach Colete Online.", variant: "destructive" });
+    } finally {
+      setTestingColete(false);
+    }
+  };
+
   const renderIntegrations = () => (
     <div className="space-y-6">
       <div>
@@ -691,7 +728,12 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
             <Label>Client Secret</Label>
             <Input type="password" value={coleteClientSecret} onChange={(e) => setColeteClientSecret(e.target.value)} placeholder="Your Colete Online Client Secret" />
           </div>
-          <div className="flex justify-end pt-2">
+          <div className="flex gap-2 justify-end pt-2">
+            <Button onClick={handleTestColeteOnline} variant="outline" disabled={testingColete || !coleteClientId || !coleteClientSecret}>
+              {testingColete ? "Testing…" : "Test Connection"}
+              {coleteTestResult === "success" && <CheckCircle2 className="ml-1.5 h-4 w-4 text-emerald-500" />}
+              {coleteTestResult === "error" && <XCircle className="ml-1.5 h-4 w-4 text-destructive" />}
+            </Button>
             <Button onClick={handleSaveIntegration} disabled={savingIntegration} className="gap-1.5">
               <Save className="h-4 w-4" /> {savingIntegration ? "Saving…" : "Save Integration"}
             </Button>
