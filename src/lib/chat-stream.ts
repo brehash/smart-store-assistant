@@ -19,6 +19,9 @@ export interface PipelineEvent {
   result?: any;
   requestUri?: string;
   text?: string;
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  total_tokens?: number;
 }
 
 function handleSsePayload(
