@@ -109,6 +109,20 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
         fetchOrderStatuses(data.store_url, data.consumer_key, data.consumer_secret);
       }
     });
+    // Load credits
+    const loadCredits = async () => {
+      setLoadingCredits(true);
+      try {
+        const [balRes, packsRes] = await Promise.all([
+          supabase.from("credit_balances").select("*").eq("user_id", user.id).maybeSingle(),
+          supabase.from("credit_topup_packs" as any).select("*").eq("is_active", true).order("sort_order"),
+        ]);
+        setCreditBalance(balRes.data);
+        setTopupPacks((packsRes.data as any[]) || []);
+      } catch { /* silent */ }
+      finally { setLoadingCredits(false); }
+    };
+    loadCredits();
   }, [user]);
 
   /* ---------- helpers ---------- */
