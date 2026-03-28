@@ -676,6 +676,7 @@ function truncateForAI(toolName: string, result: any): any {
         service: result.service,
         status_name: result.status_name,
         is_delivered: result.is_delivered,
+        order_status: result.order_status,
         current_status: result.current_status,
         history_count: Array.isArray(result.history) ? result.history.length : 0,
       };
@@ -1651,7 +1652,7 @@ async function executeTool(
           date: latestEvent.dateTime,
           comment: latestEvent.comment?.ro || "",
         } : null;
-        const isDelivered = latestEvent?.code === 20800;
+        const isDelivered = latestEvent?.code === 20800 || latestEvent?.code === 30500;
         const mappedHistory = history.map((h: any) => ({
           code: h.code,
           name: h.statusTextParts?.ro?.name || "",
@@ -1670,6 +1671,7 @@ async function executeTool(
           current_status: currentStatus,
           status_name: currentStatus?.name || "Unknown",
           is_delivered: isDelivered,
+          order_status: orderData.status,
           history: mappedHistory,
         };
 
@@ -1906,6 +1908,7 @@ SHIPPING STATUS TRACKING:
 - NEVER ask the user for a uniqueId — the tool extracts it automatically from the order metadata.
 - The tool automatically detects the shipping provider (Colete Online, etc.) from the order metadata. If the integration is not enabled, the tool will inform the user to enable it in Settings > Integrations.
 - Do NOT list the tracking history as text. The visual shipping timeline component shows the history automatically. Just provide a brief summary (current status, courier, AWB).
+- After showing shipping status, if the shipment is delivered (is_delivered = true) but the order_status is NOT "completed", proactively ask the user: "Coletul a fost livrat, dar comanda este încă marcată ca [order_status]. Vrei să o marchez ca finalizată?" If the user agrees, use update_order_status to set the order to "completed".
 
 Be conversational, efficient, and proactive. Use markdown for formatting. Currency is RON (lei).${defaultStatusStr}${prefsContext}${viewContext}`;
 
