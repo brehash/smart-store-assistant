@@ -17,6 +17,12 @@ import type { PipelineStepData } from "@/components/chat/PipelineStep";
 import type { DebugEntry } from "@/components/chat/DebugPanel";
 import type { ReasoningEntry } from "@/components/chat/ReasoningBubbles";
 
+interface TokenUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
 interface Message {
   id?: string;
   role: "user" | "assistant";
@@ -27,6 +33,7 @@ interface Message {
   questions?: QuestionRequest[];
   debugLogs?: DebugEntry[];
   reasoningLogs?: ReasoningEntry[];
+  tokenUsage?: TokenUsage;
 }
 
 export default function Index() {
