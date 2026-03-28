@@ -1342,11 +1342,8 @@ async function executeTool(
           total: o.total,
           currency: o.currency,
           date_created: o.date_created,
-          billing: o.billing ? { first_name: o.billing.first_name, last_name: o.billing.last_name, email: o.billing.email, company: o.billing.company } : undefined,
+          billing: o.billing ? { first_name: o.billing.first_name, last_name: o.billing.last_name } : undefined,
           meta_data: filteredMeta,
-          line_items: Array.isArray(o.line_items)
-            ? o.line_items.map((li: any) => ({ name: li.name, quantity: li.quantity, total: li.total }))
-            : [],
         };
       });
       return {
