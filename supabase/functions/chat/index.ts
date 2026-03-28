@@ -1651,7 +1651,7 @@ async function executeTool(
           date: latestEvent.dateTime,
           comment: latestEvent.comment?.ro || "",
         } : null;
-        const isDelivered = latestEvent?.code === 20800;
+        const isDelivered = latestEvent?.code === 20800 || latestEvent?.code === 30500;
         const mappedHistory = history.map((h: any) => ({
           code: h.code,
           name: h.statusTextParts?.ro?.name || "",
