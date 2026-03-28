@@ -614,12 +614,14 @@ export default function Index() {
                   pipeline={msg.pipeline}
                   approvals={msg.approvals}
                   questions={msg.questions}
+                  orderForms={msg.orderForms}
                   debugLogs={msg.debugLogs}
                   reasoningLogs={msg.reasoningLogs}
                   tokenUsage={msg.tokenUsage}
                   creditUsage={msg.creditUsage}
                   onApproval={handleApproval}
                   onQuestionAnswer={handleQuestionAnswer}
+                  onOrderCreated={handleOrderCreated}
                 />
               ))}
             </div>
