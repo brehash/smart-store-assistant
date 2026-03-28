@@ -45,6 +45,7 @@ export default function Index() {
   const [settingsOpen, setSettingsOpen] = useState(() => !!settingsParam);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>(() => (settingsParam as SettingsTab) || "general");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const streamAliveRef = useRef(false);
 
   const handleToggleSidebar = () => {
     setSidebarCollapsed((prev) => {
