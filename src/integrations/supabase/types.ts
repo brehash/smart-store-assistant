@@ -52,6 +52,69 @@ export type Database = {
           },
         ]
       }
+      credit_balances: {
+        Row: {
+          balance: number
+          created_at: string
+          id: string
+          last_refill_at: string
+          monthly_allowance: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          id?: string
+          last_refill_at?: string
+          monthly_allowance?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          id?: string
+          last_refill_at?: string
+          monthly_allowance?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      credit_transactions: {
+        Row: {
+          amount: number
+          balance_after: number
+          created_at: string
+          id: string
+          message_id: string | null
+          metadata: Json | null
+          reason: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          created_at?: string
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          reason: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          created_at?: string
+          id?: string
+          message_id?: string | null
+          metadata?: Json | null
+          reason?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       message_limits: {
         Row: {
           created_at: string | null
@@ -275,6 +338,24 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      refill_credits_if_due: {
+        Args: { _user_id: string }
+        Returns: {
+          balance: number
+          created_at: string
+          id: string
+          last_refill_at: string
+          monthly_allowance: number
+          updated_at: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "credit_balances"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
     }
     Enums: {

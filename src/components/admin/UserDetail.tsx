@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Plus, Minus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { AdminUser } from "@/pages/Admin";
 
@@ -29,6 +29,21 @@ interface MessageItem {
   token_usage: { total_tokens: number } | null;
 }
 
+interface CreditBalance {
+  balance: number;
+  monthly_allowance: number;
+  last_refill_at: string;
+}
+
+interface CreditTransaction {
+  id: string;
+  amount: number;
+  balance_after: number;
+  reason: string;
+  created_at: string;
+  metadata: any;
+}
+
 export function UserDetail({ user, accessToken, onBack }: Props) {
   const { toast } = useToast();
   const [dailyLimit, setDailyLimit] = useState(user.limits?.daily_limit ?? 50);
@@ -36,6 +51,14 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [saving, setSaving] = useState(false);
+
+  // Credit state
+  const [creditBalance, setCreditBalance] = useState<CreditBalance | null>(null);
+  const [creditTransactions, setCreditTransactions] = useState<CreditTransaction[]>([]);
+  const [creditAdjustAmount, setCreditAdjustAmount] = useState(0);
+  const [creditReason, setCreditReason] = useState("");
+  const [monthlyAllowance, setMonthlyAllowance] = useState(100);
+  const [savingCredits, setSavingCredits] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -49,7 +72,20 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
         setMessages(data.messages || []);
       }
     };
+    const loadCredits = async () => {
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin/users/${user.user_id}/credits`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      if (resp.ok) {
+        const data = await resp.json();
+        setCreditBalance(data.balance || null);
+        setCreditTransactions(data.transactions || []);
+        if (data.balance?.monthly_allowance) setMonthlyAllowance(data.balance.monthly_allowance);
+      }
+    };
     load();
+    loadCredits();
   }, [user.user_id, accessToken]);
 
   const saveLimits = async () => {
@@ -73,6 +109,58 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
     }
   };
 
+  const adjustCredits = async () => {
+    if (creditAdjustAmount === 0) return;
+    setSavingCredits(true);
+    try {
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin/users/${user.user_id}/credits`,
+        {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ amount: creditAdjustAmount, reason: creditReason || "admin_grant" }),
+        }
+      );
+      if (resp.ok) {
+        const data = await resp.json();
+        setCreditBalance((prev) => prev ? { ...prev, balance: data.balance } : null);
+        setCreditAdjustAmount(0);
+        setCreditReason("");
+        toast({ title: `Credits ${creditAdjustAmount > 0 ? "added" : "deducted"}` });
+        // Reload transactions
+        const txResp = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin/users/${user.user_id}/credits`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        );
+        if (txResp.ok) {
+          const txData = await txResp.json();
+          setCreditTransactions(txData.transactions || []);
+        }
+      }
+    } finally {
+      setSavingCredits(false);
+    }
+  };
+
+  const saveAllowance = async () => {
+    setSavingCredits(true);
+    try {
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin/users/${user.user_id}/allowance`,
+        {
+          method: "PUT",
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ monthly_allowance: monthlyAllowance }),
+        }
+      );
+      if (resp.ok) {
+        toast({ title: "Monthly allowance updated" });
+      }
+    } finally {
+      setSavingCredits(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex items-center gap-3">
@@ -82,7 +170,7 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
         <h2 className="text-xl font-bold">{user.display_name || "Unknown User"}</h2>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-5">
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Messages</CardTitle></CardHeader>
           <CardContent><p className="text-2xl font-bold tabular-nums">{user.message_count.toLocaleString()}</p></CardContent>
@@ -96,10 +184,84 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
           <CardContent><p className="text-2xl font-bold tabular-nums">{conversations.length}</p></CardContent>
         </Card>
         <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Credits</CardTitle></CardHeader>
+          <CardContent><p className="text-2xl font-bold tabular-nums">{creditBalance?.balance ?? "—"}</p></CardContent>
+        </Card>
+        <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Roles</CardTitle></CardHeader>
           <CardContent><p className="text-2xl font-bold">{user.roles.join(", ") || "none"}</p></CardContent>
         </Card>
       </div>
+
+      {/* Credit Management */}
+      <Card>
+        <CardHeader><CardTitle>Credit Management</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <Label>Monthly Allowance (auto-refill every 30 days)</Label>
+              <div className="flex gap-2">
+                <Input type="number" value={monthlyAllowance} onChange={(e) => setMonthlyAllowance(parseInt(e.target.value) || 0)} />
+                <Button onClick={saveAllowance} disabled={savingCredits} size="sm">
+                  <Save className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div>
+              <Label>Last Refill</Label>
+              <p className="text-sm text-muted-foreground mt-2">
+                {creditBalance?.last_refill_at ? new Date(creditBalance.last_refill_at).toLocaleDateString() : "Never"}
+              </p>
+            </div>
+          </div>
+          <div>
+            <Label>Grant / Deduct Credits</Label>
+            <div className="flex gap-2 mt-1">
+              <Input
+                type="number"
+                placeholder="Amount (positive to add, negative to deduct)"
+                value={creditAdjustAmount || ""}
+                onChange={(e) => setCreditAdjustAmount(parseInt(e.target.value) || 0)}
+              />
+              <Input
+                placeholder="Reason (optional)"
+                value={creditReason}
+                onChange={(e) => setCreditReason(e.target.value)}
+                className="max-w-[200px]"
+              />
+              <Button onClick={adjustCredits} disabled={savingCredits || creditAdjustAmount === 0}>
+                {creditAdjustAmount >= 0 ? <Plus className="h-4 w-4 mr-1" /> : <Minus className="h-4 w-4 mr-1" />}
+                Apply
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Credit Transactions */}
+      {creditTransactions.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle>Credit Transactions ({creditTransactions.length})</CardTitle></CardHeader>
+          <CardContent>
+            <div className="max-h-64 overflow-y-auto space-y-2">
+              {creditTransactions.map((tx) => (
+                <div key={tx.id} className="flex justify-between items-center rounded border p-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <span className={`font-mono font-medium ${tx.amount > 0 ? "text-green-500" : "text-red-500"}`}>
+                      {tx.amount > 0 ? "+" : ""}{tx.amount}
+                    </span>
+                    <span className="text-muted-foreground">{tx.reason}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="tabular-nums">bal: {tx.balance_after}</span>
+                    <span>{new Date(tx.created_at).toLocaleString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Message limits */}
       <Card>

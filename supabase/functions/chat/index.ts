@@ -1409,6 +1409,17 @@ serve(async (req) => {
 
     const { messages, conversationId, approvalResponse, viewId } = await req.json();
 
+    // ── Credit check ──
+    const serviceClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {});
+    // Ensure credit balance exists and refill if due
+    const { data: creditBalance } = await serviceClient.rpc("refill_credits_if_due", { _user_id: userId });
+    if (!creditBalance || creditBalance.balance <= 0) {
+      return new Response(JSON.stringify({ error: "You've run out of credits. Contact your administrator for more." }), {
+        status: 402,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { data: prefs } = await supabase
       .from("user_preferences")
       .select("preference_type, key, value")
@@ -1911,6 +1922,41 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
               ],
             });
             sendSSE({ type: "pipeline_complete", lastStepIndex: stepIndex });
+          }
+
+          // ── Credit deduction ──
+          // Determine tier based on tools used
+          let creditCost = 1; // default: simple text
+          const allToolNames = aiMessages
+            .filter((m: any) => m.role === "assistant" && m.tool_calls)
+            .flatMap((m: any) => m.tool_calls.map((tc: any) => tc.function.name));
+          if (allToolNames.some((n: string) => WRITE_TOOLS.has(n))) {
+            creditCost = 3;
+          } else if (allToolNames.length > 0) {
+            creditCost = 2;
+          }
+          // Deduct credits using service client
+          try {
+            const { data: bal } = await serviceClient
+              .from("credit_balances")
+              .select("balance")
+              .eq("user_id", userId)
+              .single();
+            const newBalance = Math.max(0, (bal?.balance || 0) - creditCost);
+            await serviceClient
+              .from("credit_balances")
+              .update({ balance: newBalance })
+              .eq("user_id", userId);
+            await serviceClient.from("credit_transactions").insert({
+              user_id: userId,
+              amount: -creditCost,
+              balance_after: newBalance,
+              reason: "message",
+              metadata: { tool_count: allToolNames.length, tier: creditCost },
+            });
+            sendSSE({ type: "credit_usage", cost: creditCost, remaining_balance: newBalance });
+          } catch (creditErr) {
+            console.error("Credit deduction error:", creditErr);
           }
 
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));

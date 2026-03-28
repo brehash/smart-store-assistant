@@ -23,6 +23,11 @@ interface TokenUsage {
   total_tokens: number;
 }
 
+interface CreditUsage {
+  cost: number;
+  remaining_balance: number;
+}
+
 interface Message {
   id?: string;
   role: "user" | "assistant";
@@ -34,6 +39,7 @@ interface Message {
   debugLogs?: DebugEntry[];
   reasoningLogs?: ReasoningEntry[];
   tokenUsage?: TokenUsage;
+  creditUsage?: CreditUsage;
 }
 
 export default function Index() {
@@ -43,6 +49,7 @@ export default function Index() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [viewId, setViewId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [creditBalance, setCreditBalance] = useState<number | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     return localStorage.getItem("sidebar-collapsed") === "true";
@@ -199,6 +206,7 @@ export default function Index() {
     let questionsList: QuestionRequest[] = [];
     let reasoningEntries: ReasoningEntry[] = [];
     let tokenUsage: TokenUsage | null = null;
+    let creditUsage: CreditUsage | null = null;
     await streamChat({
       messages: [...messages, userMsg].map((m) => ({ role: m.role, content: m.content })),
       conversationId: convId,
@@ -309,6 +317,13 @@ export default function Index() {
             total_tokens: event.total_tokens || 0,
           };
           updateLastAssistant((m) => ({ ...m, tokenUsage: tokenUsage! }));
+        } else if (event.type === "credit_usage") {
+          creditUsage = {
+            cost: event.cost || 0,
+            remaining_balance: event.remaining_balance || 0,
+          };
+          setCreditBalance(creditUsage.remaining_balance);
+          updateLastAssistant((m) => ({ ...m, creditUsage: creditUsage! }));
         }
       },
       onDone: async () => {
@@ -505,6 +520,11 @@ export default function Index() {
             <Menu className="h-5 w-5" />
           </Button>
           <h1 className="text-lg font-semibold truncate">WooCommerce AI Assistant</h1>
+          {creditBalance !== null && (
+            <span className="ml-auto text-xs font-medium text-muted-foreground tabular-nums bg-muted px-2 py-1 rounded-full">
+              {creditBalance} credit{creditBalance !== 1 ? "s" : ""}
+            </span>
+          )}
         </div>
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin">
@@ -542,6 +562,7 @@ export default function Index() {
                   debugLogs={msg.debugLogs}
                   reasoningLogs={msg.reasoningLogs}
                   tokenUsage={msg.tokenUsage}
+                  creditUsage={msg.creditUsage}
                   onApproval={handleApproval}
                   onQuestionAnswer={handleQuestionAnswer}
                 />

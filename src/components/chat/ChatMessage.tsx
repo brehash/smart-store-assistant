@@ -42,13 +42,14 @@ interface ChatMessageProps {
   debugLogs?: DebugEntry[];
   reasoningLogs?: ReasoningEntry[];
   tokenUsage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
+  creditUsage?: { cost: number; remaining_balance: number };
   onApproval?: (approval: ApprovalRequest, action: "approve" | "skip" | "edit", editedText?: string) => void;
   onQuestionAnswer?: (question: QuestionRequest, answer: string) => void;
 }
 
 export function ChatMessage({
   role, content, richContents, isStreaming,
-  pipeline, approvals, questions, debugLogs, reasoningLogs, tokenUsage,
+  pipeline, approvals, questions, debugLogs, reasoningLogs, tokenUsage, creditUsage,
   onApproval, onQuestionAnswer,
 }: ChatMessageProps) {
   const isUser = role === "user";
@@ -140,10 +141,12 @@ export function ChatMessage({
         {/* Debug panel */}
         {debugLogs && debugLogs.length > 0 && !isUser && <DebugPanel logs={debugLogs} />}
 
-        {/* Token usage badge */}
-        {tokenUsage && !isUser && (
+        {/* Token & credit usage badge */}
+        {(tokenUsage || creditUsage) && !isUser && (
           <span className="text-[11px] text-muted-foreground/60 tabular-nums">
-            {tokenUsage.total_tokens.toLocaleString()} tokens
+            {creditUsage && <>{creditUsage.cost} credit{creditUsage.cost !== 1 ? "s" : ""}</>}
+            {creditUsage && tokenUsage && <> · </>}
+            {tokenUsage && <>{tokenUsage.total_tokens.toLocaleString()} tokens</>}
           </span>
         )}
       </div>
