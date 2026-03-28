@@ -1,45 +1,41 @@
 
 
-## Visual Shipping Status Timeline
+## Add Retry-After Handling for Colete Online 429 Responses
 
 ### Overview
-Create a new `ShippingTimeline` component that displays shipping tracking data as a visual vertical timeline with status icons, and emit it as a `"shipping"` rich content type from the backend.
-
-### New Component: `src/components/chat/ShippingTimeline.tsx`
-
-A card-based visual timeline showing:
-- **Header**: Order number, AWB, courier name, service type
-- **Current status badge**: Color-coded (green for delivered, blue for in-transit, gray for pending)
-- **Vertical timeline**: Each history entry as a node with:
-  - Colored dot (green = delivered, blue = in-transit/depot, yellow = picked up, gray = initial)
-  - Connecting vertical line between dots
-  - Status name (bold), reason (if any), date/time formatted, location from comment
-- Latest entry at the top, oldest at the bottom
+Add a retry mechanism to the Colete Online API calls (both token and status endpoints) that respects the `Retry-After` header when receiving a 429 response.
 
 ### Changes
 
-| File | Change |
-|------|--------|
-| `src/components/chat/ShippingTimeline.tsx` | New component with vertical timeline UI |
-| `src/components/chat/ChatMessage.tsx` | Add `"shipping"` to `RichContent.type` union, render `ShippingTimeline` |
-| `supabase/functions/chat/index.ts` | Add `richContent: { type: "shipping", data: {...} }` to `check_shipping_status` return |
+**File: `supabase/functions/chat/index.ts`**
 
-### Backend: emit rich content
+Add a helper function `fetchWithRetry` that wraps `fetch` and handles 429s:
+- If response is 429, read the `Retry-After` header (seconds)
+- Wait that many seconds (cap at ~30s to avoid edge function timeout)
+- Retry the request once after waiting
+- If still 429 on retry, return a user-friendly error with the wait time
 
-In the `check_shipping_status` case, add `richContent` to the return alongside `result`:
-```
-richContent: {
-  type: "shipping",
-  data: {
-    order_id, awb, courier, service, provider,
-    is_delivered, current_status, history (reversed — newest first)
+Apply this to both API calls in the `check_shipping_status` handler:
+1. Token endpoint (`https://auth.colete-online.ro/token`) — line ~1575
+2. Status endpoint (`https://api.colete-online.ro/v1/order/status/{uniqueId}`) — line ~1592
+
+### Implementation Detail
+
+```typescript
+async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 2): Promise<Response> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const resp = await fetch(url, options);
+    if (resp.status === 429) {
+      const retryAfter = parseInt(resp.headers.get("Retry-After") || "5", 10);
+      const waitSec = Math.min(retryAfter, 30);
+      await new Promise(r => setTimeout(r, waitSec * 1000));
+      continue;
+    }
+    return resp;
   }
+  return fetch(url, options); // final attempt
 }
 ```
 
-### Status color mapping
-- Code `20800` (delivered) → green
-- Codes `20500`+ (in delivery, transit, depot) → blue  
-- Codes `20050` (picked up) → yellow
-- Codes below `20000` (initial/emitted) → gray
+Replace the two `fetch()` calls with `fetchWithRetry()`. Update the error messages for 429 to say "Rate limited by Colete Online. Please try again in X seconds."
 
