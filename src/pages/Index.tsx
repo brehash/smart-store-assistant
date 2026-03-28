@@ -582,8 +582,7 @@ export default function Index() {
         of.toolCallId === formData.toolCallId ? { ...of, resolved: result } : of
       ),
     }));
-    // Send confirmation as a follow-up message
-    handleSend(`Order #${result.orderNumber} has been created successfully (total: ${result.total}).`);
+    // No follow-up message to AI — the success card is sufficient feedback
   };
 
   const handleNewChat = () => { setConversationId(null); setMessages([]); setViewId(null); setSidebarOpen(false); };

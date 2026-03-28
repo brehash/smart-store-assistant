@@ -215,7 +215,7 @@ export function OrderFormCard({ data, orderStatuses, disabled, onOrderCreated }:
                     <span className="text-xs font-medium shrink-0">{p.price} lei</span>
                   </button>
                 ))}
-              </ScrollArea>
+              </div>
             </div>
           )}
         </div>

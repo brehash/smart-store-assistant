@@ -1888,7 +1888,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
 
                 if (WRITE_TOOLS.has(toolName) && !approvalResponse) {
                   if (toolName === "create_order") {
-                    // Emit order form instead of approval card
+                    // Emit order form — user completes it via the form UI, no approval needed
                     sendSSE({
                       type: "order_form",
                       stepIndex,
@@ -1897,6 +1897,17 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                       toolCallId: tc.id,
                       prefill: args,
                     });
+
+                    aiMessages.push({
+                      role: "tool",
+                      tool_call_id: tc.id,
+                      content: JSON.stringify({ status: "done", message: "Order form displayed. The user will complete and submit the order via the form." }),
+                    });
+
+                    sendSSE({ type: "pipeline_step", stepIndex, title: currentSemanticTitle, status: "done" });
+                    stepIndex++;
+                    semanticIdx++;
+                    continue;
                   } else {
                     sendSSE({
                       type: "approval_request",
