@@ -23,7 +23,7 @@ interface ShippingData {
 }
 
 function statusColor(code: number) {
-  if (code === 20800) return "delivered";
+  if (code === 20800 || code === 30500) return "delivered";
   if (code >= 20500) return "transit";
   if (code === 20050) return "pickup";
   return "initial";
