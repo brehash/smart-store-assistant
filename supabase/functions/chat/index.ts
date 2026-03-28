@@ -1556,11 +1556,14 @@ async function executeTool(
             const retryAfter = parseInt(resp.headers.get("Retry-After") || "5", 10);
             const waitSec = Math.min(retryAfter, 30);
             console.log(`429 from ${url}, retrying in ${waitSec}s (attempt ${attempt + 1}/${maxRetries})`);
+            sendSSE({ type: "reasoning", text: `⏳ Rate limited by Colete Online. Retrying in ${waitSec} seconds...` });
             await new Promise(r => setTimeout(r, waitSec * 1000));
+            sendSSE({ type: "reasoning", text: `🔄 Retrying request now (attempt ${attempt + 2}/${maxRetries + 1})...` });
             continue;
           }
           return resp;
         }
+        sendSSE({ type: "reasoning", text: `⚠️ Final attempt after rate limiting...` });
         return fetch(url, options); // final attempt
       }
 
