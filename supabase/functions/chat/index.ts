@@ -1148,7 +1148,8 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                   details: currentSemanticDetails,
                 });
 
-                aiMessages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(result) });
+                // Truncate large results before feeding back to AI to prevent context bloat
+                aiMessages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(truncateForAI(toolName, result)) });
                 stepIndex++;
                 semanticIdx++;
 
