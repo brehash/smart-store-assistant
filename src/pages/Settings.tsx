@@ -420,6 +420,35 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
           </CardContent>
         </Card>
       )}
+
+      {plugins.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-primary/10 p-2"><ListChecks className="h-5 w-5 text-primary" /></div>
+              <div>
+                <CardTitle>Active Plugins</CardTitle>
+                <CardDescription>Select which active plugins to track</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {loadingPlugins ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {plugins.map((p) => (
+                  <label key={p.plugin} className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 cursor-pointer hover:bg-accent/50 transition-colors">
+                    <Checkbox checked={selectedPlugins.includes(p.plugin)} onCheckedChange={() => togglePlugin(p.plugin)} />
+                    <span className="text-sm flex-1">{p.name}</span>
+                    <span className="text-xs text-muted-foreground">v{p.version}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 
