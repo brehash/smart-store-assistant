@@ -9,7 +9,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { action, storeUrl, consumerKey, consumerSecret, endpoint, method, body } = await req.json();
+    const { action, storeUrl, consumerKey, consumerSecret, endpoint, method, body, apiPrefix } = await req.json();
     
     let url = storeUrl;
     let ck = consumerKey;
@@ -65,6 +65,7 @@ serve(async (req) => {
 
     // Normalize URL
     const baseUrl = url.replace(/\/+$/, "");
+    const prefix = apiPrefix || "wc/v3";
     
     if (action === "test") {
       const wooUrl = `${baseUrl}/wp-json/wc/v3/system_status?consumer_key=${ck}&consumer_secret=${cs}`;
@@ -76,16 +77,16 @@ serve(async (req) => {
       });
     }
 
-    // Proxy generic WooCommerce API calls
+    // Proxy generic WooCommerce/WordPress API calls
     const wooEndpoint = endpoint || "";
     const separator = wooEndpoint.includes("?") ? "&" : "?";
-    const wooUrl = `${baseUrl}/wp-json/wc/v3/${wooEndpoint}${separator}consumer_key=${ck}&consumer_secret=${cs}`;
+    const wooUrl = `${baseUrl}/wp-json/${prefix}/${wooEndpoint}${separator}consumer_key=${ck}&consumer_secret=${cs}`;
 
     const fetchOptions: RequestInit = {
       method: method || "GET",
       headers: { "Content-Type": "application/json" },
     };
-    if (body && (method === "POST" || method === "PUT")) {
+    if (body && (method === "POST" || method === "PUT" || method === "DELETE")) {
       fetchOptions.body = JSON.stringify(body);
     }
 

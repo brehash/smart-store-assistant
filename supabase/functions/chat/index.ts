@@ -176,9 +176,215 @@ const TOOLS = [
       },
     },
   },
+  // ── CRUD: Orders ──
+  {
+    type: "function",
+    function: {
+      name: "update_order",
+      description: "Update an existing WooCommerce order. Can change status, billing, shipping, line_items, or add a note.",
+      parameters: {
+        type: "object",
+        properties: {
+          order_id: { type: "number", description: "Order ID to update" },
+          status: { type: "string", description: "New status: pending, processing, on-hold, completed, cancelled, refunded, failed" },
+          billing: { type: "object", description: "Billing address fields to update" },
+          shipping: { type: "object", description: "Shipping address fields to update" },
+          line_items: { type: "array", description: "Line items to add/update", items: { type: "object" } },
+          note: { type: "string", description: "Order note to add" },
+        },
+        required: ["order_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_order",
+      description: "Delete a WooCommerce order. Use force=true for permanent deletion, otherwise it moves to trash.",
+      parameters: {
+        type: "object",
+        properties: {
+          order_id: { type: "number", description: "Order ID to delete" },
+          force: { type: "boolean", description: "True for permanent delete, false for trash (default: false)" },
+        },
+        required: ["order_id"],
+      },
+    },
+  },
+  // ── CRUD: Products ──
+  {
+    type: "function",
+    function: {
+      name: "create_product",
+      description: "Create a new WooCommerce product.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Product name" },
+          type: { type: "string", description: "Product type: simple, grouped, external, variable (default: simple)" },
+          regular_price: { type: "string", description: "Regular price" },
+          description: { type: "string", description: "Product description (HTML)" },
+          short_description: { type: "string", description: "Short description" },
+          sku: { type: "string", description: "SKU" },
+          stock_quantity: { type: "number", description: "Stock quantity" },
+          manage_stock: { type: "boolean", description: "Whether to manage stock (default: false)" },
+          categories: { type: "array", items: { type: "object", properties: { id: { type: "number" } } }, description: "Category IDs" },
+          images: { type: "array", items: { type: "object", properties: { src: { type: "string" } } }, description: "Image URLs" },
+          status: { type: "string", description: "Status: draft, pending, publish (default: publish)" },
+        },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_product",
+      description: "Update an existing WooCommerce product.",
+      parameters: {
+        type: "object",
+        properties: {
+          product_id: { type: "number", description: "Product ID to update" },
+          name: { type: "string", description: "New product name" },
+          regular_price: { type: "string", description: "New regular price" },
+          sale_price: { type: "string", description: "Sale price (empty string to remove)" },
+          description: { type: "string", description: "New description" },
+          short_description: { type: "string", description: "New short description" },
+          sku: { type: "string", description: "New SKU" },
+          stock_quantity: { type: "number", description: "New stock quantity" },
+          manage_stock: { type: "boolean", description: "Whether to manage stock" },
+          status: { type: "string", description: "Status: draft, pending, publish, private" },
+          categories: { type: "array", items: { type: "object", properties: { id: { type: "number" } } }, description: "Category IDs" },
+        },
+        required: ["product_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_product",
+      description: "Delete a WooCommerce product. Use force=true for permanent deletion.",
+      parameters: {
+        type: "object",
+        properties: {
+          product_id: { type: "number", description: "Product ID to delete" },
+          force: { type: "boolean", description: "True for permanent delete (default: false)" },
+        },
+        required: ["product_id"],
+      },
+    },
+  },
+  // ── CRUD: Pages (WordPress) ──
+  {
+    type: "function",
+    function: {
+      name: "create_page",
+      description: "Create a new WordPress page.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Page title" },
+          content: { type: "string", description: "Page content (HTML)" },
+          status: { type: "string", description: "Status: draft, publish, pending, private (default: draft)" },
+        },
+        required: ["title"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_page",
+      description: "Update an existing WordPress page.",
+      parameters: {
+        type: "object",
+        properties: {
+          page_id: { type: "number", description: "Page ID to update" },
+          title: { type: "string", description: "New title" },
+          content: { type: "string", description: "New content (HTML)" },
+          status: { type: "string", description: "Status: draft, publish, pending, private" },
+        },
+        required: ["page_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_page",
+      description: "Delete a WordPress page. Use force=true for permanent deletion.",
+      parameters: {
+        type: "object",
+        properties: {
+          page_id: { type: "number", description: "Page ID to delete" },
+          force: { type: "boolean", description: "True for permanent delete (default: false)" },
+        },
+        required: ["page_id"],
+      },
+    },
+  },
+  // ── CRUD: Posts (WordPress) ──
+  {
+    type: "function",
+    function: {
+      name: "create_post",
+      description: "Create a new WordPress blog post.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Post title" },
+          content: { type: "string", description: "Post content (HTML)" },
+          status: { type: "string", description: "Status: draft, publish, pending, private (default: draft)" },
+          categories: { type: "array", items: { type: "number" }, description: "Category IDs" },
+          tags: { type: "array", items: { type: "number" }, description: "Tag IDs" },
+        },
+        required: ["title"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_post",
+      description: "Update an existing WordPress blog post.",
+      parameters: {
+        type: "object",
+        properties: {
+          post_id: { type: "number", description: "Post ID to update" },
+          title: { type: "string", description: "New title" },
+          content: { type: "string", description: "New content (HTML)" },
+          status: { type: "string", description: "Status: draft, publish, pending, private" },
+          categories: { type: "array", items: { type: "number" }, description: "Category IDs" },
+          tags: { type: "array", items: { type: "number" }, description: "Tag IDs" },
+        },
+        required: ["post_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_post",
+      description: "Delete a WordPress blog post. Use force=true for permanent deletion.",
+      parameters: {
+        type: "object",
+        properties: {
+          post_id: { type: "number", description: "Post ID to delete" },
+          force: { type: "boolean", description: "True for permanent delete (default: false)" },
+        },
+        required: ["post_id"],
+      },
+    },
+  },
 ];
 
-const WRITE_TOOLS = new Set(["create_order", "update_order_status"]);
+const WRITE_TOOLS = new Set([
+  "create_order", "update_order_status", "update_order", "delete_order",
+  "create_product", "update_product", "delete_product",
+  "create_page", "update_page", "delete_page",
+  "create_post", "update_post", "delete_post",
+]);
 
 // ── Deterministic date utilities ──
 function formatDate(d: Date): string {
@@ -252,6 +458,17 @@ const TOOL_LABELS: Record<string, string> = {
   search_orders: "Searching orders",
   create_order: "Creating order",
   update_order_status: "Updating order status",
+  update_order: "Updating order",
+  delete_order: "Deleting order",
+  create_product: "Creating product",
+  update_product: "Updating product",
+  delete_product: "Deleting product",
+  create_page: "Creating page",
+  update_page: "Updating page",
+  delete_page: "Deleting page",
+  create_post: "Creating post",
+  update_post: "Updating post",
+  delete_post: "Deleting post",
   get_sales_report: "Generating sales report",
   compare_sales: "Comparing sales periods",
   get_product_sales: "Analyzing product sales",
@@ -403,10 +620,32 @@ function generateReasoningBefore(toolName: string, args: any): string {
       return `Fetching sales history for product #${args.product_id} over last ${args.days || 60} days...`;
     case "get_product_sales_report":
       return `Aggregating per-product sales from ${args.date_min} to ${args.date_max}...`;
-    case "create_order":
+     case "create_order":
       return `Preparing new order with ${args.line_items?.length || 0} items...`;
     case "update_order_status":
       return `Updating order #${args.order_id} to '${args.status}'...`;
+    case "update_order":
+      return `Updating order #${args.order_id}...`;
+    case "delete_order":
+      return `Deleting order #${args.order_id}${args.force ? " permanently" : ""}...`;
+    case "create_product":
+      return `Creating product "${args.name || "unnamed"}"...`;
+    case "update_product":
+      return `Updating product #${args.product_id}...`;
+    case "delete_product":
+      return `Deleting product #${args.product_id}${args.force ? " permanently" : ""}...`;
+    case "create_page":
+      return `Creating page "${args.title || "unnamed"}"...`;
+    case "update_page":
+      return `Updating page #${args.page_id}...`;
+    case "delete_page":
+      return `Deleting page #${args.page_id}${args.force ? " permanently" : ""}...`;
+    case "create_post":
+      return `Creating post "${args.title || "unnamed"}"...`;
+    case "update_post":
+      return `Updating post #${args.post_id}...`;
+    case "delete_post":
+      return `Deleting post #${args.post_id}${args.force ? " permanently" : ""}...`;
     case "save_preference":
       return `Saving preference: "${args.key}"...`;
     default:
@@ -459,6 +698,30 @@ function generateReasoningAfter(toolName: string, result: any): string | null {
         }
         return null;
       }
+      case "update_order":
+      case "update_order_status":
+        if (result?.id) return `Order #${result.id} updated (status: ${result.status}).`;
+        return result?.error ? `Error: ${result.error}` : null;
+      case "delete_order":
+        return result?.id ? `Order #${result.id} deleted.` : (result?.error ? `Error: ${result.error}` : null);
+      case "create_product":
+        return result?.id ? `Product created: #${result.id} "${result.name}".` : (result?.error ? `Error: ${result.error}` : null);
+      case "update_product":
+        return result?.id ? `Product #${result.id} updated.` : (result?.error ? `Error: ${result.error}` : null);
+      case "delete_product":
+        return result?.id ? `Product #${result.id} deleted.` : (result?.error ? `Error: ${result.error}` : null);
+      case "create_page":
+        return result?.id ? `Page created: #${result.id} "${result.title?.rendered || result.title}".` : (result?.error ? `Error: ${result.error}` : null);
+      case "update_page":
+        return result?.id ? `Page #${result.id} updated.` : (result?.error ? `Error: ${result.error}` : null);
+      case "delete_page":
+        return result?.id ? `Page #${result.id} deleted.` : (result?.error ? `Error: ${result.error}` : null);
+      case "create_post":
+        return result?.id ? `Post created: #${result.id} "${result.title?.rendered || result.title}".` : (result?.error ? `Error: ${result.error}` : null);
+      case "update_post":
+        return result?.id ? `Post #${result.id} updated.` : (result?.error ? `Error: ${result.error}` : null);
+      case "delete_post":
+        return result?.id ? `Post #${result.id} deleted.` : (result?.error ? `Error: ${result.error}` : null);
       default:
         return null;
     }
@@ -528,7 +791,27 @@ function generateSemanticPlan(toolCalls: any[]): SemanticStep[] {
       }
       case "create_order":
       case "update_order_status":
+      case "update_order":
+      case "delete_order":
         steps.push({ title: "Preparing order action" });
+        steps.push({ title: "Awaiting approval" });
+        break;
+      case "create_product":
+      case "update_product":
+      case "delete_product":
+        steps.push({ title: "Preparing product action" });
+        steps.push({ title: "Awaiting approval" });
+        break;
+      case "create_page":
+      case "update_page":
+      case "delete_page":
+        steps.push({ title: "Preparing page action" });
+        steps.push({ title: "Awaiting approval" });
+        break;
+      case "create_post":
+      case "update_post":
+      case "delete_post":
+        steps.push({ title: "Preparing post action" });
         steps.push({ title: "Awaiting approval" });
         break;
       case "save_preference":
@@ -893,6 +1176,90 @@ async function executeTool(
         );
       return { result: { success: true, message: `Saved preference: "${args.key}"` } };
     }
+    // ── CRUD: Orders ──
+    case "update_order": {
+      const endpoint = `orders/${args.order_id}`;
+      const body: any = {};
+      if (args.status) body.status = args.status;
+      if (args.billing) body.billing = args.billing;
+      if (args.shipping) body.shipping = args.shipping;
+      if (args.line_items) body.line_items = args.line_items;
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint, method: "PUT", body });
+      if (args.note) {
+        await callWooProxy(supabaseUrl, authHeader, { endpoint: `orders/${args.order_id}/notes`, method: "POST", body: { note: args.note } });
+      }
+      return { result: data, requestUri: `PUT /wp-json/wc/v3/${endpoint}` };
+    }
+    case "delete_order": {
+      const endpoint = `orders/${args.order_id}`;
+      const force = args.force ? "?force=true" : "";
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `${endpoint}${force}`, method: "DELETE" });
+      return { result: data, requestUri: `DELETE /wp-json/wc/v3/${endpoint}` };
+    }
+    // ── CRUD: Products ──
+    case "create_product": {
+      const body: any = { name: args.name };
+      if (args.type) body.type = args.type;
+      if (args.regular_price) body.regular_price = args.regular_price;
+      if (args.description) body.description = args.description;
+      if (args.short_description) body.short_description = args.short_description;
+      if (args.sku) body.sku = args.sku;
+      if (args.stock_quantity != null) body.stock_quantity = args.stock_quantity;
+      if (args.manage_stock != null) body.manage_stock = args.manage_stock;
+      if (args.categories) body.categories = args.categories;
+      if (args.images) body.images = args.images;
+      if (args.status) body.status = args.status;
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: "products", method: "POST", body });
+      return { result: data, richContent: data?.id ? { type: "products", data: [data] } : undefined, requestUri: `POST /wp-json/wc/v3/products` };
+    }
+    case "update_product": {
+      const endpoint = `products/${args.product_id}`;
+      const { product_id, ...rest } = args;
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint, method: "PUT", body: rest });
+      return { result: data, richContent: data?.id ? { type: "products", data: [data] } : undefined, requestUri: `PUT /wp-json/wc/v3/${endpoint}` };
+    }
+    case "delete_product": {
+      const endpoint = `products/${args.product_id}`;
+      const force = args.force ? "?force=true" : "";
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `${endpoint}${force}`, method: "DELETE" });
+      return { result: data, requestUri: `DELETE /wp-json/wc/v3/${endpoint}` };
+    }
+    // ── CRUD: Pages (WordPress) ──
+    case "create_page": {
+      const body: any = { title: args.title, status: args.status || "draft" };
+      if (args.content) body.content = args.content;
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: "pages", method: "POST", body, apiPrefix: "wp/v2" });
+      return { result: data, requestUri: `POST /wp-json/wp/v2/pages` };
+    }
+    case "update_page": {
+      const { page_id, ...rest } = args;
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `pages/${page_id}`, method: "PUT", body: rest, apiPrefix: "wp/v2" });
+      return { result: data, requestUri: `PUT /wp-json/wp/v2/pages/${page_id}` };
+    }
+    case "delete_page": {
+      const force = args.force ? "?force=true" : "";
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `pages/${args.page_id}${force}`, method: "DELETE", apiPrefix: "wp/v2" });
+      return { result: data, requestUri: `DELETE /wp-json/wp/v2/pages/${args.page_id}` };
+    }
+    // ── CRUD: Posts (WordPress) ──
+    case "create_post": {
+      const body: any = { title: args.title, status: args.status || "draft" };
+      if (args.content) body.content = args.content;
+      if (args.categories) body.categories = args.categories;
+      if (args.tags) body.tags = args.tags;
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: "posts", method: "POST", body, apiPrefix: "wp/v2" });
+      return { result: data, requestUri: `POST /wp-json/wp/v2/posts` };
+    }
+    case "update_post": {
+      const { post_id, ...rest } = args;
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `posts/${post_id}`, method: "PUT", body: rest, apiPrefix: "wp/v2" });
+      return { result: data, requestUri: `PUT /wp-json/wp/v2/posts/${post_id}` };
+    }
+    case "delete_post": {
+      const force = args.force ? "?force=true" : "";
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `posts/${args.post_id}${force}`, method: "DELETE", apiPrefix: "wp/v2" });
+      return { result: data, requestUri: `DELETE /wp-json/wp/v2/posts/${args.post_id}` };
+    }
     default:
       return { result: { error: `Unknown tool: ${toolName}` } };
   }
@@ -988,9 +1355,19 @@ serve(async (req) => {
 
 Your capabilities:
 - Search and browse products (shown as interactive visual cards automatically)
-- Create and manage orders
+- Create, update, and delete orders
+- Create, update, and delete products
+- Create, update, and delete WordPress pages and blog posts
 - Provide sales analytics and insights with charts and dashboards
 - Learn the user's preferences and product aliases
+
+CRUD OPERATIONS (IMPORTANT):
+- For updating/deleting orders: ALWAYS search for the order first to confirm it exists, then call update_order or delete_order.
+- For updating/deleting products: ALWAYS search for the product first to confirm it exists, then call update_product or delete_product.
+- For pages and posts: use the WordPress endpoints (create_page, update_page, delete_page, create_post, update_post, delete_post). Pages/posts use the WordPress REST API (wp/v2), not WooCommerce.
+- All create/update/delete operations require user approval via the approval card. The user will see a summary and can approve, skip, or edit before execution.
+- When creating products, include as much detail as possible: name, price, description, SKU, stock quantity, categories.
+- When creating pages/posts, default status to "draft" unless the user explicitly asks for "publish".
 
 CRITICAL TOOL USAGE RULES — YOU MUST FOLLOW THESE:
 1. When the user asks to search, find, browse, or look up products: you MUST call the search_products tool. NEVER answer with a plain text list of products. The frontend renders product cards from the tool result automatically.
