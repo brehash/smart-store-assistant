@@ -301,6 +301,13 @@ export default function Index() {
             reasoningLogs: [...(m.reasoningLogs || []), rEntry],
           }));
           scrollToBottom();
+        } else if (event.type === "token_usage") {
+          tokenUsage = {
+            prompt_tokens: event.prompt_tokens || 0,
+            completion_tokens: event.completion_tokens || 0,
+            total_tokens: event.total_tokens || 0,
+          };
+          updateLastAssistant((m) => ({ ...m, tokenUsage: tokenUsage! }));
         }
       },
       onDone: async () => {
