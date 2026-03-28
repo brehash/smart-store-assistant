@@ -482,6 +482,7 @@ const TOOLS = [
 const SHIPPING_TOOL_NAMES = new Set(["check_shipping_status", "update_order_status", "search_orders"]);
 const SHIPPING_FOLLOWUP_TOOL_NAMES = new Set(["check_shipping_status", "update_order_status"]);
 const SHIPPING_INTENT_RE = /(shipping|tracking|delivery|livrare|colet|awb|status.*comand|comand.*status|unde.*comand|unde.*colet|stare.*comand|stare.*colet)/i;
+const GEO_INTENT_RE = /(geo|seo.*ai|optimiz.*ai|optimize.*search|ai.*search|generative.*engine|structured.*data|faq.*schema|json-ld|geo.*audit|audit.*geo|optimizeaz[aă].*seo|audit.*seo)/i;
 
 function selectToolsForIntent(lastUserMsg: string, hasToolResult: boolean, allTools: typeof TOOLS): typeof TOOLS {
   if (hasToolResult) {
