@@ -1447,6 +1447,47 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY && !userOpenAIKey) throw new Error("No AI API key configured");
 
+    // ── Message limit enforcement ──
+    const serviceClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {});
+    const { data: limitData } = await serviceClient
+      .from("message_limits")
+      .select("daily_limit, monthly_limit")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (limitData) {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const monthStart = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1);
+
+      const { count: dailyCount } = await serviceClient
+        .from("messages")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("role", "user")
+        .gte("created_at", todayStart.toISOString());
+
+      const { count: monthlyCount } = await serviceClient
+        .from("messages")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("role", "user")
+        .gte("created_at", monthStart.toISOString());
+
+      if (limitData.daily_limit && (dailyCount || 0) >= limitData.daily_limit) {
+        return new Response(JSON.stringify({ error: "You've reached your daily message limit." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (limitData.monthly_limit && (monthlyCount || 0) >= limitData.monthly_limit) {
+        return new Response(JSON.stringify({ error: "You've reached your monthly message limit." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     const useOpenAI = !!userOpenAIKey;
     const aiBaseUrl = useOpenAI
       ? "https://api.openai.com/v1/chat/completions"
@@ -1458,6 +1499,10 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
     const trimmedHistory = sanitizeAiHistory(messages).slice(-20);
     let aiMessages: any[] = [{ role: "system", content: systemPrompt }, ...trimmedHistory];
     const encoder = new TextEncoder();
+    // Token usage accumulator
+    let totalPromptTokens = 0;
+    let totalCompletionTokens = 0;
+    let totalTokens = 0;
 
     const stream = new ReadableStream({
       async start(controller) {
