@@ -111,6 +111,44 @@ export function DashboardView({ data }: { data: DashboardData }) {
   );
 }
 
+function isUrl(value: string): boolean {
+  return value.startsWith("http://") || value.startsWith("https://");
+}
+
+function CellRenderer({ cell }: { cell: CellValue }) {
+  if (cell == null || cell === "") return <>{"—"}</>;
+
+  // Handle object cells with { text, url }
+  if (typeof cell === "object" && cell !== null && "text" in cell) {
+    const obj = cell as CellWithUrl;
+    if (obj.url) {
+      return (
+        <span className="flex items-center gap-1.5">
+          <span>{obj.text}</span>
+          <a href={obj.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:text-primary/80 shrink-0">
+            <ExternalLink className="h-3.5 w-3.5" />
+          </a>
+        </span>
+      );
+    }
+    return <>{obj.text}</>;
+  }
+
+  const str = String(cell);
+
+  // Detect plain URL strings
+  if (isUrl(str)) {
+    return (
+      <a href={str} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:text-primary/80">
+        <ExternalLink className="h-3.5 w-3.5" />
+        <span className="text-xs">Link</span>
+      </a>
+    );
+  }
+
+  return <>{str}</>;
+}
+
 function CollapsibleList({ list }: { list: DashboardList }) {
   const [open, setOpen] = useState(!list.collapsible);
 
