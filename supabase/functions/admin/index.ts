@@ -267,6 +267,45 @@ serve(async (req) => {
       });
     }
 
+    // Route: GET /topup-packs
+    if (req.method === "GET" && path === "topup-packs") {
+      const { data } = await serviceClient
+        .from("credit_topup_packs")
+        .select("*")
+        .order("sort_order", { ascending: true });
+      return new Response(JSON.stringify(data || []), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Route: PUT /topup-packs/:id
+    const topupPackMatch = path.match(/^topup-packs\/([^/]+)$/);
+    if (req.method === "PUT" && topupPackMatch) {
+      const packId = topupPackMatch[1];
+      const body = await req.json();
+      const { name, credits, price_cents, is_active, sort_order } = body;
+      const updatePayload: Record<string, any> = {};
+      if (name !== undefined) updatePayload.name = name;
+      if (credits !== undefined) updatePayload.credits = credits;
+      if (price_cents !== undefined) updatePayload.price_cents = price_cents;
+      if (is_active !== undefined) updatePayload.is_active = is_active;
+      if (sort_order !== undefined) updatePayload.sort_order = sort_order;
+      const { data, error } = await serviceClient
+        .from("credit_topup_packs")
+        .update(updatePayload)
+        .eq("id", packId)
+        .select()
+        .single();
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Route: PUT /users/:id/allowance
     const allowanceMatch = path.match(/^users\/([^/]+)\/allowance$/);
     if (req.method === "PUT" && allowanceMatch) {

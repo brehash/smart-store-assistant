@@ -16,7 +16,7 @@ import {
   AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
-  Settings, Globe, Palette, Store, User,
+  Settings, Globe, Palette, Store, User, Coins,
   Save, Trash2, CheckCircle2, XCircle, ListChecks, Loader2,
   Sun, Moon, Monitor, X,
 } from "lucide-react";
@@ -26,7 +26,7 @@ import { cn } from "@/lib/utils";
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-export type SettingsTab = "general" | "appearance" | "connection" | "account";
+export type SettingsTab = "general" | "appearance" | "connection" | "credits" | "account";
 
 interface OrderStatus { slug: string; name: string; total: number; }
 
@@ -34,6 +34,7 @@ const TABS: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
   { id: "general", label: "General", icon: Settings },
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "connection", label: "Connection", icon: Store },
+  { id: "credits", label: "Credits", icon: Coins },
   { id: "account", label: "Account", icon: User },
 ];
 
@@ -70,6 +71,11 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
 
+  // Credits tab state
+  const [creditBalance, setCreditBalance] = useState<any>(null);
+  const [topupPacks, setTopupPacks] = useState<any[]>([]);
+  const [loadingCredits, setLoadingCredits] = useState(true);
+
 
   // Appearance
   const [theme, setTheme] = useState<"system" | "dark" | "light">(() => {
@@ -103,6 +109,20 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
         fetchOrderStatuses(data.store_url, data.consumer_key, data.consumer_secret);
       }
     });
+    // Load credits
+    const loadCredits = async () => {
+      setLoadingCredits(true);
+      try {
+        const [balRes, packsRes] = await Promise.all([
+          supabase.from("credit_balances").select("*").eq("user_id", user.id).maybeSingle(),
+          supabase.from("credit_topup_packs" as any).select("*").eq("is_active", true).order("sort_order"),
+        ]);
+        setCreditBalance(balRes.data);
+        setTopupPacks((packsRes.data as any[]) || []);
+      } catch { /* silent */ }
+      finally { setLoadingCredits(false); }
+    };
+    loadCredits();
   }, [user]);
 
   /* ---------- helpers ---------- */
@@ -424,11 +444,76 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
     </div>
   );
 
+  const renderCredits = () => {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-lg font-semibold">Credits</h2>
+          <p className="text-sm text-muted-foreground">Your credit balance and top-up options</p>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-primary/10 p-2"><Coins className="h-5 w-5 text-primary" /></div>
+              <div>
+                <CardTitle className="text-base">Current Balance</CardTitle>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {loadingCredits ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
+            ) : creditBalance ? (
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Available credits</span>
+                  <span className="font-semibold text-lg">{creditBalance.balance}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Monthly allowance</span>
+                  <span>{creditBalance.monthly_allowance}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Last refill</span>
+                  <span>{new Date(creditBalance.last_refill_at).toLocaleDateString()}</span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No credit balance found.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <div>
+          <h3 className="text-sm font-semibold mb-3">Top-Up Packs</h3>
+          <p className="text-xs text-muted-foreground mb-4">One-time credit purchases. Contact your administrator to purchase.</p>
+          <div className="grid grid-cols-2 gap-3">
+            {topupPacks.map((pack) => (
+              <Card key={pack.id} className="hover:border-primary/50 transition-colors">
+                <CardContent className="pt-4 pb-4 text-center space-y-2">
+                  <p className="font-semibold text-sm">{pack.name}</p>
+                  <p className="text-2xl font-bold text-primary">{pack.credits}</p>
+                  <p className="text-xs text-muted-foreground">credits</p>
+                  <p className="text-sm font-medium">${(pack.price_cents / 100).toFixed(2)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    ${(pack.price_cents / pack.credits / 100).toFixed(3)}/credit
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderTab = () => {
     switch (activeTab) {
       case "general": return renderGeneral();
       case "appearance": return renderAppearance();
       case "connection": return renderConnection();
+      case "credits": return renderCredits();
       case "account": return renderAccount();
       default: return renderGeneral();
     }
