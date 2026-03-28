@@ -144,6 +144,11 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
         line_items: lineItems.map((li) => ({ product_id: li.product_id, quantity: li.quantity })),
       };
       if (note) orderBody.customer_note = note;
+      if (paymentMethod) {
+        orderBody.payment_method = paymentMethod;
+        const pm = paymentMethods?.find((p) => p.id === paymentMethod);
+        if (pm) orderBody.payment_method_title = pm.title;
+      }
       const hasBilling = Object.values(billing).some((v) => v.trim());
       if (hasBilling) orderBody.billing = billing;
 
