@@ -425,6 +425,50 @@ const TOOLS = [
       },
     },
   },
+  // ── GEO (Generative Engine Optimization) ──
+  {
+    type: "function",
+    function: {
+      name: "audit_geo",
+      description: "Audit a product, page, or post for GEO (Generative Engine Optimization) readiness. Returns a 0-100 score with category breakdowns and recommendations.",
+      parameters: {
+        type: "object",
+        properties: {
+          entity_id: { type: "number", description: "Product ID, page ID, or post ID" },
+          entity_type: { type: "string", enum: ["product", "page", "post"], description: "Type of entity to audit" },
+        },
+        required: ["entity_id", "entity_type"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "generate_geo_content",
+      description: "Generate GEO-optimized content for a product, page, or post. Creates optimized description with FAQ schema, JSON-LD, and meta description. Plugin-aware (Yoast/RankMath).",
+      parameters: {
+        type: "object",
+        properties: {
+          entity_id: { type: "number", description: "Product ID, page ID, or post ID" },
+          entity_type: { type: "string", enum: ["product", "page", "post"], description: "Type of entity" },
+        },
+        required: ["entity_id", "entity_type"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "bulk_geo_audit",
+      description: "Audit multiple products for GEO readiness. Returns a summary table sorted by priority (lowest score first).",
+      parameters: {
+        type: "object",
+        properties: {
+          product_ids: { type: "array", items: { type: "number" }, description: "Product IDs to audit. Pass empty array to use cached products." },
+        },
+      },
+    },
+  },
 ];
 
 // ── Intent-based tool selection for token optimization ──
