@@ -56,7 +56,7 @@ interface ChatMessageProps {
 export function ChatMessage({
   role, content, richContents, isStreaming,
   pipeline, approvals, questions, orderForms, debugLogs, reasoningLogs, tokenUsage, creditUsage,
-  orderStatuses, onApproval, onQuestionAnswer, onOrderCreated,
+  orderStatuses, allOrderStatuses, paymentMethods, onApproval, onQuestionAnswer, onOrderCreated,
 }: ChatMessageProps) {
   const isUser = role === "user";
 
