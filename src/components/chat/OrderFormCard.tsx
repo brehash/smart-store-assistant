@@ -62,6 +62,7 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
   const [status, setStatus] = useState("processing");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [note, setNote] = useState("");
+  const [couponCode, setCouponCode] = useState("");
   const [billingOpen, setBillingOpen] = useState(false);
   const [billing, setBilling] = useState({
     first_name: "", last_name: "", email: "", phone: "",
