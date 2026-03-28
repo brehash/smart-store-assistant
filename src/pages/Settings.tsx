@@ -209,7 +209,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
   const handleDelete = async () => {
     if (!existingConnection) return;
     await supabase.from("woo_connections").delete().eq("id", existingConnection.id);
-    setExistingConnection(null); setConsumerKey(""); setConsumerSecret(""); setStoreName(""); setOrderStatuses([]); setSelectedStatuses([]);
+    setExistingConnection(null); setConsumerKey(""); setConsumerSecret(""); setStoreName(""); setOrderStatuses([]); setSelectedStatuses([]); setPlugins([]); setSelectedPlugins([]);
     toast({ title: "Deleted", description: "WooCommerce connection removed." });
   };
 
