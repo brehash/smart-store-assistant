@@ -38,6 +38,7 @@ interface Message {
   pipeline?: PipelinePlanData | null;
   approvals?: ApprovalRequest[];
   questions?: QuestionRequest[];
+  orderForms?: OrderFormData[];
   debugLogs?: DebugEntry[];
   reasoningLogs?: ReasoningEntry[];
   tokenUsage?: TokenUsage;
