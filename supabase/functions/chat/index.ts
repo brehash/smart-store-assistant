@@ -1601,31 +1601,41 @@ async function executeTool(
         const history = statusData.history || [];
         const latestEvent = history.length > 0 ? history[history.length - 1] : null;
 
+        const awbFinal = awb || statusData?.summary?.awb || "N/A";
+        const courierFinal = courierName || "Unknown";
+        const serviceFinal = serviceName || "Unknown";
+        const currentStatus = latestEvent ? {
+          code: latestEvent.code,
+          name: latestEvent.statusTextParts?.ro?.name || "Unknown",
+          reason: latestEvent.statusTextParts?.ro?.reason || "",
+          date: latestEvent.dateTime,
+          comment: latestEvent.comment?.ro || "",
+        } : null;
+        const isDelivered = latestEvent?.code === 20800;
+        const mappedHistory = history.map((h: any) => ({
+          code: h.code,
+          name: h.statusTextParts?.ro?.name || "",
+          reason: h.statusTextParts?.ro?.reason || "",
+          date: h.dateTime,
+          comment: h.comment?.ro || "",
+        }));
+
+        const shippingData = {
+          order_id: args.order_id,
+          provider: detectedProvider.provider,
+          awb: awbFinal,
+          uniqueId,
+          courier: courierFinal,
+          service: serviceFinal,
+          current_status: currentStatus,
+          status_name: currentStatus?.name || "Unknown",
+          is_delivered: isDelivered,
+          history: mappedHistory,
+        };
+
         return {
-          result: {
-            order_id: args.order_id,
-            provider: detectedProvider.provider,
-            awb: awb || statusData?.summary?.awb || "N/A",
-            uniqueId,
-            courier: courierName || "Unknown",
-            service: serviceName || "Unknown",
-            current_status: latestEvent ? {
-              code: latestEvent.code,
-              name: latestEvent.statusTextParts?.ro?.name || "Unknown",
-              reason: latestEvent.statusTextParts?.ro?.reason || "",
-              date: latestEvent.dateTime,
-              comment: latestEvent.comment?.ro || "",
-            } : null,
-            status_name: latestEvent?.statusTextParts?.ro?.name || "Unknown",
-            is_delivered: latestEvent?.code === 20800,
-            history: history.map((h: any) => ({
-              code: h.code,
-              name: h.statusTextParts?.ro?.name || "",
-              reason: h.statusTextParts?.ro?.reason || "",
-              date: h.dateTime,
-              comment: h.comment?.ro || "",
-            })),
-          },
+          result: shippingData,
+          richContent: { type: "shipping", data: shippingData },
           requestUri: `GET /v1/order/status/${uniqueId}`,
         };
       }

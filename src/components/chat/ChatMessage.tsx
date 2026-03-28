@@ -155,6 +155,7 @@ export function ChatMessage({
             {rc.type === "orders" && <OrderTable orders={rc.data} />}
             {rc.type === "chart" && <ChatChart chartData={rc.data} />}
             {rc.type === "dashboard" && <DashboardView data={rc.data} />}
+            {rc.type === "shipping" && <ShippingTimeline data={rc.data} />}
           </div>
         ))}
 
