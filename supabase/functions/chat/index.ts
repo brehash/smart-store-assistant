@@ -1306,6 +1306,15 @@ async function executeTool(
       return { result: { success: true, message: `Saved preference: "${args.key}"` } };
     }
     case "get_orders_with_meta": {
+      const RELEVANT_META_KEYS = [
+        'invoice', 'factura', 'facturi', 'oblio', 'awb', 'tracking', 'colet',
+        'curier', 'fan_courier', 'sameday', 'cargus', 'dpd', 'gls',
+        'wc_invoice', 'billing_invoice', 'serie', 'numar',
+      ];
+      const isRelevantMetaKey = (key: string) => {
+        const k = key.toLowerCase();
+        return RELEVANT_META_KEYS.some(prefix => k.includes(prefix));
+      };
       const perPage = Math.min(args.per_page || 100, 100);
       let allOrders: any[] = [];
       for (let page = 1; page <= 5; page++) {
@@ -1321,19 +1330,24 @@ async function executeTool(
         allOrders = allOrders.concat(orders);
         if (orders.length < perPage) break;
       }
-      // Return orders with meta_data, line_items (name+quantity), billing, and key fields
-      const cleaned = allOrders.map((o: any) => ({
-        id: o.id,
-        status: o.status,
-        total: o.total,
-        currency: o.currency,
-        date_created: o.date_created,
-        billing: o.billing ? { first_name: o.billing.first_name, last_name: o.billing.last_name, email: o.billing.email, company: o.billing.company } : undefined,
-        meta_data: o.meta_data || [],
-        line_items: Array.isArray(o.line_items)
-          ? o.line_items.map((li: any) => ({ name: li.name, quantity: li.quantity, total: li.total }))
-          : [],
-      }));
+      // Filter meta_data to only relevant keys to reduce token usage
+      const cleaned = allOrders.map((o: any) => {
+        const filteredMeta = Array.isArray(o.meta_data)
+          ? o.meta_data.filter((m: any) => isRelevantMetaKey(m.key || ""))
+          : [];
+        return {
+          id: o.id,
+          status: o.status,
+          total: o.total,
+          currency: o.currency,
+          date_created: o.date_created,
+          billing: o.billing ? { first_name: o.billing.first_name, last_name: o.billing.last_name, email: o.billing.email, company: o.billing.company } : undefined,
+          meta_data: filteredMeta,
+          line_items: Array.isArray(o.line_items)
+            ? o.line_items.map((li: any) => ({ name: li.name, quantity: li.quantity, total: li.total }))
+            : [],
+        };
+      });
       return {
         result: cleaned,
         richContent: { type: "orders", data: allOrders },
