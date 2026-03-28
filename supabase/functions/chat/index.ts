@@ -163,6 +163,24 @@ const TOOLS = [
   {
     type: "function",
     function: {
+      name: "get_orders_with_meta",
+      description:
+        "Fetch orders for a date range with FULL meta_data included. Use this when the user asks about invoices (facturi), AWBs, tracking numbers, or any custom order attributes. Returns meta_data, line_items, billing, and all order fields needed for classification and analysis.",
+      parameters: {
+        type: "object",
+        properties: {
+          after: { type: "string", description: "Start date (ISO 8601, e.g. 2024-01-01T00:00:00)" },
+          before: { type: "string", description: "End date (ISO 8601, e.g. 2024-01-31T23:59:59)" },
+          status: { type: "string", description: "Order status filter (optional)" },
+          per_page: { type: "number", description: "Number of results per page (default 100, max 100)" },
+        },
+        required: ["after", "before"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "save_preference",
       description: "Save a user preference/alias.",
       parameters: {
