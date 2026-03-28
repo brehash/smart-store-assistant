@@ -1,62 +1,47 @@
 
 
-## Tiered Credit System Implementation
+## Fix Credit Management + Add Loading States and Toast Messages
 
-### How Credits Will Work
+### Root Cause
 
-- **Simple text reply** (no tool calls): **1 credit**
-- **Read tool calls** (search_products, search_orders, etc.): **2 credits**
-- **Write tool calls** (create/update/delete orders, products, etc.): **3 credits**
-- Users get a monthly auto-refill (configurable per user) + admins can manually adjust
-- When balance hits 0, the user is blocked with a friendly message
+The admin edge function uses `auth.getClaims()` which may not be reliably available in the Supabase JS client version used in edge functions. This could silently fail, causing the auth check to reject the request with a 401. The frontend also doesn't properly handle or display error responses from the backend.
 
-### Database Changes (Migration)
+### Changes
 
-**New table: `credit_balances`** — stores current credit balance per user
-- `user_id`, `balance` (integer), `monthly_allowance` (default 100), `last_refill_at`
+#### 1. Fix admin edge function auth (`supabase/functions/admin/index.ts`)
+- Replace `userClient.auth.getClaims()` with `userClient.auth.getUser()` which is the standard, reliable method
+- Extract `userId` from `user.id` instead of `claims.sub`
+- Add error logging for credit operations to help debug
 
-**New table: `credit_transactions`** — audit log of every credit change
-- `user_id`, `amount` (positive = grant, negative = debit), `balance_after`, `reason` (e.g. "message", "admin_grant", "monthly_refill"), `message_id` (nullable), `created_at`
+#### 2. Improve UserDetail UI (`src/components/admin/UserDetail.tsx`)
+- Add proper loading states with spinners/disabled states on all buttons (Save Limits, Save Allowance, Apply Credits)
+- Add detailed toast messages for success AND error cases with descriptive text
+- Show loading skeleton while credits data is being fetched
+- Handle non-OK responses by reading the error body and displaying it in the toast
+- Add loading state for initial data fetch (conversations, messages, credits)
 
-**New database function: `refill_credits_if_due`** — called before each message; if 30+ days since last refill, reset balance to monthly_allowance
-
-### Backend Changes (`supabase/functions/chat/index.ts`)
-
-1. Before processing a message, check the user's credit balance (refill if due)
-2. After the AI response completes and we know which tools were called, calculate the credit cost:
-   - No tool calls → 1 credit
-   - Any read-only tool → 2 credits
-   - Any write tool → 3 credits (highest tier wins)
-3. Deduct credits and insert a transaction record
-4. Emit a new SSE event `credit_usage: { cost, remaining_balance }` so the frontend can display it
-5. If balance is insufficient before processing, return an error SSE: "You've run out of credits. Contact your administrator."
-
-### Admin Edge Function (`supabase/functions/admin/index.ts`)
-
-Add new routes:
-- `GET /users/:id/credits` — get balance + recent transactions
-- `PUT /users/:id/credits` — admin grants/deducts credits (with reason)
-- `PUT /users/:id/allowance` — set monthly allowance
-
-### Frontend Changes
+### Files to modify
 
 | File | Change |
 |------|--------|
-| `src/pages/Index.tsx` | Handle `credit_usage` SSE event, display remaining credits |
-| `src/lib/chat-stream.ts` | Parse `credit_usage` event |
-| `src/components/chat/ChatMessage.tsx` | Show credit cost alongside token count (e.g. "2 credits · 1,243 tokens") |
-| `src/components/admin/UserDetail.tsx` | Add credit balance display, grant/deduct form, transaction history |
-| UI header/sidebar | Show current user's credit balance |
+| `supabase/functions/admin/index.ts` | Fix auth: replace `getClaims` with `getUser` |
+| `src/components/admin/UserDetail.tsx` | Add loading states, error handling, detailed toasts |
 
-### Files to Modify/Create
+### Technical Details
 
-| File | Action |
-|------|--------|
-| DB migration | Create `credit_balances`, `credit_transactions` tables with RLS |
-| `supabase/functions/chat/index.ts` | Add credit check, calculation, deduction, SSE event |
-| `supabase/functions/admin/index.ts` | Add credit management routes |
-| `src/lib/chat-stream.ts` | Handle `credit_usage` event |
-| `src/pages/Index.tsx` | Store and display credit info |
-| `src/components/chat/ChatMessage.tsx` | Show credit cost per message |
-| `src/components/admin/UserDetail.tsx` | Credit management UI for admins |
+**Auth fix:**
+```typescript
+// Before (broken):
+const { data: claimsData } = await userClient.auth.getClaims(token);
+const userId = claimsData.claims.sub;
+
+// After (correct):
+const { data: { user }, error } = await userClient.auth.getUser();
+const userId = user.id;
+```
+
+**Toast improvements:**
+- Success: "Added 1000 credits to user. New balance: 1100"
+- Error: "Failed to adjust credits: {error message from server}"
+- Loading: Button text changes to "Saving..." with disabled state
 
