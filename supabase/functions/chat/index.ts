@@ -392,6 +392,8 @@ function generateReasoningBefore(toolName: string, args: any): string {
       return `Comparing ${args.period_a_label || "Period A"} vs ${args.period_b_label || "Period B"}...`;
     case "get_product_sales":
       return `Fetching sales history for product #${args.product_id} over last ${args.days || 60} days...`;
+    case "get_product_sales_report":
+      return `Aggregating per-product sales from ${args.date_min} to ${args.date_max}...`;
     case "create_order":
       return `Preparing new order with ${args.line_items?.length || 0} items...`;
     case "update_order_status":
