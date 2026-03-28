@@ -66,6 +66,7 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
   const [billing, setBilling] = useState({
     first_name: "", last_name: "", email: "", phone: "",
     address_1: "", city: "", state: "", postcode: "", country: "",
+    company: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
