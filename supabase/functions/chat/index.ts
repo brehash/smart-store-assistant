@@ -1596,6 +1596,9 @@ CRUD OPERATIONS (IMPORTANT):
 - When creating products, include as much detail as possible: name, price, description, SKU, stock quantity, categories.
 - When creating pages/posts, default status to "draft" unless the user explicitly asks for "publish".
 
+ORDER CREATION RULE:
+When the user asks to create, place, or make a new order (in any language — e.g. "creează o comandă", "fă o comandă", "place an order"), you MUST call the create_order tool IMMEDIATELY. Do NOT search for products first — the order form will handle product selection.
+
 CRITICAL TOOL USAGE RULES — YOU MUST FOLLOW THESE:
 1. When the user asks to search, find, browse, or look up products: you MUST call the search_products tool. NEVER answer with a plain text list of products. The frontend renders product cards from the tool result automatically.
 2. When the user asks about orders, recent orders, or order lookups: you MUST call the search_orders tool.
