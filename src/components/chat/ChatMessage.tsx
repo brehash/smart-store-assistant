@@ -12,6 +12,7 @@ import { DashboardView } from "./DashboardView";
 import { ReasoningBubbles, type ReasoningEntry } from "./ReasoningBubbles";
 import { OrderFormCard, type OrderFormData } from "./OrderFormCard";
 import { ShippingTimeline } from "./ShippingTimeline";
+import { GeoReportCard } from "./GeoReportCard";
 
 export interface RichContent {
   type: "products" | "orders" | "chart" | "confirmation" | "pipeline" | "dashboard" | "shipping" | "geo_report";
