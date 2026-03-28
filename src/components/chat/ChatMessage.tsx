@@ -40,12 +40,15 @@ interface ChatMessageProps {
   pipeline?: PipelinePlanData | null;
   approvals?: ApprovalRequest[];
   questions?: QuestionRequest[];
+  orderForms?: OrderFormData[];
   debugLogs?: DebugEntry[];
   reasoningLogs?: ReasoningEntry[];
   tokenUsage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
   creditUsage?: { cost: number; remaining_balance: number };
+  orderStatuses?: string[];
   onApproval?: (approval: ApprovalRequest, action: "approve" | "skip" | "edit", editedText?: string) => void;
   onQuestionAnswer?: (question: QuestionRequest, answer: string) => void;
+  onOrderCreated?: (data: OrderFormData, result: { orderNumber: string; orderId: number; total: string }) => void;
 }
 
 export function ChatMessage({
