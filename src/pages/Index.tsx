@@ -515,6 +515,17 @@ export default function Index() {
     await handleSend(answer);
   };
 
+  const handleOrderCreated = (formData: OrderFormData, result: { orderNumber: string; orderId: number; total: string }) => {
+    updateLastAssistant((m) => ({
+      ...m,
+      orderForms: m.orderForms?.map((of) =>
+        of.toolCallId === formData.toolCallId ? { ...of, resolved: result } : of
+      ),
+    }));
+    // Send confirmation as a follow-up message
+    handleSend(`Order #${result.orderNumber} has been created successfully (total: ${result.total}).`);
+  };
+
   const handleNewChat = () => { setConversationId(null); setMessages([]); setViewId(null); setSidebarOpen(false); };
   const handleSelectConversation = (id: string, vId?: string | null) => {
     setConversationId(id);
