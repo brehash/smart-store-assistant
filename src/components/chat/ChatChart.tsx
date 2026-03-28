@@ -91,7 +91,7 @@ export function ChatChart({ chartData }: { chartData: ChartData }) {
                     <Cell key={i} fill={COLORS[i % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
               </PieChart>
             )}
           </ResponsiveContainer>
