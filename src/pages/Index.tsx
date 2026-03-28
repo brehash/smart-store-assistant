@@ -198,6 +198,7 @@ export default function Index() {
       viewId,
       onDelta: (chunk) => {
         assistantContent += chunk;
+        streamAliveRef.current = true;
         updateLastAssistant((m) => ({ ...m, content: assistantContent }));
         scrollToBottom();
       },
