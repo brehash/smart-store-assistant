@@ -70,6 +70,9 @@ export default function Index() {
   const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);
   const [hasConnection, setHasConnection] = useState<boolean | null>(null); // null = loading
   const [showWebhookSetup, setShowWebhookSetup] = useState(false);
+  const [cachedPaymentMethods, setCachedPaymentMethods] = useState<{ id: string; title: string }[]>([]);
+  const [cachedAllStatuses, setCachedAllStatuses] = useState<{ slug: string; name: string }[]>([]);
+  const [cachedSelectedStatuses, setCachedSelectedStatuses] = useState<string[]>([]);
 
   // Fetch credit balance and app settings on mount
   useEffect(() => {
