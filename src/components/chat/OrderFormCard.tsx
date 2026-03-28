@@ -51,7 +51,7 @@ interface OrderFormCardProps {
   onOrderCreated?: (data: OrderFormData, result: { orderNumber: string; orderId: number; total: string }) => void;
 }
 
-export function OrderFormCard({ data, orderStatuses, disabled, onOrderCreated }: OrderFormCardProps) {
+export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMethods, disabled, onOrderCreated }: OrderFormCardProps) {
   const { session } = useAuth();
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
