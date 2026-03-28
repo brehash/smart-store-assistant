@@ -169,6 +169,7 @@ export default function Index() {
             debugLogs: meta?.debugLogs || [],
             approvals: meta?.approvals || [],
             questions: meta?.questions || [],
+            orderForms: meta?.orderForms || [],
             reasoningLogs: meta?.reasoningLogs || [],
             tokenUsage: (m as any).token_usage || undefined,
           };
