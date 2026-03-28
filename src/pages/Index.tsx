@@ -89,6 +89,60 @@ export default function Index() {
     })();
   }, [user]);
 
+  // Check if user has a WooCommerce connection
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("woo_connections")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .maybeSingle()
+      .then(({ data }) => {
+        setHasConnection(!!data);
+        if (data) {
+          // Check if webhooks prompt was dismissed
+          const dismissed = localStorage.getItem(`webhook-setup-dismissed-${user.id}`);
+          if (!dismissed) setShowWebhookSetup(true);
+        }
+      });
+  }, [user]);
+
+  // Realtime webhook event notifications
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("webhook-events")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "webhook_events", filter: `user_id=eq.${user.id}` },
+        (payload: any) => {
+          const { topic, payload: eventData } = payload.new;
+          let title = "Webhook Event";
+          let description = topic;
+          if (topic === "order.created" && eventData) {
+            const num = eventData.number || eventData.id;
+            const total = eventData.total || "—";
+            const name = eventData.billing?.first_name
+              ? `${eventData.billing.first_name} ${eventData.billing.last_name || ""}`
+              : "";
+            title = "🛒 New Order";
+            description = `Order #${num} — ${total}${name ? ` from ${name}` : ""}`;
+          } else if (topic === "customer.created" && eventData) {
+            title = "👤 New Customer";
+            description = eventData.email || `${eventData.first_name || ""} ${eventData.last_name || ""}`;
+          } else if (topic === "order.updated" && eventData) {
+            const num = eventData.number || eventData.id;
+            title = "📦 Order Updated";
+            description = `Order #${num} status: ${eventData.status || "unknown"}`;
+          }
+          toast({ title, description });
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, toast]);
+
   const handleToggleSidebar = () => {
     setSidebarCollapsed((prev) => {
       const next = !prev;
