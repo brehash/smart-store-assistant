@@ -1,37 +1,45 @@
 
 
-## Three Changes: Always-available shipping tool, not-connected message, test connection button
+## Visual Shipping Status Timeline
 
-### 1. Make `check_shipping_status` always available (future-proof for multiple integrations)
+### Overview
+Create a new `ShippingTimeline` component that displays shipping tracking data as a visual vertical timeline with status icons, and emit it as a `"shipping"` rich content type from the backend.
 
-**File: `supabase/functions/chat/index.ts`**
+### New Component: `src/components/chat/ShippingTimeline.tsx`
 
-- Move `check_shipping_status` from conditionally-injected into the base `TOOLS` array (always available)
-- Update description: "Check the shipping/delivery status of an order. Requires the WooCommerce order number (NOT an AWB). The tool automatically detects the shipping provider from order metadata."
-- In the tool execution handler (`case "check_shipping_status"`): instead of checking Colete Online credentials upfront, first check order metadata to detect which shipping provider is present (currently only `_coleteonline_courier_order`), then fetch the relevant integration config
-- If no integration is enabled/configured for the detected provider, return a clear error: "This order uses Colete Online shipping but you haven't connected the Colete Online integration yet. Go to Settings > Integrations to enable it."
-- If no shipping metadata is found at all, return: "No shipping tracking data found on this order."
+A card-based visual timeline showing:
+- **Header**: Order number, AWB, courier name, service type
+- **Current status badge**: Color-coded (green for delivered, blue for in-transit, gray for pending)
+- **Vertical timeline**: Each history entry as a node with:
+  - Colored dot (green = delivered, blue = in-transit/depot, yellow = picked up, gray = initial)
+  - Connecting vertical line between dots
+  - Status name (bold), reason (if any), date/time formatted, location from comment
+- Latest entry at the top, oldest at the bottom
 
-**System prompt update**: Remove the conditional branching. Always include instructions about using the tool. If no shipping integration is enabled, the tool itself will inform the user — the AI doesn't need to gatekeep.
-
-### 2. Test Connection button for Colete Online
-
-**File: `src/pages/Settings.tsx`**
-
-- Add a "Test Connection" button next to the "Save Integration" button
-- On click: call the Colete Online auth endpoint (`POST https://auth.colete-online.ro/token` with client credentials grant) via a small edge function or directly (since it's CORS-friendly)
-- Since the auth endpoint likely won't support CORS from the browser, route the test through the existing `colete-online-tracker` edge function with a `?action=test` query param
-- Display success toast with "Connection successful!" or error toast with the failure reason
-
-**File: `supabase/functions/colete-online-tracker/index.ts`**
-
-- Add a `test` action handler: accept `client_id` and `client_secret` in the request body, attempt OAuth2 token fetch, return success/failure JSON
-
-### Files to modify
+### Changes
 
 | File | Change |
 |------|--------|
-| `supabase/functions/chat/index.ts` | Move `check_shipping_status` to base TOOLS, update execution to detect provider, simplify system prompt |
-| `src/pages/Settings.tsx` | Add "Test Connection" button calling colete-online-tracker with `?action=test` |
-| `supabase/functions/colete-online-tracker/index.ts` | Add `test` action handler for credential validation |
+| `src/components/chat/ShippingTimeline.tsx` | New component with vertical timeline UI |
+| `src/components/chat/ChatMessage.tsx` | Add `"shipping"` to `RichContent.type` union, render `ShippingTimeline` |
+| `supabase/functions/chat/index.ts` | Add `richContent: { type: "shipping", data: {...} }` to `check_shipping_status` return |
+
+### Backend: emit rich content
+
+In the `check_shipping_status` case, add `richContent` to the return alongside `result`:
+```
+richContent: {
+  type: "shipping",
+  data: {
+    order_id, awb, courier, service, provider,
+    is_delivered, current_status, history (reversed — newest first)
+  }
+}
+```
+
+### Status color mapping
+- Code `20800` (delivered) → green
+- Codes `20500`+ (in delivery, transit, depot) → blue  
+- Codes `20050` (picked up) → yellow
+- Codes below `20000` (initial/emitted) → gray
 
