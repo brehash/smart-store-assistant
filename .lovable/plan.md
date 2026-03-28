@@ -1,68 +1,78 @@
 
 
-## Four Improvements: Caching, Language, Payment Methods, Order Statuses
+## Add "Integrations" Settings Tab + Colete Online Integration
 
-### 1. Cache Products & Payment Methods
+### Overview
+Add a new "Integrations" tab to Settings where users can enable/disable third-party integrations. The first integration is **Colete Online** — a Romanian shipping aggregator. When enabled, a scheduled edge function runs every 2 hours to check AWB statuses and automatically mark orders as "completed" when delivered (status code `20800`).
 
-**New DB table `woo_cache`**: stores cached WooCommerce data per user with a cache key.
+### Architecture
 
-```sql
-CREATE TABLE public.woo_cache (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  cache_key text NOT NULL, -- 'products', 'payment_methods', 'order_statuses'
-  data jsonb NOT NULL DEFAULT '[]',
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (user_id, cache_key)
-);
-ALTER TABLE public.woo_cache ENABLE ROW LEVEL SECURITY;
--- Users can read/write their own cache
-CREATE POLICY "Users manage own cache" ON public.woo_cache FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+```text
+Settings UI (Integrations tab)
+  └─ Toggle: Colete Online [on/off]
+  └─ Inputs: Client ID, Client Secret
+  └─ Save → woo_integrations table
+
+Edge Function: colete-online-tracker (runs every 2h via pg_cron)
+  1. Get all users with Colete Online enabled
+  2. For each user, fetch non-completed orders via woo-proxy
+  3. Extract AWB uniqueId from _coleteonline_courier_order meta
+  4. Call Colete Online API: GET /order/status/{uniqueId}
+  5. If latest status code == 20800 → update order to "completed" via woo-proxy
 ```
 
-**Populate cache**:
-- On Settings save / test connection: fetch products (all pages), payment gateways, order statuses → upsert into `woo_cache`
-- Add a "Refresh Cache" button in Settings > Connection section
-- In the chat edge function: detect "update products" / "actualizeaza produsele" intent → call woo-proxy to fetch all products and payment methods, upsert cache, respond with confirmation
+### Database Changes
 
-**Use cache in OrderFormCard**: product search queries the cached data first (client-side filter), falling back to live API. Payment methods loaded from cache on mount.
+**New table: `woo_integrations`** — stores per-user integration configs:
+```sql
+CREATE TABLE public.woo_integrations (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  integration_key text NOT NULL,        -- 'colete_online'
+  is_enabled boolean NOT NULL DEFAULT false,
+  config jsonb NOT NULL DEFAULT '{}',   -- {client_id, client_secret}
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (user_id, integration_key)
+);
+ALTER TABLE public.woo_integrations ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage own integrations" ON public.woo_integrations
+  FOR ALL TO authenticated
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+```
 
-### 2. Language Already Sent — Verify
-
-The backend already reads `response_language` from `woo_connections` and injects it into the system prompt. This works. No change needed unless the user reports it's not working after testing.
-
-### 3. Payment Method Select in Order Form
-
-**File: `src/components/chat/OrderFormCard.tsx`**:
-- Add `paymentMethods` prop (array of `{id, title}`)
-- Add a `<Select>` between Status and Note for payment method
-- Include `payment_method` and `payment_method_title` in the order body sent to woo-proxy
-
-**File: `src/pages/Index.tsx`**:
-- On mount, fetch payment methods from `woo_cache` table
-- Pass them down through `ChatMessage` → `OrderFormCard`
-
-**File: `src/components/chat/ChatMessage.tsx`**:
-- Add `paymentMethods` prop, pass to `OrderFormCard`
-
-### 4. Order Status Select — All Statuses, Selected First
-
-**File: `src/pages/Index.tsx`**:
-- On mount, fetch ALL order statuses from `woo_cache` (key: `order_statuses`) and user's selected statuses from `woo_connections.order_statuses`
-- Pass both `allOrderStatuses` and `selectedStatuses` through ChatMessage → OrderFormCard
-
-**File: `src/components/chat/OrderFormCard.tsx`**:
-- Sort statuses: selected ones first, then the rest
-- Show all statuses in the dropdown, with a visual separator or bold for the preferred ones
-
-### Files to modify
+### File Changes
 
 | File | Change |
 |------|--------|
-| DB migration | Create `woo_cache` table |
-| `src/pages/Settings.tsx` | Add "Refresh Cache" button, populate cache on save/test |
-| `src/pages/Index.tsx` | Fetch cached payment methods + order statuses on mount, pass as props |
-| `src/components/chat/ChatMessage.tsx` | Add `paymentMethods` prop, forward to OrderFormCard |
-| `src/components/chat/OrderFormCard.tsx` | Add payment method select, sort order statuses |
-| `supabase/functions/chat/index.ts` | Add "update cache" intent detection |
+| DB migration | Create `woo_integrations` table |
+| `src/pages/Settings.tsx` | Add "Integrations" tab with Colete Online card (toggle + client ID/secret inputs) |
+| `supabase/functions/colete-online-tracker/index.ts` | New edge function: authenticate with Colete Online API, check AWB statuses, update delivered orders |
+| pg_cron job (via insert tool) | Schedule the edge function every 2 hours |
+
+### Settings UI — Integrations Tab
+
+- New tab with `Plug` icon labeled "Integrations"
+- Card for "Colete Online" with:
+  - Enable/disable switch
+  - Client ID input
+  - Client Secret input (password field)
+  - Save button
+  - Description explaining it auto-tracks shipments and marks orders as delivered
+
+### Edge Function: `colete-online-tracker`
+
+1. **Auth**: POST to `https://auth.colete-online.ro/token` with `grant_type: client_credentials` and Basic auth header (base64 of `clientId:clientSecret`)
+2. **For each enabled user**:
+   - Use service role to read their `woo_connections` credentials
+   - Fetch orders with statuses that are NOT "completed" (use `woo-proxy` internally or direct WooCommerce API call)
+   - For each order, check `meta_data` for key `_coleteonline_courier_order`
+   - Parse the JSON value to extract `result.uniqueId` and `result.awb`
+   - Call `GET https://api.colete-online.ro/v1/order/status/{uniqueId}` with Bearer token
+   - If the latest history entry has `code: 20800` (delivered), update the order status to "completed" via WooCommerce API
+3. **Security**: Uses service role key to read all enabled integrations; WooCommerce credentials stay server-side
+
+### Secrets Needed
+- Colete Online Client ID and Client Secret are stored per-user in the `woo_integrations.config` JSONB column (not as edge function secrets), since each user has their own credentials.
 
