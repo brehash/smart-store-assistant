@@ -255,6 +255,7 @@ const TOOL_LABELS: Record<string, string> = {
   get_sales_report: "Generating sales report",
   compare_sales: "Comparing sales periods",
   get_product_sales: "Analyzing product sales",
+  get_product_sales_report: "Analyzing product performance",
   save_preference: "Saving preference",
 };
 
