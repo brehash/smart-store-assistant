@@ -2276,7 +2276,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                 if (reasoningAfter) sendSSE({ type: "reasoning", text: reasoningAfter });
 
                 if (richContent) {
-                  sendSSE({ type: "rich_content", ...richContent });
+                  sendSSE({ type: "rich_content", contentType: richContent.type, data: richContent.data });
                 }
 
                 sendSSE({

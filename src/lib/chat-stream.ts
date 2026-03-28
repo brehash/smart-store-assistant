@@ -57,7 +57,7 @@ function handleSsePayload(
   }
 
   if (parsed.type === "rich_content") {
-    callbacks.onToolCall?.(parsed);
+    callbacks.onToolCall?.({ type: parsed.contentType, data: parsed.data });
     return true;
   }
 
