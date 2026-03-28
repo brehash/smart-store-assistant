@@ -374,6 +374,7 @@ export default function Index() {
         if (debugEntries.length) metadata.debugLogs = debugEntries;
         if (approvalsList.length) metadata.approvals = approvalsList;
         if (questionsList.length) metadata.questions = questionsList;
+        if (orderFormsList.length) metadata.orderForms = orderFormsList;
         if (reasoningEntries.length) metadata.reasoningLogs = reasoningEntries;
         await supabase.from("messages").insert({
           conversation_id: convId!,
