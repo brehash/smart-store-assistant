@@ -441,9 +441,9 @@ export default function Index() {
       },
       onPipelineEvent: (event: PipelineEvent) => {
         if (event.type === "pipeline_step") {
-          updateLastAssistant((m) => {
-            if (!m.pipeline) return m;
-            const steps = [...m.pipeline.steps];
+          // Update pipelineData OUTSIDE the React updater
+          if (pipelineData) {
+            const steps = [...pipelineData.steps];
             if (event.stepIndex !== undefined && event.stepIndex < steps.length) {
               steps[event.stepIndex] = {
                 ...steps[event.stepIndex],
@@ -452,16 +452,23 @@ export default function Index() {
                 details: event.details,
               };
             }
-            return { ...m, pipeline: { ...m.pipeline, steps } };
+            pipelineData = { ...pipelineData, steps };
+          }
+          updateLastAssistant((m) => {
+            if (!m.pipeline) return m;
+            return { ...m, pipeline: pipelineData! };
           });
           scrollToBottom();
         } else if (event.type === "pipeline_complete") {
-          updateLastAssistant((m) => {
-            if (!m.pipeline) return m;
-            const steps = m.pipeline.steps.map((s) =>
+          if (pipelineData) {
+            const doneSteps = pipelineData.steps.map((s) =>
               s.status === "pending" ? { ...s, status: "done" as const } : s
             );
-            return { ...m, pipeline: { ...m.pipeline, steps } };
+            pipelineData = { ...pipelineData, steps: doneSteps };
+          }
+          updateLastAssistant((m) => {
+            if (!m.pipeline) return m;
+            return { ...m, pipeline: pipelineData! };
           });
           scrollToBottom();
         }
