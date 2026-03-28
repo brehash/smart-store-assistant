@@ -343,6 +343,15 @@ function truncateForAI(toolName: string, result: any): any {
       };
     }
 
+    if (toolName === "get_product_sales_report") {
+      return {
+        total_revenue: result.total_revenue,
+        total_orders: result.total_orders,
+        product_count: result.product_count,
+        products: Array.isArray(result.products) ? result.products.slice(0, 20) : result.products,
+      };
+    }
+
     if (toolName === "search_orders" && Array.isArray(result)) {
       return result.slice(0, 10).map((item: any) => ({
         id: item.id,
