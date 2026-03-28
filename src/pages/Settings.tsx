@@ -65,6 +65,11 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [loadingStatuses, setLoadingStatuses] = useState(false);
 
+  // Plugins state
+  const [plugins, setPlugins] = useState<{ plugin: string; name: string; version: string }[]>([]);
+  const [selectedPlugins, setSelectedPlugins] = useState<string[]>([]);
+  const [loadingPlugins, setLoadingPlugins] = useState(false);
+
   // General tab state
   const [displayName, setDisplayName] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -106,7 +111,10 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
         setResponseLanguage(data.response_language || "English");
         const statuses = (data as any).order_statuses as string[] | undefined;
         if (statuses?.length) setSelectedStatuses(statuses);
+        const ap = (data as any).active_plugins as string[] | undefined;
+        if (ap?.length) setSelectedPlugins(ap);
         fetchOrderStatuses(data.store_url, data.consumer_key, data.consumer_secret);
+        fetchPlugins(data.store_url, data.consumer_key, data.consumer_secret);
       }
     });
     // Load credits
@@ -139,8 +147,25 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
     } catch { /* silent */ } finally { setLoadingStatuses(false); }
   };
 
+  const fetchPlugins = async (url: string, ck: string, cs: string) => {
+    setLoadingPlugins(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("woo-proxy", {
+        body: { endpoint: "plugins?status=active", apiPrefix: "wp/v2", storeUrl: url, consumerKey: ck, consumerSecret: cs },
+      });
+      if (error) throw error;
+      if (Array.isArray(data)) {
+        setPlugins(data.map((p: any) => ({ plugin: p.plugin, name: p.name, version: p.version })));
+      }
+    } catch { /* silent — endpoint may require higher permissions */ }
+    finally { setLoadingPlugins(false); }
+  };
+
   const toggleStatus = (slug: string) =>
     setSelectedStatuses((prev) => prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]);
+
+  const togglePlugin = (slug: string) =>
+    setSelectedPlugins((prev) => prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug]);
 
   const handleSave = async () => {
     if (!user) return;
@@ -150,6 +175,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
         store_url: storeUrl, consumer_key: consumerKey, consumer_secret: consumerSecret,
         store_name: storeName, response_language: responseLanguage,
         order_statuses: selectedStatuses,
+        active_plugins: selectedPlugins,
       };
       if (existingConnection) {
         await supabase.from("woo_connections").update(payload as any).eq("id", existingConnection.id);
@@ -175,6 +201,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
       if (data?.name) setStoreName(data.name);
       toast({ title: "Connection successful!", description: `Connected to ${data?.name || storeUrl}` });
       fetchOrderStatuses(storeUrl, consumerKey, consumerSecret);
+      fetchPlugins(storeUrl, consumerKey, consumerSecret);
     } catch { setTestResult("error"); toast({ title: "Connection failed", description: "Check your API keys and store URL.", variant: "destructive" }); }
     finally { setTesting(false); }
   };
@@ -182,7 +209,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
   const handleDelete = async () => {
     if (!existingConnection) return;
     await supabase.from("woo_connections").delete().eq("id", existingConnection.id);
-    setExistingConnection(null); setConsumerKey(""); setConsumerSecret(""); setStoreName(""); setOrderStatuses([]); setSelectedStatuses([]);
+    setExistingConnection(null); setConsumerKey(""); setConsumerSecret(""); setStoreName(""); setOrderStatuses([]); setSelectedStatuses([]); setPlugins([]); setSelectedPlugins([]);
     toast({ title: "Deleted", description: "WooCommerce connection removed." });
   };
 
@@ -386,6 +413,35 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
                     <Checkbox checked={selectedStatuses.includes(status.slug)} onCheckedChange={() => toggleStatus(status.slug)} />
                     <span className="text-sm flex-1">{status.name}</span>
                     <span className="text-xs text-muted-foreground">{status.total}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {plugins.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-primary/10 p-2"><ListChecks className="h-5 w-5 text-primary" /></div>
+              <div>
+                <CardTitle>Active Plugins</CardTitle>
+                <CardDescription>Select which active plugins to track</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {loadingPlugins ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {plugins.map((p) => (
+                  <label key={p.plugin} className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 cursor-pointer hover:bg-accent/50 transition-colors">
+                    <Checkbox checked={selectedPlugins.includes(p.plugin)} onCheckedChange={() => togglePlugin(p.plugin)} />
+                    <span className="text-sm flex-1">{p.name}</span>
+                    <span className="text-xs text-muted-foreground">v{p.version}</span>
                   </label>
                 ))}
               </div>

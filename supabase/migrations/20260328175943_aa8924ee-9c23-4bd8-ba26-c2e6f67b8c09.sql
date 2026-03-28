@@ -1,0 +1,1 @@
+ALTER TABLE public.woo_connections ADD COLUMN active_plugins text[] NOT NULL DEFAULT '{}';
