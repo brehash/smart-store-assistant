@@ -65,7 +65,7 @@ export function ChatChart({ chartData }: { chartData: ChartData }) {
                 <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" opacity={0.35} />
                 <XAxis dataKey={nk} tick={{ fontSize: 11 }} tickMargin={8} minTickGap={20} />
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                <Tooltip />
+                <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
                 <Bar dataKey={dk} fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
               </BarChart>
             ) : chartData.type === "line" ? (
