@@ -55,7 +55,34 @@ function formatDate(dateStr: string) {
 }
 
 export function ShippingTimeline({ data }: { data: ShippingData }) {
-  const history = [...(data.history || [])].reverse(); // newest first
+  const rawHistory = [...(data.history || [])].reverse(); // newest first
+
+  // Filter to key milestones only
+  const MILESTONE_NAMES = [
+    "comanda trimisa la curier",
+    "comandă trimisă la curier",
+    "iesire din depozit",
+    "ieșire din depozit",
+    "in livrare la curier",
+    "în livrare la curier",
+    "colet livrat",
+  ];
+  const MILESTONE_CODES = [20800, 30500];
+
+  const milestones = rawHistory.filter(e =>
+    MILESTONE_CODES.includes(e.code) ||
+    MILESTONE_NAMES.some(n => e.name.toLowerCase().includes(n))
+  );
+
+  // Deduplicate "Iesire din depozit" — keep only first (newest) occurrence
+  const seen = new Set<string>();
+  const history = milestones.filter(e => {
+    const nameLower = e.name.toLowerCase();
+    const key = nameLower.includes("iesire") || nameLower.includes("ieșire") ? "iesire" : nameLower;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 
   const overallStatus = data.is_delivered ? "delivered" : (data.current_status ? statusColor(data.current_status.code) : "initial");
 
