@@ -176,9 +176,215 @@ const TOOLS = [
       },
     },
   },
+  // ── CRUD: Orders ──
+  {
+    type: "function",
+    function: {
+      name: "update_order",
+      description: "Update an existing WooCommerce order. Can change status, billing, shipping, line_items, or add a note.",
+      parameters: {
+        type: "object",
+        properties: {
+          order_id: { type: "number", description: "Order ID to update" },
+          status: { type: "string", description: "New status: pending, processing, on-hold, completed, cancelled, refunded, failed" },
+          billing: { type: "object", description: "Billing address fields to update" },
+          shipping: { type: "object", description: "Shipping address fields to update" },
+          line_items: { type: "array", description: "Line items to add/update", items: { type: "object" } },
+          note: { type: "string", description: "Order note to add" },
+        },
+        required: ["order_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_order",
+      description: "Delete a WooCommerce order. Use force=true for permanent deletion, otherwise it moves to trash.",
+      parameters: {
+        type: "object",
+        properties: {
+          order_id: { type: "number", description: "Order ID to delete" },
+          force: { type: "boolean", description: "True for permanent delete, false for trash (default: false)" },
+        },
+        required: ["order_id"],
+      },
+    },
+  },
+  // ── CRUD: Products ──
+  {
+    type: "function",
+    function: {
+      name: "create_product",
+      description: "Create a new WooCommerce product.",
+      parameters: {
+        type: "object",
+        properties: {
+          name: { type: "string", description: "Product name" },
+          type: { type: "string", description: "Product type: simple, grouped, external, variable (default: simple)" },
+          regular_price: { type: "string", description: "Regular price" },
+          description: { type: "string", description: "Product description (HTML)" },
+          short_description: { type: "string", description: "Short description" },
+          sku: { type: "string", description: "SKU" },
+          stock_quantity: { type: "number", description: "Stock quantity" },
+          manage_stock: { type: "boolean", description: "Whether to manage stock (default: false)" },
+          categories: { type: "array", items: { type: "object", properties: { id: { type: "number" } } }, description: "Category IDs" },
+          images: { type: "array", items: { type: "object", properties: { src: { type: "string" } } }, description: "Image URLs" },
+          status: { type: "string", description: "Status: draft, pending, publish (default: publish)" },
+        },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_product",
+      description: "Update an existing WooCommerce product.",
+      parameters: {
+        type: "object",
+        properties: {
+          product_id: { type: "number", description: "Product ID to update" },
+          name: { type: "string", description: "New product name" },
+          regular_price: { type: "string", description: "New regular price" },
+          sale_price: { type: "string", description: "Sale price (empty string to remove)" },
+          description: { type: "string", description: "New description" },
+          short_description: { type: "string", description: "New short description" },
+          sku: { type: "string", description: "New SKU" },
+          stock_quantity: { type: "number", description: "New stock quantity" },
+          manage_stock: { type: "boolean", description: "Whether to manage stock" },
+          status: { type: "string", description: "Status: draft, pending, publish, private" },
+          categories: { type: "array", items: { type: "object", properties: { id: { type: "number" } } }, description: "Category IDs" },
+        },
+        required: ["product_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_product",
+      description: "Delete a WooCommerce product. Use force=true for permanent deletion.",
+      parameters: {
+        type: "object",
+        properties: {
+          product_id: { type: "number", description: "Product ID to delete" },
+          force: { type: "boolean", description: "True for permanent delete (default: false)" },
+        },
+        required: ["product_id"],
+      },
+    },
+  },
+  // ── CRUD: Pages (WordPress) ──
+  {
+    type: "function",
+    function: {
+      name: "create_page",
+      description: "Create a new WordPress page.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Page title" },
+          content: { type: "string", description: "Page content (HTML)" },
+          status: { type: "string", description: "Status: draft, publish, pending, private (default: draft)" },
+        },
+        required: ["title"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_page",
+      description: "Update an existing WordPress page.",
+      parameters: {
+        type: "object",
+        properties: {
+          page_id: { type: "number", description: "Page ID to update" },
+          title: { type: "string", description: "New title" },
+          content: { type: "string", description: "New content (HTML)" },
+          status: { type: "string", description: "Status: draft, publish, pending, private" },
+        },
+        required: ["page_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_page",
+      description: "Delete a WordPress page. Use force=true for permanent deletion.",
+      parameters: {
+        type: "object",
+        properties: {
+          page_id: { type: "number", description: "Page ID to delete" },
+          force: { type: "boolean", description: "True for permanent delete (default: false)" },
+        },
+        required: ["page_id"],
+      },
+    },
+  },
+  // ── CRUD: Posts (WordPress) ──
+  {
+    type: "function",
+    function: {
+      name: "create_post",
+      description: "Create a new WordPress blog post.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Post title" },
+          content: { type: "string", description: "Post content (HTML)" },
+          status: { type: "string", description: "Status: draft, publish, pending, private (default: draft)" },
+          categories: { type: "array", items: { type: "number" }, description: "Category IDs" },
+          tags: { type: "array", items: { type: "number" }, description: "Tag IDs" },
+        },
+        required: ["title"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "update_post",
+      description: "Update an existing WordPress blog post.",
+      parameters: {
+        type: "object",
+        properties: {
+          post_id: { type: "number", description: "Post ID to update" },
+          title: { type: "string", description: "New title" },
+          content: { type: "string", description: "New content (HTML)" },
+          status: { type: "string", description: "Status: draft, publish, pending, private" },
+          categories: { type: "array", items: { type: "number" }, description: "Category IDs" },
+          tags: { type: "array", items: { type: "number" }, description: "Tag IDs" },
+        },
+        required: ["post_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "delete_post",
+      description: "Delete a WordPress blog post. Use force=true for permanent deletion.",
+      parameters: {
+        type: "object",
+        properties: {
+          post_id: { type: "number", description: "Post ID to delete" },
+          force: { type: "boolean", description: "True for permanent delete (default: false)" },
+        },
+        required: ["post_id"],
+      },
+    },
+  },
 ];
 
-const WRITE_TOOLS = new Set(["create_order", "update_order_status"]);
+const WRITE_TOOLS = new Set([
+  "create_order", "update_order_status", "update_order", "delete_order",
+  "create_product", "update_product", "delete_product",
+  "create_page", "update_page", "delete_page",
+  "create_post", "update_post", "delete_post",
+]);
 
 // ── Deterministic date utilities ──
 function formatDate(d: Date): string {
