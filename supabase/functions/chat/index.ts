@@ -397,6 +397,7 @@ const TOOLS = [
           status: { type: "string", description: "Status: draft, publish, pending, private" },
           categories: { type: "array", items: { type: "number" }, description: "Category IDs" },
           tags: { type: "array", items: { type: "number" }, description: "Tag IDs" },
+          meta: { type: "object", description: "Custom meta fields (key-value pairs for SEO plugins etc.)" },
         },
         required: ["post_id"],
       },
