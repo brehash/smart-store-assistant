@@ -520,6 +520,11 @@ export default function Index() {
             <Menu className="h-5 w-5" />
           </Button>
           <h1 className="text-lg font-semibold truncate">WooCommerce AI Assistant</h1>
+          {creditBalance !== null && (
+            <span className="ml-auto text-xs font-medium text-muted-foreground tabular-nums bg-muted px-2 py-1 rounded-full">
+              {creditBalance} credit{creditBalance !== 1 ? "s" : ""}
+            </span>
+          )}
         </div>
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin">
