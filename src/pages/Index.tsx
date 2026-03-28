@@ -61,13 +61,25 @@ export default function Index() {
   const [settingsTab, setSettingsTab] = useState<SettingsTab>(() => (settingsParam as SettingsTab) || "general");
   const scrollRef = useRef<HTMLDivElement>(null);
   const streamAliveRef = useRef(false);
+  const [creditsModalOpen, setCreditsModalOpen] = useState(false);
+  const [topupModalEnabled, setTopupModalEnabled] = useState(true);
+  const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);
 
-  // Fetch credit balance on mount and when user changes
+  // Fetch credit balance and app settings on mount
   useEffect(() => {
     if (!user) return;
     (async () => {
       const { data } = await supabase.rpc("refill_credits_if_due", { _user_id: user.id });
-      if (data) setCreditBalance(data.balance);
+      if (data) {
+        setCreditBalance(data.balance);
+        setCurrentPlanId((data as any).plan_id || null);
+      }
+      const { data: settings } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "enable_topup_modal")
+        .maybeSingle();
+      if (settings) setTopupModalEnabled(settings.value === true || settings.value === "true");
     })();
   }, [user]);
 
