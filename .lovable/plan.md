@@ -1,63 +1,49 @@
 
 
-## Simplify Shipping Timeline & Remove Text History
+## Auto-suggest Order Completion When Shipping Is Delivered
 
 ### Problem
-1. The AI outputs a full text-based shipping history in addition to the visual timeline — redundant
-2. The visual timeline shows all events (including repeated "In depozit" entries) — should show only key milestones
+When checking shipping status, if the package is delivered but the WooCommerce order status is not "completed", nothing happens. The user should be prompted to mark it as completed.
 
 ### Changes
 
-**1. `src/components/chat/ShippingTimeline.tsx`** — Filter history to key milestones only
+**File: `supabase/functions/chat/index.ts`**
 
-Before rendering, filter the history array to show only these milestone events:
-- "Comanda trimisa la curier" (code ~20050 or by name match)
-- "Iesire din depozit" (only the first/latest occurrence)
-- "In livrare la curier" (transit)
-- "Colet livrat" (delivered, code 20800)
-- COD status (code 30500)
+1. **Fix `isDelivered` to include COD status** (line 1654): Change from checking only `20800` to also include `30500`:
+   ```typescript
+   const isDelivered = latestEvent?.code === 20800 || latestEvent?.code === 30500;
+   ```
 
-Strategy: Define a set of milestone status codes/names. Filter the reversed history to keep only matching events, and deduplicate "Iesire din depozit" to show only one.
+2. **Include order status in `shippingData`** (line 1663-1674): Add the WooCommerce order status from `orderData.status` so the frontend and AI know the current order state:
+   ```typescript
+   const shippingData = {
+     ...existing fields,
+     order_status: orderData.status,  // e.g. "processing", "completed"
+   };
+   ```
 
-```typescript
-const MILESTONE_NAMES = [
-  "Comandă trimisă la curier",
-  "Comanda trimisa la curier",
-  "Iesire din depozit",
-  "Ieșire din depozit",
-  "In livrare la curier",
-  "În livrare la curier",
-  "Colet livrat",
-];
-const MILESTONE_CODES = [20800, 30500]; // delivered + COD delivered
+3. **Update system prompt** (line 1908 area): Add instruction after the existing shipping prompt section:
+   ```
+   - After showing shipping status, if the shipment is delivered (is_delivered = true) but the order status is NOT "completed", proactively ask the user: "The package has been delivered but the order is still marked as [status]. Would you like me to mark it as completed?" If the user agrees, use update_order_status to set the order to "completed".
+   ```
 
-// Filter + deduplicate
-const milestones = history.filter(e => 
-  MILESTONE_CODES.includes(e.code) || 
-  MILESTONE_NAMES.some(n => e.name.toLowerCase().includes(n.toLowerCase()))
-);
-// Deduplicate "Iesire din depozit" — keep only first (newest) occurrence
-const seen = new Set<string>();
-const filtered = milestones.filter(e => {
-  const key = e.name.toLowerCase().includes("iesire") || e.name.toLowerCase().includes("ieșire") ? "iesire" : e.name;
-  if (seen.has(key)) return false;
-  seen.add(key);
-  return true;
-});
-```
+4. **Update `truncateForAI`** (line 671-681): Include `order_status` in the truncated result so the AI can see it:
+   ```typescript
+   if (toolName === "check_shipping_status") {
+     return {
+       ...existing fields,
+       order_status: result.order_status,
+     };
+   }
+   ```
 
-Then render `filtered` instead of `history`.
-
-**2. `supabase/functions/chat/index.ts`** — Remove text history from AI prompt
-
-Update the system prompt line 1908 to tell the AI NOT to list the text history since the visual timeline handles it:
-```
-- Do NOT list the tracking history as text. The visual shipping timeline component shows the history automatically. Just provide a brief summary (status, courier, AWB).
-```
-
-Also update the `generateShortSummary` for `check_shipping_status` (line 845-848) to keep it minimal — no history text, just status.
+### How it works
+- The AI receives both `is_delivered` and `order_status` in the truncated tool result
+- The system prompt instructs it to compare these two values
+- If delivered but not completed, the AI asks the user in natural language
+- If user agrees, the AI calls the existing `update_order_status` tool (which is already a write tool requiring approval via ApprovalCard)
+- No new UI components needed — uses existing approval flow
 
 ### Files
-1. `src/components/chat/ShippingTimeline.tsx` — filter to milestones only
-2. `supabase/functions/chat/index.ts` — instruct AI to skip text history
+1. `supabase/functions/chat/index.ts` — all 4 changes above
 
