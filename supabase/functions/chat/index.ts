@@ -825,6 +825,12 @@ function generateReasoningBefore(toolName: string, args: any): string {
       return `Saving preference: "${args.key}"...`;
     case "check_shipping_status":
       return `Checking shipping status for order #${args.order_id}...`;
+    case "audit_geo":
+      return `Auditing GEO readiness for ${args.entity_type} #${args.entity_id}...`;
+    case "generate_geo_content":
+      return `Generating GEO-optimized content for ${args.entity_type} #${args.entity_id}...`;
+    case "bulk_geo_audit":
+      return `Running bulk GEO audit on ${args.product_ids?.length || "all cached"} products...`;
     default:
       return `Running ${toolName}...`;
   }
