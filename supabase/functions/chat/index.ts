@@ -518,6 +518,7 @@ const TOOL_LABELS: Record<string, string> = {
   get_product_sales_report: "Analyzing product performance",
   get_orders_with_meta: "Fetching orders with metadata",
   save_preference: "Saving preference",
+  check_shipping_status: "Checking shipping status",
 };
 
 interface SemanticStep {
@@ -718,6 +719,8 @@ function generateReasoningBefore(toolName: string, args: any): string {
     }
     case "save_preference":
       return `Saving preference: "${args.key}"...`;
+    case "check_shipping_status":
+      return `Checking shipping status for order #${args.order_id}...`;
     default:
       return `Running ${toolName}...`;
   }
@@ -812,6 +815,11 @@ function generateReasoningAfter(toolName: string, result: any): string | null {
         return result?.id ? `Post #${result.id} updated.` : result?.error ? `Error: ${result.error}` : null;
       case "delete_post":
         return result?.id ? `Post #${result.id} deleted.` : result?.error ? `Error: ${result.error}` : null;
+      case "check_shipping_status": {
+        if (result?.error) return `Error: ${result.error}`;
+        if (result?.status_name) return `Order #${result.order_id} — AWB: ${result.awb} — Status: ${result.status_name}`;
+        return null;
+      }
       default:
         return null;
     }
@@ -919,6 +927,10 @@ function generateSemanticPlan(toolCalls: any[]): SemanticStep[] {
         break;
       case "save_preference":
         steps.push({ title: "Saving preference", details: args.key || undefined });
+        break;
+      case "check_shipping_status":
+        steps.push({ title: "Fetching order details", details: `Order #${args.order_id}` });
+        steps.push({ title: "Checking Colete Online status" });
         break;
       default:
         steps.push({ title: TOOL_LABELS[name] || name });
@@ -1476,6 +1488,110 @@ async function executeTool(
       });
       return { result: data, requestUri: `DELETE /wp-json/wp/v2/posts/${args.post_id}` };
     }
+    case "check_shipping_status": {
+      // 1. Fetch the order from WooCommerce
+      const orderData = await callWooProxy(supabaseUrl, authHeader, { endpoint: `orders/${args.order_id}` });
+      if (orderData?.error || !orderData?.id) {
+        return { result: { error: `Could not fetch order #${args.order_id}: ${orderData?.error || "Not found"}` } };
+      }
+
+      // 2. Find _coleteonline_courier_order in meta_data
+      const metaEntry = (orderData.meta_data || []).find((m: any) => m.key === "_coleteonline_courier_order");
+      if (!metaEntry) {
+        return { result: { error: `No Colete Online shipment found on order #${args.order_id}. This order does not have AWB/shipping data from Colete Online.` } };
+      }
+
+      let metaValue = metaEntry.value;
+      if (typeof metaValue === "string") {
+        try { metaValue = JSON.parse(metaValue); } catch { /* keep as-is */ }
+      }
+
+      const uniqueId = metaValue?.result?.uniqueId;
+      const awb = metaValue?.result?.awb;
+      const courierName = metaValue?.result?.service?.service?.courierName;
+      const serviceName = metaValue?.result?.service?.service?.name;
+
+      if (!uniqueId) {
+        return { result: { error: `Colete Online metadata found on order #${args.order_id} but missing uniqueId.` } };
+      }
+
+      // 3. Get user's Colete Online credentials
+      const { data: integrationData } = await supabase
+        .from("woo_integrations")
+        .select("config")
+        .eq("user_id", userId)
+        .eq("integration_key", "colete_online")
+        .eq("is_enabled", true)
+        .maybeSingle();
+
+      if (!integrationData?.config) {
+        return { result: { error: "Colete Online integration is not configured or not enabled. Go to Settings > Integrations to set it up." } };
+      }
+
+      const clientId = (integrationData.config as any).client_id;
+      const clientSecret = (integrationData.config as any).client_secret;
+      if (!clientId || !clientSecret) {
+        return { result: { error: "Colete Online Client ID or Client Secret is missing. Go to Settings > Integrations to configure." } };
+      }
+
+      // 4. Authenticate with Colete Online
+      const basicAuth = btoa(`${clientId}:${clientSecret}`);
+      const tokenResp = await fetch("https://auth.colete-online.ro/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Authorization": `Basic ${basicAuth}`,
+        },
+        body: "grant_type=client_credentials",
+      });
+
+      if (!tokenResp.ok) {
+        return { result: { error: `Colete Online authentication failed (${tokenResp.status}). Check your credentials in Settings > Integrations.` } };
+      }
+
+      const tokenData = await tokenResp.json();
+      const accessToken = tokenData.access_token;
+
+      // 5. Get shipping status
+      const statusResp = await fetch(`https://api.colete-online.ro/v1/order/status/${uniqueId}`, {
+        headers: { "Authorization": `Bearer ${accessToken}` },
+      });
+
+      if (!statusResp.ok) {
+        return { result: { error: `Colete Online status API error (${statusResp.status}) for uniqueId ${uniqueId}.` } };
+      }
+
+      const statusData = await statusResp.json();
+      const history = statusData.history || [];
+      const latestEvent = history.length > 0 ? history[history.length - 1] : null;
+
+      return {
+        result: {
+          order_id: args.order_id,
+          awb: awb || statusData?.summary?.awb || "N/A",
+          uniqueId,
+          courier: courierName || "Unknown",
+          service: serviceName || "Unknown",
+          current_status: latestEvent ? {
+            code: latestEvent.code,
+            name: latestEvent.statusTextParts?.ro?.name || "Unknown",
+            reason: latestEvent.statusTextParts?.ro?.reason || "",
+            date: latestEvent.dateTime,
+            comment: latestEvent.comment?.ro || "",
+          } : null,
+          status_name: latestEvent?.statusTextParts?.ro?.name || "Unknown",
+          is_delivered: latestEvent?.code === 20800,
+          history: history.map((h: any) => ({
+            code: h.code,
+            name: h.statusTextParts?.ro?.name || "",
+            reason: h.statusTextParts?.ro?.reason || "",
+            date: h.dateTime,
+            comment: h.comment?.ro || "",
+          })),
+        },
+        requestUri: `GET /v1/order/status/${uniqueId}`,
+      };
+    }
     default:
       return { result: { error: `Unknown tool: ${toolName}` } };
   }
@@ -1541,6 +1657,35 @@ serve(async (req) => {
     const responseLanguage = connData?.response_language || "English";
     const userOpenAIKey = Deno.env.get("OPENAI_API_KEY") || null;
     const defaultOrderStatuses: string[] = (connData as any)?.order_statuses || [];
+
+    // Check if Colete Online integration is enabled for this user
+    const { data: coleteIntegration } = await supabase
+      .from("woo_integrations")
+      .select("is_enabled")
+      .eq("user_id", userId)
+      .eq("integration_key", "colete_online")
+      .eq("is_enabled", true)
+      .maybeSingle();
+    const coleteOnlineEnabled = !!coleteIntegration;
+
+    // Build tools list — conditionally add Colete Online tool
+    const activeTools = [...TOOLS];
+    if (coleteOnlineEnabled) {
+      activeTools.push({
+        type: "function",
+        function: {
+          name: "check_shipping_status",
+          description: "Check the shipping/delivery status of an order via Colete Online. Requires the WooCommerce order number (NOT an AWB). The tool automatically extracts the tracking uniqueId from the order metadata.",
+          parameters: {
+            type: "object",
+            properties: {
+              order_id: { type: "number", description: "WooCommerce order ID/number" },
+            },
+            required: ["order_id"],
+          },
+        },
+      });
+    }
 
     // Fetch shared view context if viewId is provided
     let viewContext = "";
@@ -1691,6 +1836,13 @@ DATE CALCULATION RULES (CRITICAL):
   Example: if today is 2026-03-26, "this month" = 2026-03-01 to 2026-03-26, "last month same period" = 2026-02-01 to 2026-02-26.
 - "This week" = 7 days ago → today. "Last week same period" = 14 days ago → 8 days ago.
 - NEVER use the same dates for both periods in a comparison. Each period must have distinct date ranges.
+
+SHIPPING STATUS TRACKING (Colete Online):${coleteOnlineEnabled ? `
+- The user has Colete Online integration enabled. When the user asks about shipping status, tracking, delivery status, or "where is my order", use the check_shipping_status tool with the ORDER NUMBER.
+- If the user provides an AWB number instead of an order number, WARN THEM that you need the WooCommerce order number (not the AWB) and ask them for it. AWB numbers are typically longer numeric strings, while order numbers are shorter.
+- NEVER ask the user for a uniqueId — the tool extracts it automatically from the order metadata.
+- Present the tracking history in a clear timeline format with dates, status names, and locations.` : `
+- Colete Online integration is not enabled. If the user asks about shipping status, let them know they can enable Colete Online integration in Settings > Integrations.`}
 
 Be conversational, efficient, and proactive. Use markdown for formatting. Currency is RON (lei).${defaultStatusStr}${prefsContext}${viewContext}`;
 
@@ -1849,7 +2001,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
             const aiRequest = fetch(aiBaseUrl, {
               method: "POST",
               headers: { Authorization: aiAuthHeader, "Content-Type": "application/json" },
-              body: JSON.stringify({ model: aiModel, messages: aiMessages, tools: TOOLS, stream: false }),
+              body: JSON.stringify({ model: aiModel, messages: aiMessages, tools: activeTools, stream: false }),
             });
             const keepAliveInterval = setInterval(() => {
               sendSSE({ type: "reasoning", text: "Still processing..." });
