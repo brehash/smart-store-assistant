@@ -560,6 +560,21 @@ export type Database = {
         }
         Returns: boolean
       }
+      match_memories: {
+        Args: {
+          _embedding: string
+          _match_count?: number
+          _match_threshold?: number
+          _user_id: string
+        }
+        Returns: {
+          content: string
+          id: string
+          memory_type: string
+          metadata: Json
+          similarity: number
+        }[]
+      }
       refill_credits_if_due: {
         Args: { _user_id: string }
         Returns: {
