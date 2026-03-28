@@ -1659,34 +1659,7 @@ serve(async (req) => {
     const userOpenAIKey = Deno.env.get("OPENAI_API_KEY") || null;
     const defaultOrderStatuses: string[] = (connData as any)?.order_statuses || [];
 
-    // Check if Colete Online integration is enabled for this user
-    const { data: coleteIntegration } = await supabase
-      .from("woo_integrations")
-      .select("is_enabled")
-      .eq("user_id", userId)
-      .eq("integration_key", "colete_online")
-      .eq("is_enabled", true)
-      .maybeSingle();
-    const coleteOnlineEnabled = !!coleteIntegration;
-
-    // Build tools list — conditionally add Colete Online tool
     const activeTools = [...TOOLS];
-    if (coleteOnlineEnabled) {
-      activeTools.push({
-        type: "function",
-        function: {
-          name: "check_shipping_status",
-          description: "Check the shipping/delivery status of an order via Colete Online. Requires the WooCommerce order number (NOT an AWB). The tool automatically extracts the tracking uniqueId from the order metadata.",
-          parameters: {
-            type: "object",
-            properties: {
-              order_id: { type: "number", description: "WooCommerce order ID/number" },
-            },
-            required: ["order_id"],
-          },
-        },
-      });
-    }
 
     // Fetch shared view context if viewId is provided
     let viewContext = "";
