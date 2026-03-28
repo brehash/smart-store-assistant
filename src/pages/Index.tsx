@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { streamChat, type PipelineEvent } from "@/lib/chat-stream";
 import { ChatMessage, type RichContent, type ApprovalRequest, type QuestionRequest } from "@/components/chat/ChatMessage";
+import type { OrderFormData } from "@/components/chat/OrderFormCard";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { ConversationSidebar } from "@/components/chat/ConversationSidebar";
 import { SettingsContent, type SettingsTab } from "@/pages/Settings";
@@ -37,6 +38,7 @@ interface Message {
   pipeline?: PipelinePlanData | null;
   approvals?: ApprovalRequest[];
   questions?: QuestionRequest[];
+  orderForms?: OrderFormData[];
   debugLogs?: DebugEntry[];
   reasoningLogs?: ReasoningEntry[];
   tokenUsage?: TokenUsage;
@@ -167,6 +169,7 @@ export default function Index() {
             debugLogs: meta?.debugLogs || [],
             approvals: meta?.approvals || [],
             questions: meta?.questions || [],
+            orderForms: meta?.orderForms || [],
             reasoningLogs: meta?.reasoningLogs || [],
             tokenUsage: (m as any).token_usage || undefined,
           };
@@ -226,6 +229,7 @@ export default function Index() {
     let debugEntries: DebugEntry[] = [];
     let approvalsList: ApprovalRequest[] = [];
     let questionsList: QuestionRequest[] = [];
+    let orderFormsList: OrderFormData[] = [];
     let reasoningEntries: ReasoningEntry[] = [];
     let tokenUsage: TokenUsage | null = null;
     let creditUsage: CreditUsage | null = null;
@@ -300,6 +304,18 @@ export default function Index() {
             return { ...m, pipeline: pipelineData! };
           });
           scrollToBottom();
+        } else if (event.type === "order_form") {
+          const orderForm: OrderFormData = {
+            toolCallId: event.toolCallId || "",
+            stepIndex: event.stepIndex || 0,
+            prefill: event.prefill,
+          };
+          orderFormsList = [...orderFormsList, orderForm];
+          updateLastAssistant((m) => ({
+            ...m,
+            orderForms: [...(m.orderForms || []), orderForm],
+          }));
+          scrollToBottom();
         } else if (event.type === "question_request") {
           const question: QuestionRequest = {
             question: event.question || "",
@@ -358,6 +374,7 @@ export default function Index() {
         if (debugEntries.length) metadata.debugLogs = debugEntries;
         if (approvalsList.length) metadata.approvals = approvalsList;
         if (questionsList.length) metadata.questions = questionsList;
+        if (orderFormsList.length) metadata.orderForms = orderFormsList;
         if (reasoningEntries.length) metadata.reasoningLogs = reasoningEntries;
         await supabase.from("messages").insert({
           conversation_id: convId!,
@@ -498,6 +515,17 @@ export default function Index() {
     await handleSend(answer);
   };
 
+  const handleOrderCreated = (formData: OrderFormData, result: { orderNumber: string; orderId: number; total: string }) => {
+    updateLastAssistant((m) => ({
+      ...m,
+      orderForms: m.orderForms?.map((of) =>
+        of.toolCallId === formData.toolCallId ? { ...of, resolved: result } : of
+      ),
+    }));
+    // Send confirmation as a follow-up message
+    handleSend(`Order #${result.orderNumber} has been created successfully (total: ${result.total}).`);
+  };
+
   const handleNewChat = () => { setConversationId(null); setMessages([]); setViewId(null); setSidebarOpen(false); };
   const handleSelectConversation = (id: string, vId?: string | null) => {
     setConversationId(id);
@@ -586,12 +614,14 @@ export default function Index() {
                   pipeline={msg.pipeline}
                   approvals={msg.approvals}
                   questions={msg.questions}
+                  orderForms={msg.orderForms}
                   debugLogs={msg.debugLogs}
                   reasoningLogs={msg.reasoningLogs}
                   tokenUsage={msg.tokenUsage}
                   creditUsage={msg.creditUsage}
                   onApproval={handleApproval}
                   onQuestionAnswer={handleQuestionAnswer}
+                  onOrderCreated={handleOrderCreated}
                 />
               ))}
             </div>

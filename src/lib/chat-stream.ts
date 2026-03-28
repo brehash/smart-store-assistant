@@ -3,7 +3,7 @@ type Msg = { role: "user" | "assistant"; content: string };
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
 
 export interface PipelineEvent {
-  type: "pipeline_plan" | "pipeline_step" | "pipeline_complete" | "approval_request" | "question_request" | "debug_api" | "reasoning" | "token_usage" | "credit_usage";
+  type: "pipeline_plan" | "pipeline_step" | "pipeline_complete" | "approval_request" | "question_request" | "debug_api" | "reasoning" | "token_usage" | "credit_usage" | "order_form";
   title?: string;
   steps?: string[];
   stepIndex?: number;
@@ -18,6 +18,7 @@ export interface PipelineEvent {
   toolCallId?: string;
   result?: any;
   requestUri?: string;
+  prefill?: any;
   text?: string;
   prompt_tokens?: number;
   completion_tokens?: number;
@@ -48,7 +49,8 @@ function handleSsePayload(
     parsed.type === "debug_api" ||
     parsed.type === "reasoning" ||
     parsed.type === "token_usage" ||
-    parsed.type === "credit_usage"
+    parsed.type === "credit_usage" ||
+    parsed.type === "order_form"
   ) {
     callbacks.onPipelineEvent?.(parsed);
     return true;

@@ -10,6 +10,7 @@ import { QuestionCard } from "./QuestionCard";
 import { DebugPanel, type DebugEntry } from "./DebugPanel";
 import { DashboardView } from "./DashboardView";
 import { ReasoningBubbles, type ReasoningEntry } from "./ReasoningBubbles";
+import { OrderFormCard, type OrderFormData } from "./OrderFormCard";
 
 export interface RichContent {
   type: "products" | "orders" | "chart" | "confirmation" | "pipeline" | "dashboard";
@@ -39,18 +40,21 @@ interface ChatMessageProps {
   pipeline?: PipelinePlanData | null;
   approvals?: ApprovalRequest[];
   questions?: QuestionRequest[];
+  orderForms?: OrderFormData[];
   debugLogs?: DebugEntry[];
   reasoningLogs?: ReasoningEntry[];
   tokenUsage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
   creditUsage?: { cost: number; remaining_balance: number };
+  orderStatuses?: string[];
   onApproval?: (approval: ApprovalRequest, action: "approve" | "skip" | "edit", editedText?: string) => void;
   onQuestionAnswer?: (question: QuestionRequest, answer: string) => void;
+  onOrderCreated?: (data: OrderFormData, result: { orderNumber: string; orderId: number; total: string }) => void;
 }
 
 export function ChatMessage({
   role, content, richContents, isStreaming,
-  pipeline, approvals, questions, debugLogs, reasoningLogs, tokenUsage, creditUsage,
-  onApproval, onQuestionAnswer,
+  pipeline, approvals, questions, orderForms, debugLogs, reasoningLogs, tokenUsage, creditUsage,
+  orderStatuses, onApproval, onQuestionAnswer, onOrderCreated,
 }: ChatMessageProps) {
   const isUser = role === "user";
 
@@ -96,6 +100,17 @@ export function ChatMessage({
             resolved={q.resolved}
             onAnswer={(answer) => onQuestionAnswer?.(q, answer)}
             disabled={!!q.resolved || isStreaming}
+          />
+        ))}
+
+        {/* Order form cards */}
+        {orderForms?.map((of, i) => (
+          <OrderFormCard
+            key={`order-form-${i}`}
+            data={of}
+            orderStatuses={orderStatuses}
+            disabled={isStreaming}
+            onOrderCreated={onOrderCreated}
           />
         ))}
 
