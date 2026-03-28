@@ -744,6 +744,13 @@ function generateReasoningAfter(toolName: string, result: any): string | null {
         if (Array.isArray(result)) return `Found ${result.length} order${result.length !== 1 ? "s" : ""}.`;
         return null;
       }
+      case "get_orders_with_meta": {
+        if (Array.isArray(result)) {
+          const withMeta = result.filter((o: any) => o.meta_data?.length > 0).length;
+          return `Found ${result.length} order${result.length !== 1 ? "s" : ""}. ${withMeta} have metadata.`;
+        }
+        return null;
+      }
       case "get_sales_report": {
         if (result?.orderCount != null) return `${result.orderCount} orders, ${result.totalRevenue} lei total revenue.`;
         return null;
