@@ -173,6 +173,7 @@ export default function Index() {
     const userMsg: Message = { role: "user", content: input };
     setMessages((prev) => [...prev, userMsg]);
     setIsStreaming(true);
+    streamAliveRef.current = true;
     scrollToBottom();
 
     await supabase.from("messages").insert({ conversation_id: convId, user_id: user.id, role: "user", content: input });
