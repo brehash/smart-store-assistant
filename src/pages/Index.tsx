@@ -207,6 +207,7 @@ export default function Index() {
     let reasoningEntries: ReasoningEntry[] = [];
     let tokenUsage: TokenUsage | null = null;
     let creditUsage: CreditUsage | null = null;
+    await streamChat({
       messages: [...messages, userMsg].map((m) => ({ role: m.role, content: m.content })),
       conversationId: convId,
       accessToken: session.access_token,
