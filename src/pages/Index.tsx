@@ -68,6 +68,8 @@ export default function Index() {
   const [creditsModalOpen, setCreditsModalOpen] = useState(false);
   const [topupModalEnabled, setTopupModalEnabled] = useState(true);
   const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);
+  const [hasConnection, setHasConnection] = useState<boolean | null>(null); // null = loading
+  const [showWebhookSetup, setShowWebhookSetup] = useState(false);
 
   // Fetch credit balance and app settings on mount
   useEffect(() => {
