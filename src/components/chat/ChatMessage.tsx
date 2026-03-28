@@ -151,7 +151,7 @@ export function ChatMessage({
             key={`rich-${i}`}
             className={cn(
               "w-full",
-              rc.type === "dashboard" ? "max-w-5xl" : rc.type === "chart" ? "max-w-4xl" : "max-w-[600px]",
+              rc.type === "dashboard" ? "max-w-5xl" : rc.type === "chart" ? "max-w-4xl" : rc.type === "geo_report" ? "max-w-3xl" : "max-w-[600px]",
             )}
           >
             {rc.type === "products" && <ProductSlider products={rc.data} />}
