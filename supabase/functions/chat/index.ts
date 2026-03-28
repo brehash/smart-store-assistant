@@ -1596,6 +1596,9 @@ CRUD OPERATIONS (IMPORTANT):
 - When creating products, include as much detail as possible: name, price, description, SKU, stock quantity, categories.
 - When creating pages/posts, default status to "draft" unless the user explicitly asks for "publish".
 
+ORDER CREATION RULE:
+When the user asks to create, place, or make a new order (in any language — e.g. "creează o comandă", "fă o comandă", "place an order"), you MUST call the create_order tool IMMEDIATELY. Do NOT search for products first — the order form will handle product selection.
+
 CRITICAL TOOL USAGE RULES — YOU MUST FOLLOW THESE:
 1. When the user asks to search, find, browse, or look up products: you MUST call the search_products tool. NEVER answer with a plain text list of products. The frontend renders product cards from the tool result automatically.
 2. When the user asks about orders, recent orders, or order lookups: you MUST call the search_orders tool.
@@ -1723,7 +1726,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
 
           // ── Order-creation intent detection ──
           const lastUserMsg = (messages as any[]).filter((m: any) => m.role === "user").pop()?.content || "";
-          const orderIntentRe = /\b(cre(?:ea)?z[aă]|f[aă]|plaseaz[aă]|adaug[aă]|pune|place|create|make|add|new)\b.*\b(comand[aă]|order)\b/i;
+          const orderIntentRe = /(cre(?:ea)?z[aă]|f[aă]|plaseaz[aă]|adaug[aă]|pune|place|create|make|add|new)\s.*?(comand[aă]|order)/i;
           if (orderIntentRe.test(lastUserMsg)) {
             sendSSE({ type: "pipeline_plan", title: "Execution Plan", steps: ["Creating order form"] });
             sendSSE({ type: "pipeline_step", stepIndex: 0, title: "Creating order form", status: "done" });
