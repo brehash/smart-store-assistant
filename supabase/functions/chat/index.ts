@@ -2882,6 +2882,35 @@ Be conversational. Currency is RON (lei).${defaultStatusStr}`;
             console.error("Credit deduction error:", creditErr);
           }
 
+          // ── Vector Memory: Store conversation summary (fire-and-forget) ──
+          if (openaiKey && content && content.length > 30) {
+            const greetingRe = /^(hi|hello|hey|salut|buna|ola|ciao)\b/i;
+            if (!greetingRe.test(lastUserMsg.trim())) {
+              const summary = `Q: ${lastUserMsg.slice(0, 200)}\nA: ${content.slice(0, 300)}`;
+              (async () => {
+                try {
+                  const embResp = await fetch("https://api.openai.com/v1/embeddings", {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({ model: "text-embedding-3-small", input: summary }),
+                  });
+                  if (embResp.ok) {
+                    const embData = await embResp.json();
+                    await serviceClient.from("memory_embeddings").insert({
+                      user_id: userId,
+                      content: summary,
+                      embedding: JSON.stringify(embData.data[0].embedding),
+                      memory_type: "conversation_summary",
+                      metadata: { conversation_id: conversationId },
+                    });
+                  }
+                } catch (memStoreErr) {
+                  console.error("Memory storage error (non-fatal):", memStoreErr);
+                }
+              })();
+            }
+          }
+
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
         } catch (e) {
