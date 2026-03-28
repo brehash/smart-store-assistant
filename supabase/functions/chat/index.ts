@@ -1645,6 +1645,11 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
             }
 
             const aiData = await aiResp.json();
+            if (aiData.usage) {
+              totalUsage.prompt_tokens += aiData.usage.prompt_tokens || 0;
+              totalUsage.completion_tokens += aiData.usage.completion_tokens || 0;
+              totalUsage.total_tokens += aiData.usage.total_tokens || 0;
+            }
             const choice = aiData.choices?.[0];
             if (!choice) break;
 
