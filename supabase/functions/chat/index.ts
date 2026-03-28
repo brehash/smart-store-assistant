@@ -1908,6 +1908,7 @@ SHIPPING STATUS TRACKING:
 - NEVER ask the user for a uniqueId — the tool extracts it automatically from the order metadata.
 - The tool automatically detects the shipping provider (Colete Online, etc.) from the order metadata. If the integration is not enabled, the tool will inform the user to enable it in Settings > Integrations.
 - Do NOT list the tracking history as text. The visual shipping timeline component shows the history automatically. Just provide a brief summary (current status, courier, AWB).
+- After showing shipping status, if the shipment is delivered (is_delivered = true) but the order_status is NOT "completed", proactively ask the user: "Coletul a fost livrat, dar comanda este încă marcată ca [order_status]. Vrei să o marchez ca finalizată?" If the user agrees, use update_order_status to set the order to "completed".
 
 Be conversational, efficient, and proactive. Use markdown for formatting. Currency is RON (lei).${defaultStatusStr}${prefsContext}${viewContext}`;
 
