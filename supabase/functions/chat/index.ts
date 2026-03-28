@@ -1309,7 +1309,8 @@ async function executeTool(
       const RELEVANT_META_KEYS = [
         'invoice', 'factura', 'facturi', 'oblio', 'awb', 'tracking', 'colet',
         'curier', 'fan_courier', 'sameday', 'cargus', 'dpd', 'gls',
-        'wc_invoice', 'billing_invoice', 'serie', 'numar',
+        'wc_invoice', 'billing_invoice', 'serie', 'numar', 'fiscal',
+        'link', 'url', 'pdf', 'download',
       ];
       const isRelevantMetaKey = (key: string) => {
         const k = key.toLowerCase();
