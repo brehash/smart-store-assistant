@@ -1,26 +1,31 @@
 
 
-## Fix: Order Intent Detection + Language Context
+## Fix Three Issues: Product Dropdown Scroll, Order Form Approval Flow, Post-Creation Message
 
-### Root Cause
-The intent detection regex on line 1726 looks correct for "creaza o comanda", but there's a subtle issue: JavaScript's `\b` word boundary doesn't work reliably with Unicode characters like `ă`. When the user types "creează" (with diacritics), `\b` fails to match at the boundary.
+### Issue 1: Product search dropdown not scrollable
+The dropdown in `OrderFormCard.tsx` uses Radix `ScrollArea` which doesn't work properly in this absolute-positioned context. Replace it with a plain `div` with `overflow-y: auto`.
 
-Additionally, if the regex fails and the request falls through to the AI loop, the system prompt already includes the language instruction — but the AI still prefers to search products first rather than calling `create_order`.
+**File: `src/components/chat/OrderFormCard.tsx`**
+- Remove `ScrollArea` import
+- Replace `<ScrollArea className="max-h-48">` with `<div className="max-h-48 overflow-y-auto">`
 
-### Fix
+### Issue 2: "Awaiting approval" gets stuck for order creation
+When the AI calls `create_order`, the backend emits an `order_form` event but *also* pushes `awaiting_approval` to `aiMessages` and sets pipeline step to `needs_approval`. The AI loop then waits for an approval response that never comes (because the user interacts with the order form, not the approval card).
 
-**File: `supabase/functions/chat/index.ts`**
+**Fix in `supabase/functions/chat/index.ts`** (around line 1889-1921):
+- For `create_order` tool calls, after emitting the `order_form` SSE event, push a tool result to `aiMessages` that says the order form was shown and the user will complete it — NOT `awaiting_approval`. Set the pipeline step to `done` instead of `needs_approval`. Then `continue` the loop so the AI can write a closing message without waiting.
 
-1. **Make the regex more permissive** — remove `\b` boundaries, use looser matching, and add more Romanian variations:
-   ```
-   const orderIntentRe = /(cre(?:ea)?z[aă]|f[aă]|plaseaz[aă]|adaug[aă]|pune|place|create|make|add|new)\s.*?(comand[aă]|order)/i;
-   ```
-   Remove `\b` (unreliable with Unicode) and use `\s` + non-greedy `.*?` instead.
+### Issue 3: Stop sending follow-up message to AI after order creation
+After order creation, `handleOrderCreated` in `Index.tsx` calls `handleSend()` which sends a new user message to the AI, costing credits.
 
-2. **Add fallback in the system prompt** — instruct the AI that when the user asks to create/place an order, it MUST call `create_order` immediately without searching products first. Add this to the system prompt near the tool instructions:
-   ```
-   When the user asks to create, place, or make a new order (in any language), you MUST call the create_order tool immediately. Do NOT search for products first — the order form will handle product selection.
-   ```
+**Fix in `src/pages/Index.tsx`** (line 586):
+- Remove the `handleSend(...)` call. Just update the order form's resolved state — the success card is sufficient feedback.
 
-This is a one-file change to `supabase/functions/chat/index.ts` — fix the regex and strengthen the system prompt instruction.
+### Files to modify
+
+| File | Change |
+|------|--------|
+| `src/components/chat/OrderFormCard.tsx` | Replace `ScrollArea` with plain scrollable `div` |
+| `supabase/functions/chat/index.ts` | Don't block on approval for `create_order` — mark step done |
+| `src/pages/Index.tsx` | Remove `handleSend` call in `handleOrderCreated` |
 
