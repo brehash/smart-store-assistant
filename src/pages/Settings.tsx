@@ -111,7 +111,10 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
         setResponseLanguage(data.response_language || "English");
         const statuses = (data as any).order_statuses as string[] | undefined;
         if (statuses?.length) setSelectedStatuses(statuses);
+        const ap = (data as any).active_plugins as string[] | undefined;
+        if (ap?.length) setSelectedPlugins(ap);
         fetchOrderStatuses(data.store_url, data.consumer_key, data.consumer_secret);
+        fetchPlugins(data.store_url, data.consumer_key, data.consumer_secret);
       }
     });
     // Load credits
