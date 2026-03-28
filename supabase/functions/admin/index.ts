@@ -20,12 +20,10 @@ serve(async (req) => {
     const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {});
-    const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
-      global: { headers: { Authorization: authHeader } },
-    });
 
-    // Verify user identity
-    const { data: { user: authUser }, error: authErr } = await userClient.auth.getUser();
+    // Verify user identity using service client with the user's token
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user: authUser }, error: authErr } = await serviceClient.auth.getUser(token);
     if (authErr || !authUser) {
       console.error("Admin auth error:", authErr);
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
