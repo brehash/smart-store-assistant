@@ -139,6 +139,7 @@ export default function Index() {
             approvals: meta?.approvals || [],
             questions: meta?.questions || [],
             reasoningLogs: meta?.reasoningLogs || [],
+            tokenUsage: (m as any).token_usage || undefined,
           };
         }));
         scrollToBottom();
