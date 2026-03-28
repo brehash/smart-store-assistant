@@ -516,6 +516,7 @@ const TOOL_LABELS: Record<string, string> = {
   compare_sales: "Comparing sales periods",
   get_product_sales: "Analyzing product sales",
   get_product_sales_report: "Analyzing product performance",
+  get_orders_with_meta: "Fetching orders with metadata",
   save_preference: "Saving preference",
 };
 
