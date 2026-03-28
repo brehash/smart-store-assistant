@@ -1213,6 +1213,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                 try {
                   const dashboardData = JSON.parse(match[1].trim());
                   sendSSE({ type: "dashboard", data: dashboardData });
+                  contentSent = true;
                   textContent = textContent.replace(match[0], "").trim();
                 } catch {
                   /* ignore malformed JSON */
@@ -1220,6 +1221,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
               }
               if (textContent) {
                 sendSSE({ choices: [{ delta: { content: textContent } }] });
+                contentSent = true;
               }
             }
 
