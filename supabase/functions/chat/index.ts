@@ -710,6 +710,12 @@ function generateReasoningBefore(toolName: string, args: any): string {
       return `Updating post #${args.post_id}...`;
     case "delete_post":
       return `Deleting post #${args.post_id}${args.force ? " permanently" : ""}...`;
+    case "get_orders_with_meta": {
+      const parts: string[] = [];
+      if (args.after) parts.push(`from ${args.after}`);
+      if (args.before) parts.push(`to ${args.before}`);
+      return `Fetching orders with full metadata ${parts.join(" ")}...`;
+    }
     case "save_preference":
       return `Saving preference: "${args.key}"...`;
     default:
