@@ -343,6 +343,7 @@ const TOOLS = [
           title: { type: "string", description: "New title" },
           content: { type: "string", description: "New content (HTML)" },
           status: { type: "string", description: "Status: draft, publish, pending, private" },
+          meta: { type: "object", description: "Custom meta fields (key-value pairs for SEO plugins etc.)" },
         },
         required: ["page_id"],
       },
