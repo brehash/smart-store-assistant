@@ -37,9 +37,16 @@ export interface OrderFormData {
   resolved?: { orderNumber: string; orderId: number; total: string } | "error";
 }
 
+interface PaymentMethod {
+  id: string;
+  title: string;
+}
+
 interface OrderFormCardProps {
   data: OrderFormData;
   orderStatuses?: string[];
+  allOrderStatuses?: { slug: string; name: string }[];
+  paymentMethods?: PaymentMethod[];
   disabled?: boolean;
   onOrderCreated?: (data: OrderFormData, result: { orderNumber: string; orderId: number; total: string }) => void;
 }
