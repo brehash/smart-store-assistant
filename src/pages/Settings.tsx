@@ -15,10 +15,11 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Switch } from "@/components/ui/switch";
 import {
-  Settings, Globe, Palette, Store, User, Coins,
+  Settings, Globe, Palette, Store, User, Coins, Plug,
   Save, Trash2, CheckCircle2, XCircle, ListChecks, Loader2,
-  Sun, Moon, Monitor, X, RefreshCw,
+  Sun, Moon, Monitor, X, RefreshCw, Package,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
