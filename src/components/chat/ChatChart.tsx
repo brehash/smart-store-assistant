@@ -35,6 +35,14 @@ const COLORS = [
 export function ChatChart({ chartData }: { chartData: ChartData }) {
   if (!chartData?.data?.length) return null;
 
+  const tooltipStyle = {
+    backgroundColor: 'hsl(var(--card))',
+    border: '1px solid hsl(var(--border))',
+    borderRadius: '8px',
+    color: 'hsl(var(--foreground))',
+  };
+  const tooltipLabelStyle = { color: 'hsl(var(--foreground))' };
+
   const dk = chartData.dataKey || "value";
   const nk = chartData.nameKey || "name";
   const numericValues = chartData.data.map((item) => Number(item?.[dk] ?? 0));
