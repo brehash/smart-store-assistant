@@ -81,7 +81,9 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
       try {
         const data = await apiCall(`${baseUrl}/plans`);
         setPlans(data || []);
-      } catch { /* ignore */ }
+      } catch (e: any) {
+        toast({ title: "Failed to load plans", description: e.message, variant: "destructive" });
+      }
     };
     load();
     loadCredits();
