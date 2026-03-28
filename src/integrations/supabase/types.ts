@@ -419,6 +419,30 @@ export type Database = {
         }
         Relationships: []
       }
+      woo_cache: {
+        Row: {
+          cache_key: string
+          data: Json
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cache_key: string
+          data?: Json
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cache_key?: string
+          data?: Json
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       woo_connections: {
         Row: {
           active_plugins: string[]
