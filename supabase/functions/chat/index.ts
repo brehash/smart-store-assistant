@@ -289,6 +289,11 @@ const TOOLS = [
             items: { type: "object", properties: { id: { type: "number" } } },
             description: "Category IDs",
           },
+          meta_data: {
+            type: "array",
+            items: { type: "object", properties: { key: { type: "string" }, value: { type: "string" } } },
+            description: "Custom meta fields (e.g. SEO plugin fields like _yoast_wpseo_metadesc)",
+          },
         },
         required: ["product_id"],
       },
