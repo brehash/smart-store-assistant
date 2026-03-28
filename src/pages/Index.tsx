@@ -23,6 +23,11 @@ interface TokenUsage {
   total_tokens: number;
 }
 
+interface CreditUsage {
+  cost: number;
+  remaining_balance: number;
+}
+
 interface Message {
   id?: string;
   role: "user" | "assistant";
@@ -34,6 +39,7 @@ interface Message {
   debugLogs?: DebugEntry[];
   reasoningLogs?: ReasoningEntry[];
   tokenUsage?: TokenUsage;
+  creditUsage?: CreditUsage;
 }
 
 export default function Index() {
