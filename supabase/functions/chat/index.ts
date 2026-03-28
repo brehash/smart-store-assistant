@@ -1971,7 +1971,8 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                   ss.title === "Building dashboard" ||
                   ss.title === "Rendering results" ||
                   ss.title === "Building inventory report" ||
-                  ss.title === "Calculating burn rate"
+                  ss.title === "Calculating burn rate" ||
+                  ss.title === "Parsing metadata"
                 ) {
                   sendSSE({ type: "reasoning", text: `${ss.title}...` });
                   sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "running" });
