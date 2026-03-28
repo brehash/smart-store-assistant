@@ -1858,15 +1858,27 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                 });
 
                 if (WRITE_TOOLS.has(toolName) && !approvalResponse) {
-                  sendSSE({
-                    type: "approval_request",
-                    stepIndex,
-                    title: currentSemanticTitle,
-                    summary: `${stepLabel} with: ${JSON.stringify(args)}`,
-                    toolName,
-                    args,
-                    toolCallId: tc.id,
-                  });
+                  if (toolName === "create_order") {
+                    // Emit order form instead of approval card
+                    sendSSE({
+                      type: "order_form",
+                      stepIndex,
+                      toolName,
+                      args,
+                      toolCallId: tc.id,
+                      prefill: args,
+                    });
+                  } else {
+                    sendSSE({
+                      type: "approval_request",
+                      stepIndex,
+                      title: currentSemanticTitle,
+                      summary: `${stepLabel} with: ${JSON.stringify(args)}`,
+                      toolName,
+                      args,
+                      toolCallId: tc.id,
+                    });
+                  }
 
                   aiMessages.push({
                     role: "tool",
