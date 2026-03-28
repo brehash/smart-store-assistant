@@ -133,6 +133,16 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
     } finally { setSavingAllowance(false); }
   };
 
+  const reloadCredits = async () => {
+    try {
+      const data = await apiCall(`${baseUrl}/users/${user.user_id}/credits`);
+      setCreditBalance(data.balance || null);
+      setCreditTransactions(data.transactions || []);
+      if (data.balance?.monthly_allowance) setMonthlyAllowance(data.balance.monthly_allowance);
+      if (data.balance?.plan_id) setSelectedPlanId(data.balance.plan_id);
+    } catch { /* silent */ }
+  };
+
   const assignPlan = async (planId: string) => {
     setSavingPlan(true);
     setSelectedPlanId(planId);
@@ -143,7 +153,8 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
       const plan = plans.find((p) => p.id === planId);
       toast({ title: "Plan assigned", description: `${plan?.name || "Plan"} assigned. Monthly allowance set to ${data.monthly_allowance}.` });
       setMonthlyAllowance(data.monthly_allowance);
-      setCreditBalance((prev) => prev ? { ...prev, plan_id: planId, monthly_allowance: data.monthly_allowance } : null);
+      setCreditBalance((prev) => prev ? { ...prev, plan_id: planId, monthly_allowance: data.monthly_allowance, balance: data.balance ?? prev.balance } : null);
+      await reloadCredits();
     } catch (e: any) {
       toast({ title: "Failed to assign plan", description: e.message, variant: "destructive" });
     } finally { setSavingPlan(false); }
