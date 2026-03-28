@@ -1,103 +1,62 @@
 
 
-## Token Tracking + Admin Panel
+## Tiered Credit System Implementation
 
-### Feature 1: Token Usage Tracking
+### How Credits Will Work
 
-**How it works**: The OpenAI API response already includes `usage: { prompt_tokens, completion_tokens, total_tokens }` in `aiData`. We accumulate tokens across all iterations in the while loop, then send the total to the frontend via a new SSE event `token_usage`, and persist it in the `messages` table metadata.
+- **Simple text reply** (no tool calls): **1 credit**
+- **Read tool calls** (search_products, search_orders, etc.): **2 credits**
+- **Write tool calls** (create/update/delete orders, products, etc.): **3 credits**
+- Users get a monthly auto-refill (configurable per user) + admins can manually adjust
+- When balance hits 0, the user is blocked with a friendly message
 
-**Changes:**
+### Database Changes (Migration)
+
+**New table: `credit_balances`** — stores current credit balance per user
+- `user_id`, `balance` (integer), `monthly_allowance` (default 100), `last_refill_at`
+
+**New table: `credit_transactions`** — audit log of every credit change
+- `user_id`, `amount` (positive = grant, negative = debit), `balance_after`, `reason` (e.g. "message", "admin_grant", "monthly_refill"), `message_id` (nullable), `created_at`
+
+**New database function: `refill_credits_if_due`** — called before each message; if 30+ days since last refill, reset balance to monthly_allowance
+
+### Backend Changes (`supabase/functions/chat/index.ts`)
+
+1. Before processing a message, check the user's credit balance (refill if due)
+2. After the AI response completes and we know which tools were called, calculate the credit cost:
+   - No tool calls → 1 credit
+   - Any read-only tool → 2 credits
+   - Any write tool → 3 credits (highest tier wins)
+3. Deduct credits and insert a transaction record
+4. Emit a new SSE event `credit_usage: { cost, remaining_balance }` so the frontend can display it
+5. If balance is insufficient before processing, return an error SSE: "You've run out of credits. Contact your administrator."
+
+### Admin Edge Function (`supabase/functions/admin/index.ts`)
+
+Add new routes:
+- `GET /users/:id/credits` — get balance + recent transactions
+- `PUT /users/:id/credits` — admin grants/deducts credits (with reason)
+- `PUT /users/:id/allowance` — set monthly allowance
+
+### Frontend Changes
 
 | File | Change |
 |------|--------|
-| `supabase/functions/chat/index.ts` | Accumulate `aiData.usage` across iterations; emit `{ type: "token_usage", prompt_tokens, completion_tokens, total_tokens }` SSE event before `[DONE]` |
-| `src/lib/chat-stream.ts` | Handle `token_usage` event type, pass to callback |
-| `src/pages/Index.tsx` | Receive token_usage event, store in metadata, display small token count badge on assistant messages |
-| `src/components/chat/ChatMessage.tsx` | Add optional `tokenUsage` prop, render as subtle text below message (e.g. "423 tokens") |
+| `src/pages/Index.tsx` | Handle `credit_usage` SSE event, display remaining credits |
+| `src/lib/chat-stream.ts` | Parse `credit_usage` event |
+| `src/components/chat/ChatMessage.tsx` | Show credit cost alongside token count (e.g. "2 credits · 1,243 tokens") |
+| `src/components/admin/UserDetail.tsx` | Add credit balance display, grant/deduct form, transaction history |
+| UI header/sidebar | Show current user's credit balance |
 
-### Feature 2: Admin Panel
-
-**Database changes (migration):**
-
-1. **`user_roles` table** — stores admin roles per user (following the required pattern with `app_role` enum)
-2. **`message_limits` table** — stores per-user daily/monthly message limits
-3. Add `token_usage` column (jsonb) to `messages` table for queryability
-4. RLS policies: admins can read all users, conversations, messages; regular users unchanged
-
-```sql
-CREATE TYPE public.app_role AS ENUM ('admin', 'user');
-
-CREATE TABLE public.user_roles (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  role app_role NOT NULL,
-  UNIQUE (user_id, role)
-);
-ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
-
-CREATE OR REPLACE FUNCTION public.has_role(_user_id uuid, _role app_role)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = _user_id AND role = _role)
-$$;
-
--- Admins can see all data
-CREATE POLICY "Admins can view all messages" ON public.messages FOR SELECT TO authenticated
-  USING (auth.uid() = user_id OR public.has_role(auth.uid(), 'admin'));
-CREATE POLICY "Admins can view all conversations" ON public.conversations FOR SELECT TO authenticated
-  USING (auth.uid() = user_id OR public.has_role(auth.uid(), 'admin'));
-CREATE POLICY "Admins can view all profiles" ON public.profiles FOR SELECT TO authenticated
-  USING (auth.uid() = user_id OR public.has_role(auth.uid(), 'admin'));
-
-CREATE TABLE public.message_limits (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL UNIQUE,
-  daily_limit int DEFAULT 50,
-  monthly_limit int DEFAULT 1000,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
-ALTER TABLE public.message_limits ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Admins manage limits" ON public.message_limits FOR ALL TO authenticated
-  USING (public.has_role(auth.uid(), 'admin'));
-CREATE POLICY "Users view own limits" ON public.message_limits FOR SELECT TO authenticated
-  USING (auth.uid() = user_id);
-
-ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS token_usage jsonb;
-```
-
-**New edge function: `supabase/functions/admin/index.ts`**
-- Validates caller has admin role
-- Endpoints: `GET /users` (list all profiles + message counts + token totals), `GET /users/:id/messages`, `PUT /users/:id/limits`, `GET /stats` (aggregate usage)
-
-**New frontend pages/components:**
-
-| File | Purpose |
-|------|---------|
-| `src/pages/Admin.tsx` | Admin dashboard with tabs: Users, Messages, Usage Stats |
-| `src/components/admin/UsersTable.tsx` | List all users with message count, total tokens, limits |
-| `src/components/admin/UserDetail.tsx` | View user's conversations/messages, edit limits |
-| `src/components/admin/UsageStats.tsx` | Charts showing token usage over time, active users |
-| `src/App.tsx` | Add `/admin` route with admin-only protection |
-| `src/components/AdminRoute.tsx` | ProtectedRoute variant that checks `has_role(admin)` |
-
-**Message limit enforcement** in `supabase/functions/chat/index.ts`:
-- Before processing, query `message_limits` and count today's/this month's messages for the user
-- If exceeded, return error SSE: "You've reached your daily message limit"
-
-### Files to modify/create
+### Files to Modify/Create
 
 | File | Action |
 |------|--------|
-| `supabase/functions/chat/index.ts` | Add token accumulation, emit token_usage SSE, check message limits |
-| `supabase/functions/admin/index.ts` | **New** — admin API edge function |
-| `src/lib/chat-stream.ts` | Handle `token_usage` event |
-| `src/pages/Index.tsx` | Store token usage in metadata |
-| `src/components/chat/ChatMessage.tsx` | Display token count |
-| `src/pages/Admin.tsx` | **New** — admin dashboard |
-| `src/components/admin/UsersTable.tsx` | **New** — users list |
-| `src/components/admin/UserDetail.tsx` | **New** — user detail/limits |
-| `src/components/admin/UsageStats.tsx` | **New** — usage charts |
-| `src/components/AdminRoute.tsx` | **New** — admin route guard |
-| `src/App.tsx` | Add admin route |
-| DB migration | Create user_roles, message_limits tables, has_role function, admin RLS policies, token_usage column |
+| DB migration | Create `credit_balances`, `credit_transactions` tables with RLS |
+| `supabase/functions/chat/index.ts` | Add credit check, calculation, deduction, SSE event |
+| `supabase/functions/admin/index.ts` | Add credit management routes |
+| `src/lib/chat-stream.ts` | Handle `credit_usage` event |
+| `src/pages/Index.tsx` | Store and display credit info |
+| `src/components/chat/ChatMessage.tsx` | Show credit cost per message |
+| `src/components/admin/UserDetail.tsx` | Credit management UI for admins |
 
