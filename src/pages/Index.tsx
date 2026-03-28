@@ -45,6 +45,7 @@ export default function Index() {
   const [settingsOpen, setSettingsOpen] = useState(() => !!settingsParam);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>(() => (settingsParam as SettingsTab) || "general");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const streamAliveRef = useRef(false);
 
   const handleToggleSidebar = () => {
     setSidebarCollapsed((prev) => {
@@ -78,6 +79,28 @@ export default function Index() {
       scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
     }, 50);
   }, []);
+
+  // Detect dead streams when tab regains focus
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible" && isStreaming && !streamAliveRef.current) {
+        // Stream likely died while tab was backgrounded — give it 5s grace period
+        const checkTimeout = setTimeout(() => {
+          if (isStreaming && !streamAliveRef.current) {
+            setIsStreaming(false);
+            toast({
+              title: "Connection lost",
+              description: "The stream was interrupted while the tab was in the background. Your partial response has been saved.",
+              variant: "destructive",
+            });
+          }
+        }, 5000);
+        return () => clearTimeout(checkTimeout);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [isStreaming, toast]);
 
   useEffect(() => {
     if (!conversationId || !user) return;
@@ -150,6 +173,7 @@ export default function Index() {
     const userMsg: Message = { role: "user", content: input };
     setMessages((prev) => [...prev, userMsg]);
     setIsStreaming(true);
+    streamAliveRef.current = true;
     scrollToBottom();
 
     await supabase.from("messages").insert({ conversation_id: convId, user_id: user.id, role: "user", content: input });
@@ -174,6 +198,7 @@ export default function Index() {
       viewId,
       onDelta: (chunk) => {
         assistantContent += chunk;
+        streamAliveRef.current = true;
         updateLastAssistant((m) => ({ ...m, content: assistantContent }));
         scrollToBottom();
       },
@@ -273,6 +298,7 @@ export default function Index() {
       },
       onDone: async () => {
         setIsStreaming(false);
+        streamAliveRef.current = false;
         // Persist using local accumulators (not React state)
         const metadata: any = {};
         if (pipelineData) metadata.pipeline = pipelineData;
@@ -291,6 +317,7 @@ export default function Index() {
       },
       onError: async (error) => {
         setIsStreaming(false);
+        streamAliveRef.current = false;
         toast({ title: "Error", description: error, variant: "destructive" });
         // Persist the partial assistant message so it doesn't vanish
         if (assistantContent || reasoningEntries.length || pipelineData) {

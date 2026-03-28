@@ -146,6 +146,23 @@ const TOOLS = [
   {
     type: "function",
     function: {
+      name: "get_product_sales_report",
+      description:
+        "Get per-product sales breakdown for a date range. Returns each product with its total revenue, units sold, order count, and average price. Use for product dominance, top sellers, best/worst performers, and product-level analysis questions.",
+      parameters: {
+        type: "object",
+        properties: {
+          date_min: { type: "string", description: "Start date (YYYY-MM-DD)" },
+          date_max: { type: "string", description: "End date (YYYY-MM-DD)" },
+          limit: { type: "number", description: "Max products to return (default 50)" },
+        },
+        required: ["date_min", "date_max"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "save_preference",
       description: "Save a user preference/alias.",
       parameters: {
@@ -238,6 +255,7 @@ const TOOL_LABELS: Record<string, string> = {
   get_sales_report: "Generating sales report",
   compare_sales: "Comparing sales periods",
   get_product_sales: "Analyzing product sales",
+  get_product_sales_report: "Analyzing product performance",
   save_preference: "Saving preference",
 };
 
@@ -325,6 +343,15 @@ function truncateForAI(toolName: string, result: any): any {
       };
     }
 
+    if (toolName === "get_product_sales_report") {
+      return {
+        total_revenue: result.total_revenue,
+        total_orders: result.total_orders,
+        product_count: result.product_count,
+        products: Array.isArray(result.products) ? result.products.slice(0, 20) : result.products,
+      };
+    }
+
     if (toolName === "search_orders" && Array.isArray(result)) {
       return result.slice(0, 10).map((item: any) => ({
         id: item.id,
@@ -374,6 +401,8 @@ function generateReasoningBefore(toolName: string, args: any): string {
       return `Comparing ${args.period_a_label || "Period A"} vs ${args.period_b_label || "Period B"}...`;
     case "get_product_sales":
       return `Fetching sales history for product #${args.product_id} over last ${args.days || 60} days...`;
+    case "get_product_sales_report":
+      return `Aggregating per-product sales from ${args.date_min} to ${args.date_max}...`;
     case "create_order":
       return `Preparing new order with ${args.line_items?.length || 0} items...`;
     case "update_order_status":
@@ -419,6 +448,14 @@ function generateReasoningAfter(toolName: string, result: any): string | null {
         if (result?.change_revenue != null) {
           const dir = result.change_revenue >= 0 ? "+" : "";
           return `Revenue difference: ${dir}${result.change_revenue} lei, orders difference: ${result.change_orders >= 0 ? "+" : ""}${result.change_orders}.`;
+        }
+        return null;
+      }
+      case "get_product_sales_report": {
+        if (Array.isArray(result?.products)) {
+          const count = result.products.length;
+          const top = result.products[0];
+          return `${count} products found. Top: ${top?.product_name || "N/A"} (${top?.total_revenue || 0} lei, ${top?.total_quantity || 0} units).`;
         }
         return null;
       }
@@ -478,6 +515,15 @@ function generateSemanticPlan(toolCalls: any[]): SemanticStep[] {
         steps.push({ title: "Analyzing sales velocity", details: `Product #${args.product_id} — last ${daysVal} days` });
         steps.push({ title: "Calculating burn rate" });
         steps.push({ title: "Building inventory report" });
+        break;
+      }
+      case "get_product_sales_report": {
+        const dateDetail = args.date_min && args.date_max
+          ? `${args.date_min} → ${args.date_max}`
+          : undefined;
+        steps.push({ title: "Fetching orders for period", details: dateDetail });
+        steps.push({ title: "Aggregating by product" });
+        steps.push({ title: "Building product report" });
         break;
       }
       case "create_order":
@@ -765,6 +811,79 @@ async function executeTool(
         requestUri: `GET /wp-json/wc/v3/orders (filtered for product #${productId})`,
       };
     }
+    case "get_product_sales_report": {
+      const startDate = args.date_min;
+      const endDate = args.date_max;
+      const limit = args.limit || 50;
+
+      // Fetch orders in the date range (paginated, up to 5 pages of 100)
+      let allOrders: any[] = [];
+      for (let page = 1; page <= 5; page++) {
+        const params = new URLSearchParams();
+        params.set("per_page", "100");
+        params.set("page", String(page));
+        params.set("after", `${startDate}T00:00:00`);
+        params.set("before", `${endDate}T23:59:59`);
+        if (defaultOrderStatuses.length) params.set("status", defaultOrderStatuses.join(","));
+        const orders = await callWooProxy(supabaseUrl, authHeader, { endpoint: `orders?${params.toString()}` });
+        if (!Array.isArray(orders) || orders.length === 0) break;
+        allOrders = allOrders.concat(orders);
+        if (orders.length < 100) break;
+      }
+
+      // Aggregate by product
+      const productMap: Record<number, { product_id: number; product_name: string; total_revenue: number; total_quantity: number; order_count: number; order_ids: Set<number> }> = {};
+
+      for (const order of allOrders) {
+        for (const li of (order.line_items || [])) {
+          const pid = li.product_id;
+          if (!productMap[pid]) {
+            productMap[pid] = { product_id: pid, product_name: li.name || `Product #${pid}`, total_revenue: 0, total_quantity: 0, order_count: 0, order_ids: new Set() };
+          }
+          productMap[pid].total_revenue += parseFloat(li.total || "0");
+          productMap[pid].total_quantity += (li.quantity || 0);
+          if (!productMap[pid].order_ids.has(order.id)) {
+            productMap[pid].order_ids.add(order.id);
+            productMap[pid].order_count++;
+          }
+        }
+      }
+
+      const products = Object.values(productMap)
+        .map(p => ({
+          product_id: p.product_id,
+          product_name: p.product_name,
+          total_revenue: Math.round(p.total_revenue * 100) / 100,
+          total_quantity: p.total_quantity,
+          order_count: p.order_count,
+          average_price: p.total_quantity > 0 ? Math.round((p.total_revenue / p.total_quantity) * 100) / 100 : 0,
+        }))
+        .sort((a, b) => b.total_revenue - a.total_revenue)
+        .slice(0, limit);
+
+      const totalRevenue = products.reduce((s, p) => s + p.total_revenue, 0);
+
+      return {
+        result: {
+          period: `${startDate} → ${endDate}`,
+          total_revenue: Math.round(totalRevenue * 100) / 100,
+          total_orders: allOrders.length,
+          product_count: products.length,
+          products,
+        },
+        richContent: {
+          type: "chart",
+          data: {
+            type: "bar",
+            title: `Product Sales (${startDate} → ${endDate})`,
+            data: products.slice(0, 15).map(p => ({ name: p.product_name.slice(0, 25), value: p.total_revenue })),
+            dataKey: "value",
+            nameKey: "name",
+          },
+        },
+        requestUri: `GET /wp-json/wc/v3/orders (aggregated by product)`,
+      };
+    }
     case "save_preference": {
       await supabase
         .from("user_preferences")
@@ -884,10 +1003,10 @@ CRITICAL TOOL USAGE RULES — YOU MUST FOLLOW THESE:
 AUTONOMOUS DATA GATHERING (ABSOLUTE RULE):
 - You MUST NEVER tell the user you need more data or ask permission to fetch data. If you need product-level data, sales breakdowns, order details, or ANY information available through your tools — CALL THE TOOLS IMMEDIATELY without asking.
 - If the user asks a question and you realize you don't have enough data to answer, your ONLY correct response is to call the appropriate tools. NEVER say "let me know if you want me to fetch this" or "I need to pull this data first, shall I proceed?"
-- When the user asks about predictions, estimates, or forecasts: ALWAYS call get_sales_report with date ranges to get product-level data, then analyze it. Do not explain what you would need — just get it.
-- For product dominance / top products analysis: call get_sales_report for the relevant period. The tool returns top_products data. Use it directly.
+- When the user asks about predictions, estimates, or forecasts: ALWAYS call get_product_sales_report with date ranges to get per-product data, then analyze it. Do not explain what you would need — just get it.
+- For product dominance / top products / best sellers / worst performers / "produse dominante" analysis: ALWAYS call get_product_sales_report with the relevant date range. This returns per-product revenue, units sold, and order count. Use it directly. Do NOT use get_sales_report for product-level analysis.
 - WRONG: "I need product-level data. Should I fetch it?"
-- RIGHT: *calls get_sales_report tool with current month dates*
+- RIGHT: *calls get_product_sales_report tool with date range*
 
 STOCK & INVENTORY ANALYSIS (CRITICAL — MULTI-TOOL CHAINING):
 - When the user asks about stock levels, restock timing, inventory, or "when should I buy more":
