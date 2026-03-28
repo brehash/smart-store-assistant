@@ -728,7 +728,12 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
             <Label>Client Secret</Label>
             <Input type="password" value={coleteClientSecret} onChange={(e) => setColeteClientSecret(e.target.value)} placeholder="Your Colete Online Client Secret" />
           </div>
-          <div className="flex justify-end pt-2">
+          <div className="flex gap-2 justify-end pt-2">
+            <Button onClick={handleTestColeteOnline} variant="outline" disabled={testingColete || !coleteClientId || !coleteClientSecret}>
+              {testingColete ? "Testing…" : "Test Connection"}
+              {coleteTestResult === "success" && <CheckCircle2 className="ml-1.5 h-4 w-4 text-emerald-500" />}
+              {coleteTestResult === "error" && <XCircle className="ml-1.5 h-4 w-4 text-destructive" />}
+            </Button>
             <Button onClick={handleSaveIntegration} disabled={savingIntegration} className="gap-1.5">
               <Save className="h-4 w-4" /> {savingIntegration ? "Saving…" : "Save Integration"}
             </Button>
