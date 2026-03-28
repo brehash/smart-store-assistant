@@ -118,6 +118,8 @@ export default function Index() {
         { event: "INSERT", schema: "public", table: "webhook_events", filter: `user_id=eq.${user.id}` },
         (payload: any) => {
           const { topic, payload: eventData } = payload.new;
+          // Ignore ping/unknown/action events
+          if (!topic || topic === "unknown" || topic.startsWith("action.")) return;
           let title = "Webhook Event";
           let description = topic;
           if (topic === "order.created" && eventData) {
