@@ -719,6 +719,8 @@ function generateReasoningBefore(toolName: string, args: any): string {
     }
     case "save_preference":
       return `Saving preference: "${args.key}"...`;
+    case "check_shipping_status":
+      return `Checking shipping status for order #${args.order_id}...`;
     default:
       return `Running ${toolName}...`;
   }
