@@ -791,7 +791,27 @@ function generateSemanticPlan(toolCalls: any[]): SemanticStep[] {
       }
       case "create_order":
       case "update_order_status":
+      case "update_order":
+      case "delete_order":
         steps.push({ title: "Preparing order action" });
+        steps.push({ title: "Awaiting approval" });
+        break;
+      case "create_product":
+      case "update_product":
+      case "delete_product":
+        steps.push({ title: "Preparing product action" });
+        steps.push({ title: "Awaiting approval" });
+        break;
+      case "create_page":
+      case "update_page":
+      case "delete_page":
+        steps.push({ title: "Preparing page action" });
+        steps.push({ title: "Awaiting approval" });
+        break;
+      case "create_post":
+      case "update_post":
+      case "delete_post":
+        steps.push({ title: "Preparing post action" });
         steps.push({ title: "Awaiting approval" });
         break;
       case "save_preference":
