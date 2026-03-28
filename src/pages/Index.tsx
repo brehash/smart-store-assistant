@@ -229,6 +229,7 @@ export default function Index() {
     let debugEntries: DebugEntry[] = [];
     let approvalsList: ApprovalRequest[] = [];
     let questionsList: QuestionRequest[] = [];
+    let orderFormsList: OrderFormData[] = [];
     let reasoningEntries: ReasoningEntry[] = [];
     let tokenUsage: TokenUsage | null = null;
     let creditUsage: CreditUsage | null = null;
