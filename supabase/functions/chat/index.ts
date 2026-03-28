@@ -758,6 +758,16 @@ function truncateForAI(toolName: string, result: any): any {
       };
     }
 
+    if (toolName === "audit_geo") {
+      return { score: result.score, entityName: result.entityName, categories: result.categories, recommendations: result.recommendations?.slice(0, 5) };
+    }
+    if (toolName === "generate_geo_content") {
+      return { optimized: result.optimized, entityName: result.entityName, meta_description: result.meta_description, meta_fields: result.meta_fields, seo_plugin: result.seo_plugin };
+    }
+    if (toolName === "bulk_geo_audit") {
+      return { items: result.items?.slice(0, 20), averageScore: result.averageScore };
+    }
+
     // Generic fallback: truncate string
     if (str.length > 4000) {
       return { summary: `Data received (${str.length} chars, truncated for context). Key fields preserved above.` };
