@@ -241,10 +241,10 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
               <div>
                 <Label>Grant / Deduct Credits</Label>
                 <div className="flex gap-2 mt-1">
-                  <Input type="number" placeholder="Amount (positive to add, negative to deduct)" value={creditAdjustAmount || ""} onChange={(e) => setCreditAdjustAmount(parseInt(e.target.value) || 0)} />
+                  <Input type="text" inputMode="numeric" placeholder="e.g. 50 or -20" value={creditAdjustInput} onChange={(e) => setCreditAdjustInput(e.target.value)} />
                   <Input placeholder="Reason (optional)" value={creditReason} onChange={(e) => setCreditReason(e.target.value)} className="max-w-[200px]" />
-                  <Button onClick={adjustCredits} disabled={savingCredits || creditAdjustAmount === 0}>
-                    {savingCredits ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : creditAdjustAmount >= 0 ? <Plus className="h-4 w-4 mr-1" /> : <Minus className="h-4 w-4 mr-1" />}
+                  <Button onClick={adjustCredits} disabled={savingCredits || !creditAdjustInput || creditAdjustInput === "-"}>
+                    {savingCredits ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : parseInt(creditAdjustInput) >= 0 || !creditAdjustInput ? <Plus className="h-4 w-4 mr-1" /> : <Minus className="h-4 w-4 mr-1" />}
                     {savingCredits ? "Applying..." : "Apply"}
                   </Button>
                 </div>
