@@ -207,6 +207,55 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
     finally { setTesting(false); }
   };
 
+  const refreshCache = async (url?: string, ck?: string, cs?: string) => {
+    if (!user) return;
+    const su = url || storeUrl;
+    const key = ck || consumerKey;
+    const sec = cs || consumerSecret;
+    if (!su || !key || !sec) return;
+    setRefreshingCache(true);
+    try {
+      // Fetch products (all pages)
+      let allProducts: any[] = [];
+      let page = 1;
+      while (true) {
+        const { data: products } = await supabase.functions.invoke("woo-proxy", {
+          body: { endpoint: `products?per_page=100&page=${page}`, storeUrl: su, consumerKey: key, consumerSecret: sec },
+        });
+        if (!Array.isArray(products) || products.length === 0) break;
+        allProducts = [...allProducts, ...products.map((p: any) => ({ id: p.id, name: p.name, sku: p.sku, price: p.price, regular_price: p.regular_price, stock_status: p.stock_status, images: p.images?.slice(0, 1) }))];
+        if (products.length < 100) break;
+        page++;
+      }
+      // Fetch payment gateways
+      const { data: gateways } = await supabase.functions.invoke("woo-proxy", {
+        body: { endpoint: "payment_gateways", storeUrl: su, consumerKey: key, consumerSecret: sec },
+      });
+      const paymentMethods = Array.isArray(gateways)
+        ? gateways.filter((g: any) => g.enabled).map((g: any) => ({ id: g.id, title: g.title }))
+        : [];
+      // Fetch order statuses
+      const { data: statuses } = await supabase.functions.invoke("woo-proxy", {
+        body: { endpoint: "reports/orders/totals", storeUrl: su, consumerKey: key, consumerSecret: sec },
+      });
+      const allStatuses = Array.isArray(statuses) ? statuses.map((s: any) => ({ slug: s.slug, name: s.name })) : [];
+      // Upsert into woo_cache
+      const upserts = [
+        { user_id: user.id, cache_key: "products", data: allProducts, updated_at: new Date().toISOString() },
+        { user_id: user.id, cache_key: "payment_methods", data: paymentMethods, updated_at: new Date().toISOString() },
+        { user_id: user.id, cache_key: "order_statuses", data: allStatuses, updated_at: new Date().toISOString() },
+      ];
+      for (const row of upserts) {
+        await supabase.from("woo_cache" as any).upsert(row as any, { onConflict: "user_id,cache_key" });
+      }
+      toast({ title: "Cache refreshed", description: `${allProducts.length} products, ${paymentMethods.length} payment methods, ${allStatuses.length} statuses cached.` });
+    } catch (err) {
+      toast({ title: "Cache refresh failed", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
+    } finally {
+      setRefreshingCache(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!existingConnection) return;
     await supabase.from("woo_connections").delete().eq("id", existingConnection.id);
