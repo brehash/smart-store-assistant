@@ -1609,10 +1609,14 @@ async function executeTool(
         const accessToken = tokenData.access_token;
 
         // Get shipping status
-        const statusResp = await fetch(`https://api.colete-online.ro/v1/order/status/${uniqueId}`, {
+        const statusResp = await fetchWithRetry(`https://api.colete-online.ro/v1/order/status/${uniqueId}`, {
           headers: { "Authorization": `Bearer ${accessToken}` },
         });
 
+        if (statusResp.status === 429) {
+          const retryAfter = statusResp.headers.get("Retry-After") || "unknown";
+          return { result: { error: `Rate limited by Colete Online. Please try again in ${retryAfter} seconds.` } };
+        }
         if (!statusResp.ok) {
           return { result: { error: `${detectedProvider.provider} status API error (${statusResp.status}) for uniqueId ${uniqueId}.` } };
         }
