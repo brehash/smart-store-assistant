@@ -74,6 +74,7 @@ export default function Admin() {
         <Tabs defaultValue="users">
           <TabsList>
             <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="plans">Plans</TabsTrigger>
             <TabsTrigger value="stats">Usage Stats</TabsTrigger>
           </TabsList>
 
@@ -85,6 +86,14 @@ export default function Admin() {
               onRefresh={fetchUsers}
               accessToken={session?.access_token || ""}
             />
+          </TabsContent>
+
+          <TabsContent value="plans" className="mt-4">
+            <PlansManager accessToken={session?.access_token || ""} />
+          </TabsContent>
+
+          <TabsContent value="stats" className="mt-4">
+            <UsageStats accessToken={session?.access_token || ""} />
           </TabsContent>
 
           <TabsContent value="stats" className="mt-4">
