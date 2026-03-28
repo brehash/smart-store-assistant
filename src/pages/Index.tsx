@@ -543,9 +543,12 @@ export default function Index() {
           </Button>
           <h1 className="text-lg font-semibold truncate">WooCommerce AI Assistant</h1>
           {creditBalance !== null && (
-            <span className="ml-auto text-xs font-medium text-muted-foreground tabular-nums bg-muted px-2 py-1 rounded-full">
+            <button
+              onClick={() => topupModalEnabled && setCreditsModalOpen(true)}
+              className={`ml-auto text-xs font-medium text-muted-foreground tabular-nums bg-muted px-2 py-1 rounded-full ${topupModalEnabled ? "hover:bg-accent cursor-pointer" : ""} transition-colors`}
+            >
               {creditBalance} credit{creditBalance !== 1 ? "s" : ""}
-            </span>
+            </button>
           )}
         </div>
 
