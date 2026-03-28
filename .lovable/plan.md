@@ -1,62 +1,64 @@
 
 
-## Enable Order Meta-Data Parsing for Invoices, AWBs, and Custom Fields
+## Fix: Pipeline Steps, Invoice Detection, External Links, Token Optimization
 
-### Problem
-The LLM cannot search within order meta_data because:
-1. `search_orders` truncates results to only `id, status, total, date_created, billing` — stripping `meta_data`, `line_items`, and all custom fields
-2. There is no tool to fetch full order details (including `meta_data`) for a batch of orders
-3. The system prompt has no instructions about parsing meta_data for invoices, AWBs, or similar attributes
-4. `search_orders` has a `per_page` limit of 10 by default, too few for period-based analysis
+### Issues
 
-### Solution
+1. **Pipeline steps not completing** -- Steps like "Parsing metadata", "Building dashboard", "Writing explanation" stay pending because the post-tool synthesis code (line ~1964-1985) only checks for exact title matches. When `get_orders_with_meta` is used, its semantic plan has 3 steps: "Fetching orders with metadata", "Parsing metadata", "Building dashboard". The tool execution only marks step 1 ("Fetching orders with metadata") as done. The post-tool loop at line 1934-1959 skips "Parsing metadata" and "Building dashboard" because they match the break conditions (`ss.title.startsWith("Fetching")` breaks). Then the post-response loop at line 1964-1985 does match "Parsing metadata" and "Building dashboard" but uses `stepIndex` tracking that can skip them if already iterated past.
 
-#### 1. New tool: `get_orders_with_meta`
-**File: `supabase/functions/chat/index.ts`**
+2. **Orders listed without invoices** -- The LLM is told to look for invoice meta_data keys, but the actual data shows invoices come from Oblio plugin with keys like `_oblio_invoice_*` or similar. The LLM is classifying all orders as having invoices when `av_facturare` exists (billing type info, not an actual invoice). The system prompt needs to clarify what constitutes an actual invoice vs. billing preferences.
 
-Add a new tool designed for meta-data analysis. It fetches orders for a date range with full `meta_data` included (unlike `search_orders` which strips it). Key parameters:
-- `after`, `before` (ISO dates) — required date range
-- `per_page` (default 100) — fetch in bulk for analysis
-- `status` — optional filter
+3. **External link icons** -- When meta_data contains URLs (e.g., Oblio invoice links, tracking URLs), the dashboard table should show clickable external link icons.
 
-The tool returns orders with: `id, status, total, currency, date_created, billing, meta_data, line_items[].name`. This gives the LLM the raw data to parse and identify invoices, AWBs, tracking numbers, etc.
+4. **Token usage too high** -- `get_orders_with_meta` returns ALL meta_data keys per order (attribution, billing addresses, etc.), most of which are irrelevant. We should filter meta_data to only invoice/AWB/tracking-related keys before sending to AI context.
 
-#### 2. Update `truncateForAI` for the new tool
-Ensure `meta_data` is preserved in the AI context (not stripped). Truncate only `line_items` to name+quantity. Cap at ~30 orders in AI context but pass all to rich content.
+---
 
-#### 3. Update system prompt with meta-data parsing instructions
-Add a section to the system prompt:
+### Changes
 
+#### 1. Fix pipeline step completion
+**File: `supabase/functions/chat/index.ts`** (lines ~1934-1985)
+
+The intermediate step auto-advancement loop (line 1934) breaks on `ss.title.startsWith("Fetching")`, which prevents "Parsing metadata" from being auto-advanced during tool execution. Fix the break conditions to also not break on post-processing steps like "Parsing metadata", "Calculating burn rate", "Aggregating by product".
+
+More importantly, the post-response synthesis loop (line 1964-1985) checks step titles but tracks them by array index, not by whether they were already marked done. Fix: track which semantic step indices have already been completed, and in the post-response loop, only process steps that are still pending.
+
+#### 2. Filter meta_data to reduce tokens
+**File: `supabase/functions/chat/index.ts`** -- in the `get_orders_with_meta` executor (line ~1308)
+
+Before returning, filter each order's `meta_data` to only keep relevant keys:
 ```
-ORDER META-DATA ANALYSIS:
-- When the user asks about invoices (facturi), AWBs, tracking numbers, or any custom order attributes:
-  1. Call get_orders_with_meta for the requested period
-  2. Parse the meta_data array on each order looking for keys like: _invoice, _factura, invoice_number, _awb, awb_number, tracking_number, and similar patterns
-  3. Classify orders as having/not having the requested attribute
-  4. Present results as a dashboard with cards (invoiced amount vs non-invoiced) and a table of matching orders
-- If orders are already in context from a previous tool call, parse them directly without re-fetching
-- Common meta_data keys for Romanian stores: _factura, _invoice, _awb, _tracking, factura_seria, factura_numar
+const RELEVANT_META_PREFIXES = [
+  'invoice', 'factura', 'facturi', 'oblio', 'awb', 'tracking', 'colet', 
+  'curier', 'fan_courier', 'sameday', 'cargus', 'dpd', 'gls',
+  'av_facturare', 'av_invoice', 'wc_invoice', 'billing_invoice'
+];
 ```
+Strip out `_wc_order_attribution_*`, `_meta_event_id`, `_billing_city_state`, `_billing_street`, `_shipping_*`, `is_vat_exempt`, `_coleteonline_*`, `_automatewoo_*`, `_gla_*`, `_googlesitekit_*`, `_meta_purchase_*`, and other irrelevant keys. This should reduce token count by ~70-80%.
 
-#### 4. Add semantic plan and reasoning for the new tool
-Add entries in `TOOL_LABELS`, `generateSemanticPlan`, `generateReasoningBefore`, and `generateReasoningAfter`.
+Also update `truncateForAI` for `get_orders_with_meta` to cap at 30 orders and strip already-filtered meta.
+
+#### 3. Improve invoice detection in system prompt
+**File: `supabase/functions/chat/index.ts`** -- system prompt section
+
+Clarify in the ORDER META-DATA ANALYSIS section:
+- `av_facturare` is NOT an invoice -- it's billing type preference (pers-fiz/pers-jur). Do NOT treat it as having an invoice.
+- An actual invoice is indicated by keys containing: `oblio`, `invoice_number`, `invoice_series`, `factura_seria`, `factura_numar`, `wc_invoice_number`, or meta values that contain invoice serial numbers (e.g., "KSF 0817").
+- AWB/tracking is indicated by keys containing: `awb`, `tracking`, `fan_courier`, `sameday`, `cargus`, `coleteonline_awb`.
+
+#### 4. Add external link icons in dashboard tables
+**File: `src/components/chat/DashboardView.tsx`**
+
+In the table cell renderer (line ~87-89), detect if a cell value looks like a URL (starts with `http://` or `https://`), and render it as an external link icon (`ExternalLink` from lucide-react) that opens in a new tab. Also detect if the cell value matches a pattern like "KSF 0817" (invoice number) -- these could have associated URLs if the LLM includes them.
+
+Update the dashboard table schema to support cell objects: `{ text: string, url?: string }` in addition to plain strings. The LLM can then emit cells with URLs when it finds them in meta_data.
+
+---
 
 ### Files to Modify
 
 | File | Change |
 |------|--------|
-| `supabase/functions/chat/index.ts` | Add `get_orders_with_meta` tool definition, executor, truncation, semantic plan, reasoning, and system prompt instructions |
-
-### How It Works End-to-End
-
-User says: "arata-mi facturile din ultimele 10 zile"
-1. LLM calls `get_orders_with_meta` with `after: 10 days ago, before: today`
-2. Tool returns full orders with `meta_data` arrays
-3. LLM parses each order's `meta_data` for invoice-related keys
-4. LLM emits a dashboard with: invoiced orders table, non-invoiced orders, totals
-
-User says: "arata-mi veniturile cu factura si fara factura in luna curenta"
-1. LLM calls `get_orders_with_meta` for current month
-2. LLM classifies orders by invoice presence in meta_data
-3. LLM emits dashboard with: "Invoiced Revenue" card, "Non-Invoiced Revenue" card, breakdown table
+| `supabase/functions/chat/index.ts` | Filter meta_data keys, fix pipeline step completion, improve system prompt |
+| `src/components/chat/DashboardView.tsx` | Add external link icon rendering for URL cells |
 
