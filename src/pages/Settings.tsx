@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-export type SettingsTab = "general" | "appearance" | "connection" | "credits" | "account";
+export type SettingsTab = "general" | "appearance" | "connection" | "integrations" | "credits" | "account";
 
 interface OrderStatus { slug: string; name: string; total: number; }
 
@@ -35,6 +35,7 @@ const TABS: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
   { id: "general", label: "General", icon: Settings },
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "connection", label: "Connection", icon: Store },
+  { id: "integrations", label: "Integrations", icon: Plug },
   { id: "credits", label: "Credits", icon: Coins },
   { id: "account", label: "Account", icon: User },
 ];
