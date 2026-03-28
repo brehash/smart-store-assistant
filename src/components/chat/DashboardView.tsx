@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChatChart } from "./ChatChart";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ChevronDown, ChevronRight, TrendingUp, TrendingDown } from "lucide-react";
+import { ChevronDown, ChevronRight, TrendingUp, TrendingDown, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface StatCard {
