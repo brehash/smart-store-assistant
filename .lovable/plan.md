@@ -1,50 +1,45 @@
 
 
-## Fix: AI Must Autonomously Gather Data Instead of Asking
+## Fix: Pipeline Completes All Steps But Renders Nothing
 
-### Problem
-The AI tells the user "I need product-level data, let me know if I should fetch it" instead of just calling the tools automatically. This happens despite the system prompt saying "NEVER ask the user for information you can look up with tools." The issue is twofold:
-1. The instruction isn't strong enough — the AI still hesitates on multi-turn follow-ups
-2. On multi-turn conversations, after history trimming to 20 messages, the AI loses context about what tools are available and defaults to asking
+### Root Cause
 
-### Fix: Strengthen System Prompt (`supabase/functions/chat/index.ts`)
+The while loop has `maxIterations = 8`. When the AI calls tools across multiple rounds (your screenshot shows 10+ "Searching orders" steps), the iteration counter exhausts. When the loop exits naturally (maxIterations hits 0), the code falls through to line 1227 which just sends `[DONE]` — **without sending any content, error message, or pipeline_complete event**. The frontend receives `[DONE]`, sets `isStreaming = false`, but there's no text content, no dashboard, and no error toast. The user sees a completed pipeline with nothing rendered.
 
-Add a much more aggressive autonomy instruction to the system prompt:
+### Fix (in `supabase/functions/chat/index.ts`)
 
-**Add after the existing CRITICAL TOOL USAGE RULES (around line 882):**
+#### 1. Add fallback after the while loop exits
+After the `while` loop (line 1225, before line 1227), add a check: if no content was ever sent to the user (no delta text, no dashboard), emit an error message so the user isn't left staring at nothing.
 
-```
-AUTONOMOUS DATA GATHERING (ABSOLUTE RULE):
-- You MUST NEVER tell the user you need more data or ask permission to fetch data. 
-  If you need product-level data, sales breakdowns, order details, or ANY information 
-  available through your tools — CALL THE TOOLS IMMEDIATELY without asking.
-- If the user asks a question and you realize you don't have enough data to answer, 
-  your ONLY correct response is to call the appropriate tools. NEVER say "let me know 
-  if you want me to fetch this" or "I need to pull this data first, shall I proceed?"
-- When the user asks about predictions, estimates, or forecasts: ALWAYS call 
-  get_sales_report with date ranges to get product-level data, then analyze it. 
-  Do not explain what you would need — just get it.
-- For product dominance / top products analysis: call get_sales_report for the 
-  relevant period. The tool returns top_products data. Use it directly.
-- WRONG: "I need product-level data. Should I fetch it?"
-- RIGHT: *calls get_sales_report tool with current month dates*
+```typescript
+// After the while loop ends (whether by break or iteration exhaustion)
+if (!contentSent) {
+  sendSSE({ type: "reasoning", text: "Error: Ran out of processing steps before generating a response." });
+  sendSSE({ choices: [{ delta: { content: "⚠️ I gathered the data but ran out of processing steps before I could write the analysis. Please try asking again — I'll be more concise this time." } }] });
+  sendSSE({ type: "pipeline_complete", lastStepIndex: stepIndex });
+}
 ```
 
-**Also strengthen the existing rule 6 (line 882):**
-Change from:
-```
-6. NEVER ask the user for information you can look up with tools.
-```
-To:
-```
-6. NEVER ask the user for information you can look up with tools. NEVER ask permission 
-   to run a tool. NEVER explain what data you need before fetching it. Just call the tool. 
-   This applies especially in follow-up messages where you realize you need more data.
+Add a `let contentSent = false;` flag at the top of the `start()` function, set it to `true` when content is sent via delta (line 1214) or dashboard (line 1207).
+
+#### 2. Increase maxIterations from 8 to 15
+The autonomous data gathering rule makes the AI call more tools. 8 iterations is too few for complex multi-tool queries. Increase to 15.
+
+#### 3. Add iteration-aware system prompt injection
+When `maxIterations <= 2`, inject a system message forcing the AI to stop calling tools and produce its final answer:
+
+```typescript
+if (maxIterations <= 2) {
+  aiMessages.push({ 
+    role: "system", 
+    content: "CRITICAL: You are running low on processing steps. You MUST produce your final answer NOW using the data you already have. Do NOT call any more tools." 
+  });
+}
 ```
 
 ### Files to Modify
 
 | File | Change |
 |------|--------|
-| `supabase/functions/chat/index.ts` | Strengthen system prompt with autonomous data gathering rules |
+| `supabase/functions/chat/index.ts` | Add `contentSent` flag, fallback after loop, increase maxIterations to 15, add iteration-pressure system message |
 
