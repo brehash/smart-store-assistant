@@ -80,6 +80,28 @@ export default function Index() {
     }, 50);
   }, []);
 
+  // Detect dead streams when tab regains focus
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible" && isStreaming && !streamAliveRef.current) {
+        // Stream likely died while tab was backgrounded — give it 5s grace period
+        const checkTimeout = setTimeout(() => {
+          if (isStreaming && !streamAliveRef.current) {
+            setIsStreaming(false);
+            toast({
+              title: "Connection lost",
+              description: "The stream was interrupted while the tab was in the background. Your partial response has been saved.",
+              variant: "destructive",
+            });
+          }
+        }, 5000);
+        return () => clearTimeout(checkTimeout);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [isStreaming, toast]);
+
   useEffect(() => {
     if (!conversationId || !user) return;
     const load = async () => {
