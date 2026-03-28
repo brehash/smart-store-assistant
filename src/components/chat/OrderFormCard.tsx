@@ -340,6 +340,12 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
           </div>
         )}
 
+        {/* Coupon / Voucher */}
+        <div>
+          <Label className="text-xs font-medium mb-1.5 block">Voucher / Coupon (optional)</Label>
+          <Input placeholder="Enter coupon code..." value={couponCode} onChange={(e) => setCouponCode(e.target.value)} className="h-9 text-sm" disabled={isDisabled} />
+        </div>
+
         {/* Note */}
         <div>
           <Label className="text-xs font-medium mb-1.5 block">Order Note (optional)</Label>
