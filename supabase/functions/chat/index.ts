@@ -2001,7 +2001,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
             const aiRequest = fetch(aiBaseUrl, {
               method: "POST",
               headers: { Authorization: aiAuthHeader, "Content-Type": "application/json" },
-              body: JSON.stringify({ model: aiModel, messages: aiMessages, tools: TOOLS, stream: false }),
+              body: JSON.stringify({ model: aiModel, messages: aiMessages, tools: activeTools, stream: false }),
             });
             const keepAliveInterval = setInterval(() => {
               sendSSE({ type: "reasoning", text: "Still processing..." });
