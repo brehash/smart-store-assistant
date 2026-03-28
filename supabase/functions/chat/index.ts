@@ -283,6 +283,78 @@ function sanitizeAiHistory(messages: Array<{ role: string; content: unknown }>) 
     }));
 }
 
+/** Truncate large tool results before feeding back to AI context */
+function truncateForAI(toolName: string, result: any): any {
+  try {
+    const str = JSON.stringify(result);
+    if (str.length < 3000) return result;
+
+    if (toolName === "get_sales_report") {
+      return {
+        totalRevenue: result.totalRevenue,
+        orderCount: result.orderCount,
+        averageOrderValue: result.averageOrderValue,
+        topProducts: Array.isArray(result.topProducts) ? result.topProducts.slice(0, 10) : result.topProducts,
+        dailyBreakdown: Array.isArray(result.dailyBreakdown)
+          ? `${result.dailyBreakdown.length} days of data (truncated for context)`
+          : result.dailyBreakdown,
+      };
+    }
+
+    if (toolName === "get_product_sales") {
+      return {
+        total_units_sold: result.total_units_sold,
+        total_revenue: result.total_revenue,
+        days_analyzed: result.days_analyzed,
+        daily_burn_rate: result.daily_burn_rate,
+        daily_breakdown: Array.isArray(result.daily_breakdown)
+          ? `${result.daily_breakdown.length} days (truncated)`
+          : result.daily_breakdown,
+      };
+    }
+
+    if (toolName === "compare_sales") {
+      return {
+        period_a_revenue: result.period_a_revenue,
+        period_b_revenue: result.period_b_revenue,
+        change_revenue: result.change_revenue,
+        period_a_orders: result.period_a_orders,
+        period_b_orders: result.period_b_orders,
+        change_orders: result.change_orders,
+        topProducts: Array.isArray(result.topProducts) ? result.topProducts.slice(0, 10) : result.topProducts,
+      };
+    }
+
+    if (toolName === "search_orders" && Array.isArray(result)) {
+      return result.slice(0, 10).map((item: any) => ({
+        id: item.id,
+        status: item.status,
+        total: item.total,
+        date_created: item.date_created,
+        billing: item.billing ? { first_name: item.billing.first_name, last_name: item.billing.last_name } : undefined,
+      }));
+    }
+
+    if (toolName === "search_products" && Array.isArray(result)) {
+      return result.slice(0, 10).map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        stock_quantity: item.stock_quantity,
+        total_sales: item.total_sales,
+      }));
+    }
+
+    // Generic fallback: truncate string
+    if (str.length > 4000) {
+      return { summary: `Data received (${str.length} chars, truncated for context). Key fields preserved above.` };
+    }
+    return result;
+  } catch {
+    return { summary: "Data received (truncated for context)" };
+  }
+}
+
 function generateReasoningBefore(toolName: string, args: any): string {
   switch (toolName) {
     case "search_products":
@@ -878,7 +950,9 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
     const aiAuthHeader = useOpenAI ? `Bearer ${userOpenAIKey}` : `Bearer ${LOVABLE_API_KEY}`;
     const aiModel = useOpenAI ? "gpt-5.4-nano" : "google/gemini-3-flash-preview";
 
-    let aiMessages: any[] = [{ role: "system", content: systemPrompt }, ...sanitizeAiHistory(messages)];
+    // Trim conversation history to last 20 messages to prevent context bloat
+    const trimmedHistory = sanitizeAiHistory(messages).slice(-20);
+    let aiMessages: any[] = [{ role: "system", content: systemPrompt }, ...trimmedHistory];
     const encoder = new TextEncoder();
 
     const stream = new ReadableStream({
@@ -899,11 +973,22 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
 
           while (maxIterations-- > 0) {
             sendSSE({ type: "reasoning", text: "Thinking..." });
-            const aiResp = await fetch(aiBaseUrl, {
+
+            // Keep-alive: send periodic pings during AI fetch to prevent connection drops
+            const aiRequest = fetch(aiBaseUrl, {
               method: "POST",
               headers: { Authorization: aiAuthHeader, "Content-Type": "application/json" },
               body: JSON.stringify({ model: aiModel, messages: aiMessages, tools: TOOLS, stream: false }),
             });
+            const keepAliveInterval = setInterval(() => {
+              sendSSE({ type: "reasoning", text: "Still processing..." });
+            }, 15000);
+            let aiResp: Response;
+            try {
+              aiResp = await aiRequest;
+            } finally {
+              clearInterval(keepAliveInterval);
+            }
 
             if (!aiResp.ok) {
               if (aiResp.status === 429) {
@@ -1063,7 +1148,8 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                   details: currentSemanticDetails,
                 });
 
-                aiMessages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(result) });
+                // Truncate large results before feeding back to AI to prevent context bloat
+                aiMessages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(truncateForAI(toolName, result)) });
                 stepIndex++;
                 semanticIdx++;
 
