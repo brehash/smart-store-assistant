@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Save, Plus, Minus } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ArrowLeft, Save, Plus, Minus, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { AdminUser } from "@/pages/Admin";
 
@@ -50,7 +51,9 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
   const [monthlyLimit, setMonthlyLimit] = useState(user.limits?.monthly_limit ?? 1000);
   const [conversations, setConversations] = useState<ConversationItem[]>([]);
   const [messages, setMessages] = useState<MessageItem[]>([]);
-  const [saving, setSaving] = useState(false);
+  const [savingLimits, setSavingLimits] = useState(false);
+  const [loadingData, setLoadingData] = useState(true);
+  const [loadingCredits, setLoadingCredits] = useState(true);
 
   // Credit state
   const [creditBalance, setCreditBalance] = useState<CreditBalance | null>(null);
@@ -59,29 +62,46 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
   const [creditReason, setCreditReason] = useState("");
   const [monthlyAllowance, setMonthlyAllowance] = useState(100);
   const [savingCredits, setSavingCredits] = useState(false);
+  const [savingAllowance, setSavingAllowance] = useState(false);
+
+  const apiCall = async (url: string, options?: RequestInit) => {
+    const resp = await fetch(url, {
+      ...options,
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json", ...options?.headers },
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || `Request failed (${resp.status})`);
+    return data;
+  };
 
   useEffect(() => {
     const load = async () => {
-      const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin/users/${user.user_id}/messages`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
-      if (resp.ok) {
-        const data = await resp.json();
+      setLoadingData(true);
+      try {
+        const data = await apiCall(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin/users/${user.user_id}/messages`
+        );
         setConversations(data.conversations || []);
         setMessages(data.messages || []);
+      } catch (e: any) {
+        toast({ title: "Failed to load messages", description: e.message, variant: "destructive" });
+      } finally {
+        setLoadingData(false);
       }
     };
     const loadCredits = async () => {
-      const resp = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin/users/${user.user_id}/credits`,
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
-      if (resp.ok) {
-        const data = await resp.json();
+      setLoadingCredits(true);
+      try {
+        const data = await apiCall(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin/users/${user.user_id}/credits`
+        );
         setCreditBalance(data.balance || null);
         setCreditTransactions(data.transactions || []);
         if (data.balance?.monthly_allowance) setMonthlyAllowance(data.balance.monthly_allowance);
+      } catch (e: any) {
+        toast({ title: "Failed to load credits", description: e.message, variant: "destructive" });
+      } finally {
+        setLoadingCredits(false);
       }
     };
     load();
@@ -89,23 +109,17 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
   }, [user.user_id, accessToken]);
 
   const saveLimits = async () => {
-    setSaving(true);
+    setSavingLimits(true);
     try {
-      const resp = await fetch(
+      await apiCall(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin/users/${user.user_id}/limits`,
-        {
-          method: "PUT",
-          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ daily_limit: dailyLimit, monthly_limit: monthlyLimit }),
-        }
+        { method: "PUT", body: JSON.stringify({ daily_limit: dailyLimit, monthly_limit: monthlyLimit }) }
       );
-      if (resp.ok) {
-        toast({ title: "Limits saved" });
-      } else {
-        toast({ title: "Failed to save", variant: "destructive" });
-      }
+      toast({ title: "Limits saved", description: `Daily: ${dailyLimit}, Monthly: ${monthlyLimit}` });
+    } catch (e: any) {
+      toast({ title: "Failed to save limits", description: e.message, variant: "destructive" });
     } finally {
-      setSaving(false);
+      setSavingLimits(false);
     }
   };
 
@@ -113,51 +127,39 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
     if (creditAdjustAmount === 0) return;
     setSavingCredits(true);
     try {
-      const resp = await fetch(
+      const data = await apiCall(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin/users/${user.user_id}/credits`,
-        {
-          method: "PUT",
-          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ amount: creditAdjustAmount, reason: creditReason || "admin_grant" }),
-        }
+        { method: "PUT", body: JSON.stringify({ amount: creditAdjustAmount, reason: creditReason || "admin_grant" }) }
       );
-      if (resp.ok) {
-        const data = await resp.json();
-        setCreditBalance((prev) => prev ? { ...prev, balance: data.balance } : null);
-        setCreditAdjustAmount(0);
-        setCreditReason("");
-        toast({ title: `Credits ${creditAdjustAmount > 0 ? "added" : "deducted"}` });
-        // Reload transactions
-        const txResp = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin/users/${user.user_id}/credits`,
-          { headers: { Authorization: `Bearer ${accessToken}` } }
-        );
-        if (txResp.ok) {
-          const txData = await txResp.json();
-          setCreditTransactions(txData.transactions || []);
-        }
-      }
+      setCreditBalance((prev) => prev ? { ...prev, balance: data.balance } : null);
+      const action = creditAdjustAmount > 0 ? "Added" : "Deducted";
+      toast({ title: `${action} ${Math.abs(creditAdjustAmount)} credits`, description: `New balance: ${data.balance}` });
+      setCreditAdjustAmount(0);
+      setCreditReason("");
+      // Reload transactions
+      const txData = await apiCall(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin/users/${user.user_id}/credits`
+      );
+      setCreditTransactions(txData.transactions || []);
+    } catch (e: any) {
+      toast({ title: "Failed to adjust credits", description: e.message, variant: "destructive" });
     } finally {
       setSavingCredits(false);
     }
   };
 
   const saveAllowance = async () => {
-    setSavingCredits(true);
+    setSavingAllowance(true);
     try {
-      const resp = await fetch(
+      await apiCall(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin/users/${user.user_id}/allowance`,
-        {
-          method: "PUT",
-          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ monthly_allowance: monthlyAllowance }),
-        }
+        { method: "PUT", body: JSON.stringify({ monthly_allowance: monthlyAllowance }) }
       );
-      if (resp.ok) {
-        toast({ title: "Monthly allowance updated" });
-      }
+      toast({ title: "Monthly allowance updated", description: `Set to ${monthlyAllowance} credits/month` });
+    } catch (e: any) {
+      toast({ title: "Failed to update allowance", description: e.message, variant: "destructive" });
     } finally {
-      setSavingCredits(false);
+      setSavingAllowance(false);
     }
   };
 
@@ -181,11 +183,15 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
         </Card>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Conversations</CardTitle></CardHeader>
-          <CardContent><p className="text-2xl font-bold tabular-nums">{conversations.length}</p></CardContent>
+          <CardContent>
+            {loadingData ? <Skeleton className="h-8 w-16" /> : <p className="text-2xl font-bold tabular-nums">{conversations.length}</p>}
+          </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Credits</CardTitle></CardHeader>
-          <CardContent><p className="text-2xl font-bold tabular-nums">{creditBalance?.balance ?? "—"}</p></CardContent>
+          <CardContent>
+            {loadingCredits ? <Skeleton className="h-8 w-16" /> : <p className="text-2xl font-bold tabular-nums">{creditBalance?.balance ?? "—"}</p>}
+          </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Roles</CardTitle></CardHeader>
@@ -197,44 +203,59 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
       <Card>
         <CardHeader><CardTitle>Credit Management</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <Label>Monthly Allowance (auto-refill every 30 days)</Label>
-              <div className="flex gap-2">
-                <Input type="number" value={monthlyAllowance} onChange={(e) => setMonthlyAllowance(parseInt(e.target.value) || 0)} />
-                <Button onClick={saveAllowance} disabled={savingCredits} size="sm">
-                  <Save className="h-4 w-4" />
-                </Button>
+          {loadingCredits ? (
+            <div className="space-y-3">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <Label>Monthly Allowance (auto-refill every 30 days)</Label>
+                  <div className="flex gap-2">
+                    <Input type="number" value={monthlyAllowance} onChange={(e) => setMonthlyAllowance(parseInt(e.target.value) || 0)} />
+                    <Button onClick={saveAllowance} disabled={savingAllowance} size="sm">
+                      {savingAllowance ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+                <div>
+                  <Label>Last Refill</Label>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {creditBalance?.last_refill_at ? new Date(creditBalance.last_refill_at).toLocaleDateString() : "Never"}
+                  </p>
+                </div>
               </div>
-            </div>
-            <div>
-              <Label>Last Refill</Label>
-              <p className="text-sm text-muted-foreground mt-2">
-                {creditBalance?.last_refill_at ? new Date(creditBalance.last_refill_at).toLocaleDateString() : "Never"}
-              </p>
-            </div>
-          </div>
-          <div>
-            <Label>Grant / Deduct Credits</Label>
-            <div className="flex gap-2 mt-1">
-              <Input
-                type="number"
-                placeholder="Amount (positive to add, negative to deduct)"
-                value={creditAdjustAmount || ""}
-                onChange={(e) => setCreditAdjustAmount(parseInt(e.target.value) || 0)}
-              />
-              <Input
-                placeholder="Reason (optional)"
-                value={creditReason}
-                onChange={(e) => setCreditReason(e.target.value)}
-                className="max-w-[200px]"
-              />
-              <Button onClick={adjustCredits} disabled={savingCredits || creditAdjustAmount === 0}>
-                {creditAdjustAmount >= 0 ? <Plus className="h-4 w-4 mr-1" /> : <Minus className="h-4 w-4 mr-1" />}
-                Apply
-              </Button>
-            </div>
-          </div>
+              <div>
+                <Label>Grant / Deduct Credits</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    type="number"
+                    placeholder="Amount (positive to add, negative to deduct)"
+                    value={creditAdjustAmount || ""}
+                    onChange={(e) => setCreditAdjustAmount(parseInt(e.target.value) || 0)}
+                  />
+                  <Input
+                    placeholder="Reason (optional)"
+                    value={creditReason}
+                    onChange={(e) => setCreditReason(e.target.value)}
+                    className="max-w-[200px]"
+                  />
+                  <Button onClick={adjustCredits} disabled={savingCredits || creditAdjustAmount === 0}>
+                    {savingCredits ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                    ) : creditAdjustAmount >= 0 ? (
+                      <Plus className="h-4 w-4 mr-1" />
+                    ) : (
+                      <Minus className="h-4 w-4 mr-1" />
+                    )}
+                    {savingCredits ? "Applying..." : "Apply"}
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -277,8 +298,9 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
               <Input type="number" value={monthlyLimit} onChange={(e) => setMonthlyLimit(parseInt(e.target.value) || 0)} />
             </div>
           </div>
-          <Button onClick={saveLimits} disabled={saving}>
-            <Save className="h-4 w-4 mr-1" /> Save Limits
+          <Button onClick={saveLimits} disabled={savingLimits}>
+            {savingLimits ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+            {savingLimits ? "Saving..." : "Save Limits"}
           </Button>
         </CardContent>
       </Card>
@@ -287,22 +309,28 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
       <Card>
         <CardHeader><CardTitle>Recent Messages ({messages.length})</CardTitle></CardHeader>
         <CardContent>
-          <div className="max-h-96 overflow-y-auto space-y-2">
-            {messages.map((m) => (
-              <div key={m.id} className="rounded border p-3 text-sm">
-                <div className="flex justify-between items-center mb-1">
-                  <span className={`font-medium ${m.role === "assistant" ? "text-primary" : "text-muted-foreground"}`}>
-                    {m.role}
-                  </span>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    {m.token_usage && <span className="tabular-nums">{m.token_usage.total_tokens} tokens</span>}
-                    <span>{new Date(m.created_at).toLocaleString()}</span>
+          {loadingData ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
+            </div>
+          ) : (
+            <div className="max-h-96 overflow-y-auto space-y-2">
+              {messages.map((m) => (
+                <div key={m.id} className="rounded border p-3 text-sm">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className={`font-medium ${m.role === "assistant" ? "text-primary" : "text-muted-foreground"}`}>
+                      {m.role}
+                    </span>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {m.token_usage && <span className="tabular-nums">{m.token_usage.total_tokens} tokens</span>}
+                      <span>{new Date(m.created_at).toLocaleString()}</span>
+                    </div>
                   </div>
+                  <p className="text-muted-foreground line-clamp-3 whitespace-pre-wrap">{m.content}</p>
                 </div>
-                <p className="text-muted-foreground line-clamp-3 whitespace-pre-wrap">{m.content}</p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
