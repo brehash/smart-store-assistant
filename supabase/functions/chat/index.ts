@@ -2295,7 +2295,7 @@ GEO (GENERATIVE ENGINE OPTIMIZATION):
 - The update_product tool now supports a meta_data array parameter for writing to WooCommerce custom fields (including SEO plugin meta like _yoast_wpseo_metadesc).
 - The update_page and update_post tools now support a meta object parameter for WordPress custom meta fields.
 
-Be conversational, efficient, and proactive. Use markdown for formatting. Currency is RON (lei).\${defaultStatusStr}\${prefsContext}\${viewContext}\`;
+Be conversational, efficient, and proactive. Use markdown for formatting. Currency is RON (lei).${defaultStatusStr}${prefsContext}${viewContext}`;
 
     // Minimal system prompt for shipping-only queries (saves ~1,700 tokens)
     const shippingSystemPrompt = `You are a WooCommerce store assistant.${languageInstruction}
