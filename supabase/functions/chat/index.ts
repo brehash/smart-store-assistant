@@ -1795,8 +1795,8 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                 planSent = true;
               }
 
-              // Track which semantic step we're on
-              let semanticIdx = 0;
+              // Reset semanticIdx for this tool-call batch if plan was just sent
+              if (semanticIdx === 0 && planSent) semanticIdx = 0;
 
               for (const tc of toolCalls) {
                 let args: any;
