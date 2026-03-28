@@ -1788,6 +1788,11 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
             sendSSE({ type: "pipeline_complete", lastStepIndex: stepIndex });
           }
 
+          // Emit token usage before DONE
+          if (totalTokens > 0) {
+            sendSSE({ type: "token_usage", prompt_tokens: totalPromptTokens, completion_tokens: totalCompletionTokens, total_tokens: totalTokens });
+          }
+
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
           controller.close();
         } catch (e) {
