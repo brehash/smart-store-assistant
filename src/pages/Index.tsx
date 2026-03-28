@@ -541,6 +541,7 @@ export default function Index() {
                   questions={msg.questions}
                   debugLogs={msg.debugLogs}
                   reasoningLogs={msg.reasoningLogs}
+                  tokenUsage={msg.tokenUsage}
                   onApproval={handleApproval}
                   onQuestionAnswer={handleQuestionAnswer}
                 />
