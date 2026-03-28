@@ -13,7 +13,7 @@ import { ReasoningBubbles, type ReasoningEntry } from "./ReasoningBubbles";
 import { OrderFormCard, type OrderFormData } from "./OrderFormCard";
 
 export interface RichContent {
-  type: "products" | "orders" | "chart" | "confirmation" | "pipeline" | "dashboard";
+  type: "products" | "orders" | "chart" | "confirmation" | "pipeline" | "dashboard" | "shipping";
   data: any;
 }
 
