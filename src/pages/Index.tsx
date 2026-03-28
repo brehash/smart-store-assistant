@@ -317,6 +317,7 @@ export default function Index() {
       },
       onError: async (error) => {
         setIsStreaming(false);
+        streamAliveRef.current = false;
         toast({ title: "Error", description: error, variant: "destructive" });
         // Persist the partial assistant message so it doesn't vanish
         if (assistantContent || reasoningEntries.length || pipelineData) {
