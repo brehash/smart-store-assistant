@@ -12,9 +12,10 @@ import { DashboardView } from "./DashboardView";
 import { ReasoningBubbles, type ReasoningEntry } from "./ReasoningBubbles";
 import { OrderFormCard, type OrderFormData } from "./OrderFormCard";
 import { ShippingTimeline } from "./ShippingTimeline";
+import { GeoReportCard } from "./GeoReportCard";
 
 export interface RichContent {
-  type: "products" | "orders" | "chart" | "confirmation" | "pipeline" | "dashboard" | "shipping";
+  type: "products" | "orders" | "chart" | "confirmation" | "pipeline" | "dashboard" | "shipping" | "geo_report";
   data: any;
 }
 
@@ -150,7 +151,7 @@ export function ChatMessage({
             key={`rich-${i}`}
             className={cn(
               "w-full",
-              rc.type === "dashboard" ? "max-w-5xl" : rc.type === "chart" ? "max-w-4xl" : "max-w-[600px]",
+              rc.type === "dashboard" ? "max-w-5xl" : rc.type === "chart" ? "max-w-4xl" : rc.type === "geo_report" ? "max-w-3xl" : "max-w-[600px]",
             )}
           >
             {rc.type === "products" && <ProductSlider products={rc.data} />}
@@ -158,6 +159,7 @@ export function ChatMessage({
             {rc.type === "chart" && <ChatChart chartData={rc.data} />}
             {rc.type === "dashboard" && <DashboardView data={rc.data} />}
             {rc.type === "shipping" && <ShippingTimeline data={rc.data} />}
+            {rc.type === "geo_report" && <GeoReportCard data={rc.data} />}
           </div>
         ))}
 
