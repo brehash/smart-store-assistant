@@ -727,6 +727,15 @@ function truncateForAI(toolName: string, result: any): any {
       };
     }
 
+    if (toolName === "get_top_customers") {
+      return {
+        total_revenue: result.total_revenue,
+        total_orders: result.total_orders,
+        customer_count: result.customer_count,
+        customers: Array.isArray(result.customers) ? result.customers.slice(0, 20) : result.customers,
+      };
+    }
+
     if (toolName === "search_orders" && Array.isArray(result)) {
       return result.slice(0, 10).map((item: any) => ({
         id: item.id,
