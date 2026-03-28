@@ -313,7 +313,6 @@ export default function Index() {
       onDone: async () => {
         setIsStreaming(false);
         streamAliveRef.current = false;
-        // Persist using local accumulators (not React state)
         const metadata: any = {};
         if (pipelineData) metadata.pipeline = pipelineData;
         if (debugEntries.length) metadata.debugLogs = debugEntries;
@@ -327,6 +326,7 @@ export default function Index() {
           content: assistantContent,
           rich_content: richContents.length ? richContents as any : null,
           metadata: Object.keys(metadata).length ? metadata : null,
+          token_usage: tokenUsage,
         } as any);
       },
       onError: async (error) => {
