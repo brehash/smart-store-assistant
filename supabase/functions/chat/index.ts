@@ -930,7 +930,8 @@ function generateSemanticPlan(toolCalls: any[]): SemanticStep[] {
         break;
       case "check_shipping_status":
         steps.push({ title: "Fetching order details", details: `Order #${args.order_id}` });
-        steps.push({ title: "Checking Colete Online status" });
+        steps.push({ title: "Detecting shipping provider" });
+        steps.push({ title: "Checking shipment status" });
         break;
       default:
         steps.push({ title: TOOL_LABELS[name] || name });
