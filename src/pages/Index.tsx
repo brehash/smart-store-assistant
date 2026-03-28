@@ -17,6 +17,12 @@ import type { PipelineStepData } from "@/components/chat/PipelineStep";
 import type { DebugEntry } from "@/components/chat/DebugPanel";
 import type { ReasoningEntry } from "@/components/chat/ReasoningBubbles";
 
+interface TokenUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
 interface Message {
   id?: string;
   role: "user" | "assistant";
@@ -27,6 +33,7 @@ interface Message {
   questions?: QuestionRequest[];
   debugLogs?: DebugEntry[];
   reasoningLogs?: ReasoningEntry[];
+  tokenUsage?: TokenUsage;
 }
 
 export default function Index() {
@@ -132,6 +139,7 @@ export default function Index() {
             approvals: meta?.approvals || [],
             questions: meta?.questions || [],
             reasoningLogs: meta?.reasoningLogs || [],
+            tokenUsage: (m as any).token_usage || undefined,
           };
         }));
         scrollToBottom();
@@ -190,7 +198,7 @@ export default function Index() {
     let approvalsList: ApprovalRequest[] = [];
     let questionsList: QuestionRequest[] = [];
     let reasoningEntries: ReasoningEntry[] = [];
-
+    let tokenUsage: TokenUsage | null = null;
     await streamChat({
       messages: [...messages, userMsg].map((m) => ({ role: m.role, content: m.content })),
       conversationId: convId,
@@ -294,12 +302,18 @@ export default function Index() {
             reasoningLogs: [...(m.reasoningLogs || []), rEntry],
           }));
           scrollToBottom();
+        } else if (event.type === "token_usage") {
+          tokenUsage = {
+            prompt_tokens: event.prompt_tokens || 0,
+            completion_tokens: event.completion_tokens || 0,
+            total_tokens: event.total_tokens || 0,
+          };
+          updateLastAssistant((m) => ({ ...m, tokenUsage: tokenUsage! }));
         }
       },
       onDone: async () => {
         setIsStreaming(false);
         streamAliveRef.current = false;
-        // Persist using local accumulators (not React state)
         const metadata: any = {};
         if (pipelineData) metadata.pipeline = pipelineData;
         if (debugEntries.length) metadata.debugLogs = debugEntries;
@@ -313,6 +327,7 @@ export default function Index() {
           content: assistantContent,
           rich_content: richContents.length ? richContents as any : null,
           metadata: Object.keys(metadata).length ? metadata : null,
+          token_usage: tokenUsage,
         } as any);
       },
       onError: async (error) => {
@@ -526,6 +541,7 @@ export default function Index() {
                   questions={msg.questions}
                   debugLogs={msg.debugLogs}
                   reasoningLogs={msg.reasoningLogs}
+                  tokenUsage={msg.tokenUsage}
                   onApproval={handleApproval}
                   onQuestionAnswer={handleQuestionAnswer}
                 />

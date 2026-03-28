@@ -41,13 +41,14 @@ interface ChatMessageProps {
   questions?: QuestionRequest[];
   debugLogs?: DebugEntry[];
   reasoningLogs?: ReasoningEntry[];
+  tokenUsage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
   onApproval?: (approval: ApprovalRequest, action: "approve" | "skip" | "edit", editedText?: string) => void;
   onQuestionAnswer?: (question: QuestionRequest, answer: string) => void;
 }
 
 export function ChatMessage({
   role, content, richContents, isStreaming,
-  pipeline, approvals, questions, debugLogs, reasoningLogs,
+  pipeline, approvals, questions, debugLogs, reasoningLogs, tokenUsage,
   onApproval, onQuestionAnswer,
 }: ChatMessageProps) {
   const isUser = role === "user";
@@ -138,6 +139,13 @@ export function ChatMessage({
 
         {/* Debug panel */}
         {debugLogs && debugLogs.length > 0 && !isUser && <DebugPanel logs={debugLogs} />}
+
+        {/* Token usage badge */}
+        {tokenUsage && !isUser && (
+          <span className="text-[11px] text-muted-foreground/60 tabular-nums">
+            {tokenUsage.total_tokens.toLocaleString()} tokens
+          </span>
+        )}
       </div>
     </div>
   );

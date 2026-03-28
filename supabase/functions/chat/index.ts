@@ -1447,6 +1447,47 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY && !userOpenAIKey) throw new Error("No AI API key configured");
 
+    // ── Message limit enforcement ──
+    const serviceClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {});
+    const { data: limitData } = await serviceClient
+      .from("message_limits")
+      .select("daily_limit, monthly_limit")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (limitData) {
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const monthStart = new Date(todayStart.getFullYear(), todayStart.getMonth(), 1);
+
+      const { count: dailyCount } = await serviceClient
+        .from("messages")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("role", "user")
+        .gte("created_at", todayStart.toISOString());
+
+      const { count: monthlyCount } = await serviceClient
+        .from("messages")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("role", "user")
+        .gte("created_at", monthStart.toISOString());
+
+      if (limitData.daily_limit && (dailyCount || 0) >= limitData.daily_limit) {
+        return new Response(JSON.stringify({ error: "You've reached your daily message limit." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (limitData.monthly_limit && (monthlyCount || 0) >= limitData.monthly_limit) {
+        return new Response(JSON.stringify({ error: "You've reached your monthly message limit." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     const useOpenAI = !!userOpenAIKey;
     const aiBaseUrl = useOpenAI
       ? "https://api.openai.com/v1/chat/completions"
@@ -1458,6 +1499,10 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
     const trimmedHistory = sanitizeAiHistory(messages).slice(-20);
     let aiMessages: any[] = [{ role: "system", content: systemPrompt }, ...trimmedHistory];
     const encoder = new TextEncoder();
+    // Token usage accumulator
+    let totalPromptTokens = 0;
+    let totalCompletionTokens = 0;
+    let totalTokens = 0;
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -1517,6 +1562,12 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
             }
 
             const aiData = await aiResp.json();
+            // Accumulate token usage
+            if (aiData.usage) {
+              totalPromptTokens += aiData.usage.prompt_tokens || 0;
+              totalCompletionTokens += aiData.usage.completion_tokens || 0;
+              totalTokens += aiData.usage.total_tokens || 0;
+            }
             const choice = aiData.choices?.[0];
             if (!choice) break;
 
@@ -1735,6 +1786,11 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
             sendSSE({ type: "reasoning", text: "Error: Ran out of processing steps before generating a response." });
             sendSSE({ choices: [{ delta: { content: "⚠️ Am adunat datele dar am epuizat pașii de procesare înainte de a putea scrie analiza. Te rog încearcă din nou — voi fi mai concis de data aceasta." } }] });
             sendSSE({ type: "pipeline_complete", lastStepIndex: stepIndex });
+          }
+
+          // Emit token usage before DONE
+          if (totalTokens > 0) {
+            sendSSE({ type: "token_usage", prompt_tokens: totalPromptTokens, completion_tokens: totalCompletionTokens, total_tokens: totalTokens });
           }
 
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
