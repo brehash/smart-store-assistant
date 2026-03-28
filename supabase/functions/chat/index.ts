@@ -476,6 +476,23 @@ const TOOLS = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_top_customers",
+      description:
+        "Get top customers by revenue for a date range. Returns each customer with total revenue, order count, and average order value. Use for 'top clients', 'best customers', 'top clienti', 'cei mai buni clienti' queries.",
+      parameters: {
+        type: "object",
+        properties: {
+          date_min: { type: "string", description: "Start date (YYYY-MM-DD)" },
+          date_max: { type: "string", description: "End date (YYYY-MM-DD)" },
+          limit: { type: "number", description: "Max customers to return (default 5)" },
+        },
+        required: ["date_min", "date_max"],
+      },
+    },
+  },
 ];
 
 // ── Intent-based tool selection for token optimization ──
