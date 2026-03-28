@@ -1930,6 +1930,11 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
             sendSSE({ type: "pipeline_complete", lastStepIndex: stepIndex });
           }
 
+          // ── Emit accumulated token usage ──
+          if (totalUsage.total_tokens > 0) {
+            sendSSE({ type: "token_usage", ...totalUsage });
+          }
+
           // ── Credit deduction ──
           // Determine tier based on tools used
           let creditCost = 1; // default: simple text

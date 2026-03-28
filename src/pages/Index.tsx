@@ -605,6 +605,14 @@ export default function Index() {
           <SettingsContent activeTab={settingsTab} onTabChange={handleSettingsTabChange} onClose={() => handleCloseSettings(false)} />
         </DialogContent>
       </Dialog>
+
+      {/* Credits Modal */}
+      <CreditsModal
+        open={creditsModalOpen}
+        onOpenChange={setCreditsModalOpen}
+        currentBalance={creditBalance}
+        currentPlanId={currentPlanId}
+      />
     </div>
   );
 }
