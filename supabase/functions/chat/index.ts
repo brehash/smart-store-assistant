@@ -1548,6 +1548,22 @@ async function executeTool(
         return { result: { error: `This order uses ${detectedProvider.provider} shipping but you haven't connected the ${detectedProvider.provider} integration yet. Go to Settings > Integrations to enable it.` } };
       }
 
+      // Helper: fetch with 429 retry
+      async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 2): Promise<Response> {
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+          const resp = await fetch(url, options);
+          if (resp.status === 429) {
+            const retryAfter = parseInt(resp.headers.get("Retry-After") || "5", 10);
+            const waitSec = Math.min(retryAfter, 30);
+            console.log(`429 from ${url}, retrying in ${waitSec}s (attempt ${attempt + 1}/${maxRetries})`);
+            await new Promise(r => setTimeout(r, waitSec * 1000));
+            continue;
+          }
+          return resp;
+        }
+        return fetch(url, options); // final attempt
+      }
+
       // 4. Handle Colete Online (current only provider)
       if (detectedProvider.integrationKey === "colete_online") {
         let metaValue = shippingMeta.value;
