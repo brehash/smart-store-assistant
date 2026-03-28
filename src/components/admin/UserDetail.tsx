@@ -33,7 +33,7 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
 
   const [creditBalance, setCreditBalance] = useState<CreditBalance | null>(null);
   const [creditTransactions, setCreditTransactions] = useState<CreditTransaction[]>([]);
-  const [creditAdjustAmount, setCreditAdjustAmount] = useState(0);
+  const [creditAdjustInput, setCreditAdjustInput] = useState("");
   const [creditReason, setCreditReason] = useState("");
   const [monthlyAllowance, setMonthlyAllowance] = useState(100);
   const [savingCredits, setSavingCredits] = useState(false);
