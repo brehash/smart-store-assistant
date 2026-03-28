@@ -557,6 +557,7 @@ export default function Index() {
                   debugLogs={msg.debugLogs}
                   reasoningLogs={msg.reasoningLogs}
                   tokenUsage={msg.tokenUsage}
+                  creditUsage={msg.creditUsage}
                   onApproval={handleApproval}
                   onQuestionAnswer={handleQuestionAnswer}
                 />
