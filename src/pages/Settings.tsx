@@ -127,6 +127,16 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
         fetchPlugins(data.store_url, data.consumer_key, data.consumer_secret);
       }
     });
+    // Load integrations
+    supabase.from("woo_integrations").select("*").eq("user_id", user.id).eq("integration_key", "colete_online").maybeSingle().then(({ data }) => {
+      if (data) {
+        setColeteOnlineEnabled(data.is_enabled);
+        const cfg = (data.config as any) || {};
+        setColeteClientId(cfg.client_id || "");
+        setColeteClientSecret(cfg.client_secret || "");
+      }
+      setIntegrationLoaded(true);
+    });
     // Load credits
     const loadCredits = async () => {
       setLoadingCredits(true);
