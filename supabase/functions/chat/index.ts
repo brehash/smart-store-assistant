@@ -620,10 +620,32 @@ function generateReasoningBefore(toolName: string, args: any): string {
       return `Fetching sales history for product #${args.product_id} over last ${args.days || 60} days...`;
     case "get_product_sales_report":
       return `Aggregating per-product sales from ${args.date_min} to ${args.date_max}...`;
-    case "create_order":
+     case "create_order":
       return `Preparing new order with ${args.line_items?.length || 0} items...`;
     case "update_order_status":
       return `Updating order #${args.order_id} to '${args.status}'...`;
+    case "update_order":
+      return `Updating order #${args.order_id}...`;
+    case "delete_order":
+      return `Deleting order #${args.order_id}${args.force ? " permanently" : ""}...`;
+    case "create_product":
+      return `Creating product "${args.name || "unnamed"}"...`;
+    case "update_product":
+      return `Updating product #${args.product_id}...`;
+    case "delete_product":
+      return `Deleting product #${args.product_id}${args.force ? " permanently" : ""}...`;
+    case "create_page":
+      return `Creating page "${args.title || "unnamed"}"...`;
+    case "update_page":
+      return `Updating page #${args.page_id}...`;
+    case "delete_page":
+      return `Deleting page #${args.page_id}${args.force ? " permanently" : ""}...`;
+    case "create_post":
+      return `Creating post "${args.title || "unnamed"}"...`;
+    case "update_post":
+      return `Updating post #${args.post_id}...`;
+    case "delete_post":
+      return `Deleting post #${args.post_id}${args.force ? " permanently" : ""}...`;
     case "save_preference":
       return `Saving preference: "${args.key}"...`;
     default:
