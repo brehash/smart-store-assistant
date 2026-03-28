@@ -928,6 +928,14 @@ function generateReasoningAfter(toolName: string, result: any): string | null {
         }
         return null;
       }
+      case "get_top_customers": {
+        if (Array.isArray(result?.customers)) {
+          const count = result.customers.length;
+          const top = result.customers[0];
+          return `${count} customers found. Top: ${top?.customer_name || "N/A"} (${top?.total_revenue || 0} lei, ${top?.order_count || 0} orders).`;
+        }
+        return null;
+      }
       case "update_order":
       case "update_order_status":
         if (result?.id) return `Order #${result.id} updated (status: ${result.status}).`;
