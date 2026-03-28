@@ -928,6 +928,10 @@ function generateSemanticPlan(toolCalls: any[]): SemanticStep[] {
       case "save_preference":
         steps.push({ title: "Saving preference", details: args.key || undefined });
         break;
+      case "check_shipping_status":
+        steps.push({ title: "Fetching order details", details: `Order #${args.order_id}` });
+        steps.push({ title: "Checking Colete Online status" });
+        break;
       default:
         steps.push({ title: TOOL_LABELS[name] || name });
     }
