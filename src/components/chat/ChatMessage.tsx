@@ -41,6 +41,7 @@ interface ChatMessageProps {
   questions?: QuestionRequest[];
   debugLogs?: DebugEntry[];
   reasoningLogs?: ReasoningEntry[];
+  tokenUsage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
   onApproval?: (approval: ApprovalRequest, action: "approve" | "skip" | "edit", editedText?: string) => void;
   onQuestionAnswer?: (question: QuestionRequest, answer: string) => void;
 }
