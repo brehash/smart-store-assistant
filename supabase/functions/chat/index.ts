@@ -1982,7 +1982,6 @@ Be conversational. Currency is RON (lei).${defaultStatusStr}`;
           const totalUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
 
           // ── Order-creation intent detection ──
-          const lastUserMsg = (messages as any[]).filter((m: any) => m.role === "user").pop()?.content || "";
           const orderIntentRe = /(cre(?:ea)?z[aă]|f[aă]|plaseaz[aă]|adaug[aă]|pune|place|create|make|add|new)\s.*?(comand[aă]|order)/i;
           if (orderIntentRe.test(lastUserMsg)) {
             sendSSE({ type: "pipeline_plan", title: "Execution Plan", steps: ["Creating order form"] });
