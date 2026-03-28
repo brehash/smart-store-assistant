@@ -394,6 +394,7 @@ export type Database = {
       }
       woo_connections: {
         Row: {
+          active_plugins: string[]
           consumer_key: string
           consumer_secret: string
           created_at: string
@@ -407,6 +408,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          active_plugins?: string[]
           consumer_key: string
           consumer_secret: string
           created_at?: string
@@ -420,6 +422,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          active_plugins?: string[]
           consumer_key?: string
           consumer_secret?: string
           created_at?: string
