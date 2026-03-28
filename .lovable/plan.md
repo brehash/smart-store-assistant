@@ -1,98 +1,110 @@
 
 
-# GEO (Generative Engine Optimization) Feature Implementation
+# Vector Memory with OpenAI Embeddings + pgvector
 
 ## Overview
-Add three new AI tools (`audit_geo`, `generate_geo_content`, `bulk_geo_audit`) to the chat edge function, extend existing update tools with `meta_data`/`meta` support, and create a `GeoReportCard` UI component for rendering audit results.
+Add semantic memory so the AI can retrieve relevant past conversations and preferences using similarity search instead of just injecting all preferences into the system prompt.
+
+## Architecture
+
+```text
+User sends message
+  → chat edge function
+  → Generate embedding via OpenAI (text-embedding-3-small)
+  → Query pgvector for top-K similar memories
+  → Inject relevant memories into system prompt context
+  → After assistant responds, store conversation summary as new embedding
+```
 
 ## Changes
 
-### 1. Edge Function — New GEO Tools (`supabase/functions/chat/index.ts`)
+### 1. Database Migration — Enable pgvector + Create Table
 
-**Add 3 new tool definitions to the `TOOLS` array:**
+```sql
+-- Enable pgvector extension
+CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA extensions;
 
-- **`audit_geo`** — Accepts `product_id` or `page_id` + `type` (product/page/post). Fetches the entity via existing `callWooProxy`, then builds a GEO readiness prompt and sends it to the AI gateway for analysis. Returns a scored report (0-100) with category breakdowns: content length, heading structure, FAQ presence, structured data, meta description quality. Result emitted as `geo_report` rich content.
+-- Memory embeddings table
+CREATE TABLE public.memory_embeddings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  content text NOT NULL,
+  embedding extensions.vector(1536) NOT NULL,
+  memory_type text NOT NULL DEFAULT 'conversation_summary',
+  metadata jsonb DEFAULT '{}',
+  created_at timestamptz NOT NULL DEFAULT now()
+);
 
-- **`generate_geo_content`** — Accepts `product_id` or `page_id` + `type` + `active_plugins` (from connection data). Fetches current content, sends to AI with a GEO optimization prompt. Returns: optimized description HTML (with inline FAQ as `<details>/<summary>` tags), JSON-LD FAQ schema (appended as `<script>` tag in description), and SEO meta description. If Yoast/RankMath detected in plugins, also returns appropriate meta keys. Result shown via approval card so user reviews before applying.
+-- Index for fast similarity search
+CREATE INDEX memory_embeddings_user_idx ON public.memory_embeddings(user_id);
+CREATE INDEX memory_embeddings_vector_idx ON public.memory_embeddings
+  USING ivfflat (embedding extensions.vector_cosine_ops) WITH (lists = 100);
 
-- **`bulk_geo_audit`** — Accepts `product_ids` array (or "all" to use cached products). Runs a lightweight version of audit_geo on each, returns a summary table sorted by priority (lowest score first). Result emitted as `geo_report` rich content with a table view.
+-- RLS
+ALTER TABLE public.memory_embeddings ENABLE ROW LEVEL SECURITY;
 
-**Add GEO intent regex** for token optimization (like shipping intent):
+CREATE POLICY "Users manage own memories"
+  ON public.memory_embeddings FOR ALL TO authenticated
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- Similarity search function (bypasses RLS for service role usage)
+CREATE OR REPLACE FUNCTION public.match_memories(
+  _user_id uuid,
+  _embedding extensions.vector(1536),
+  _match_count int DEFAULT 5,
+  _match_threshold float DEFAULT 0.7
+)
+RETURNS TABLE (id uuid, content text, memory_type text, metadata jsonb, similarity float)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+  SELECT
+    me.id, me.content, me.memory_type, me.metadata,
+    1 - (me.embedding <=> _embedding) AS similarity
+  FROM public.memory_embeddings me
+  WHERE me.user_id = _user_id
+    AND 1 - (me.embedding <=> _embedding) > _match_threshold
+  ORDER BY me.embedding <=> _embedding
+  LIMIT _match_count;
+$$;
 ```
-/(geo|seo.*ai|optimiz.*ai|optimize.*search|ai.*search|generative.*engine|structured.*data|faq.*schema|json-ld)/i
-```
 
-**Extend `update_product` tool schema** — Add `meta_data` parameter:
-```typescript
-meta_data: { type: "array", items: { type: "object", properties: { key: { type: "string" }, value: { type: "string" } } } }
-```
-The handler already uses `const { product_id, ...rest } = args` and spreads `rest` to the API, so `meta_data` will be forwarded automatically.
+### 2. New Edge Function — `supabase/functions/embeddings/index.ts`
 
-**Extend `update_page` and `update_post` tool schemas** — Add `meta` parameter:
-```typescript
-meta: { type: "object", description: "Custom meta fields (key-value pairs)" }
-```
-Same `...rest` spread pattern already handles forwarding.
+Handles two operations via a JSON body `action` field:
 
-**Update supporting maps**: Add entries to `TOOL_LABELS`, `WRITE_TOOLS` (for `generate_geo_content` since it modifies content), `generateReasoningBefore`, `generateReasoningAfter`, `generateSemanticPlan`, and `truncateForAI`.
+- **`embed_and_store`**: Takes `content`, `memory_type`, `metadata`. Calls OpenAI `text-embedding-3-small` to generate a 1536-dim vector, then inserts into `memory_embeddings`.
+- **`search`**: Takes `query` text + optional `match_count`/`threshold`. Generates embedding for the query, calls `match_memories` RPC, returns ranked results.
 
-**Add GEO instructions to system prompt** explaining when/how to use the GEO tools and the plugin-aware injection strategy.
+Uses the existing `OPENAI_API_KEY` secret (already configured). Authenticates via JWT from the Authorization header to get user_id.
 
-**`audit_geo` handler logic (inside `executeTool`)**:
-1. Fetch product/page via `callWooProxy`
-2. Extract: description, short_description, name/title, meta_data
-3. Build analysis prompt asking AI to score 0-100 across categories
-4. Call AI gateway (non-streaming) with structured output via tool calling
-5. Return as `{ type: "geo_report", data: { score, categories, recommendations, entity } }`
+### 3. Chat Edge Function Updates — `supabase/functions/chat/index.ts`
 
-**`generate_geo_content` handler logic**:
-1. Fetch product/page current content
-2. Load `active_plugins` from `woo_connections` table
-3. Build optimization prompt with plugin-awareness rules
-4. Call AI gateway to generate optimized content
-5. Return optimized content + approval card for user review
-6. On approval, call `update_product`/`update_page` with new description + meta_data/meta
+**Before AI call** (after loading preferences, ~line 2108):
+1. Generate embedding for the user's latest message using OpenAI API directly (inline, not via the embeddings function — avoids extra HTTP hop).
+2. Call `match_memories` RPC with the embedding to get top 5 relevant memories.
+3. Append matched memories to the system prompt as a "Relevant memories from past conversations" section.
 
-### 2. New UI Component — `src/components/chat/GeoReportCard.tsx`
+**After AI response completes** (after the streaming loop ends):
+1. If the conversation had meaningful content (not just a greeting), build a brief summary of the exchange (user question + assistant answer gist).
+2. Fire-and-forget: call OpenAI to embed the summary, then insert into `memory_embeddings` with `memory_type: 'conversation_summary'` and metadata containing `conversation_id`.
 
-A card component that renders GEO audit results:
-- **Header**: Entity name + overall score (circular progress, color-coded: red <40, yellow 40-70, green >70)
-- **Category breakdown**: Mini progress bars for each category (Content, Structure, Schema, Meta, FAQs)
-- **Recommendations list**: Actionable items with priority badges
-- **Bulk mode**: Table view with entity name, score, top issue columns
-- Uses existing `Card`, `Progress`, `Badge` components from the UI library
+**Memory types** supported:
+- `conversation_summary` — auto-generated after each meaningful exchange
+- `preference` — when `save_preference` tool is called, also store as an embedding for semantic retrieval
+- `product_knowledge` — when the AI learns about specific products (optional, future)
 
-### 3. ChatMessage Updates — `src/components/chat/ChatMessage.tsx`
+### 4. Frontend — No Changes Required
 
-- Add `"geo_report"` to the `RichContent` type union
-- Import and render `GeoReportCard` when `rc.type === "geo_report"`
-- Style container with `max-w-3xl` for geo reports
+The memory system is entirely backend. The existing chat UI continues to work as-is; it just gets better context injected automatically.
 
-### 4. Stream Parser — `src/lib/chat-stream.ts`
+## Cost Impact
+- **OpenAI embeddings**: ~$0.02 per 1M tokens with `text-embedding-3-small`. Each message generates ~2 API calls (1 for search, 1 for storage). At 100 messages/day ≈ $0.01/month.
+- **Database storage**: 1536-dim vector = ~6KB per row. 10,000 memories ≈ 60MB.
+- **No Lovable Cloud cost changes** — pgvector is a free Postgres extension.
 
-No changes needed — the existing `rich_content` handler already forwards any `contentType` + `data` generically.
-
-## Files Modified
-1. `supabase/functions/chat/index.ts` — GEO tools + meta_data support in update schemas + system prompt
-2. `src/components/chat/GeoReportCard.tsx` — New component
-3. `src/components/chat/ChatMessage.tsx` — Render geo_report type
-
-## How It Works (User Flow)
-```text
-User: "audit GEO for product 42"
-  → AI calls audit_geo(product_id: 42, type: "product")
-  → Fetches product → AI analyzes → Returns scored report
-  → GeoReportCard renders with score + recommendations
-
-User: "optimize product 42 for AI search"
-  → AI calls generate_geo_content(product_id: 42, type: "product")
-  → Generates optimized description + FAQ schema + meta
-  → Shows approval card with summary
-  → User approves → calls update_product with description + meta_data
-
-User: "audit GEO for all products"
-  → AI calls bulk_geo_audit with cached product IDs
-  → Returns table of scores sorted by priority
-  → GeoReportCard renders in table/bulk mode
-```
+## Files Modified/Created
+1. **Migration SQL** — Enable pgvector, create `memory_embeddings` table + `match_memories` function
+2. **`supabase/functions/embeddings/index.ts`** — New edge function for standalone embed/search operations
+3. **`supabase/functions/chat/index.ts`** — Add memory retrieval before AI call + memory storage after response
 
