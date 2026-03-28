@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { streamChat, type PipelineEvent } from "@/lib/chat-stream";
 import { ChatMessage, type RichContent, type ApprovalRequest, type QuestionRequest } from "@/components/chat/ChatMessage";
+import type { OrderFormData } from "@/components/chat/OrderFormCard";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { ConversationSidebar } from "@/components/chat/ConversationSidebar";
 import { SettingsContent, type SettingsTab } from "@/pages/Settings";
