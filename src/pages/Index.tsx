@@ -7,6 +7,8 @@ import { ChatMessage, type RichContent, type ApprovalRequest, type QuestionReque
 import type { OrderFormData } from "@/components/chat/OrderFormCard";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { ConversationSidebar } from "@/components/chat/ConversationSidebar";
+import { ConnectionSetupCard } from "@/components/chat/ConnectionSetupCard";
+import { WebhookSetupCard } from "@/components/chat/WebhookSetupCard";
 import { SettingsContent, type SettingsTab } from "@/pages/Settings";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
