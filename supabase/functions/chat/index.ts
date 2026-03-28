@@ -1409,6 +1409,17 @@ serve(async (req) => {
 
     const { messages, conversationId, approvalResponse, viewId } = await req.json();
 
+    // ── Credit check ──
+    const serviceClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {});
+    // Ensure credit balance exists and refill if due
+    const { data: creditBalance } = await serviceClient.rpc("refill_credits_if_due", { _user_id: userId });
+    if (!creditBalance || creditBalance.balance <= 0) {
+      return new Response(JSON.stringify({ error: "You've run out of credits. Contact your administrator for more." }), {
+        status: 402,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { data: prefs } = await supabase
       .from("user_preferences")
       .select("preference_type, key, value")
