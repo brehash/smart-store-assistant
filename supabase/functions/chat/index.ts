@@ -1950,15 +1950,11 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                 semanticIdx++;
 
                 // Mark any remaining intermediate semantic steps (e.g. "Comparing periods") as done
+                // But skip post-processing steps that should be marked after the AI responds
                 while (semanticIdx < semanticSteps.length) {
                   const ss = semanticSteps[semanticIdx];
-                  if (
-                    ss.title === "Writing explanation" ||
-                    ss.title === "Building dashboard" ||
-                    ss.title === "Rendering results" ||
-                    ss.title === "Building inventory report"
-                  )
-                    break;
+                  // Stop at steps that need to wait for next tool call or post-response
+                  if (ss.title === "Writing explanation") break;
                   if (
                     ss.title.startsWith("Fetching") ||
                     ss.title === "Awaiting approval" ||
