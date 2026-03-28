@@ -2554,6 +2554,7 @@ Be conversational. Currency is RON (lei).${defaultStatusStr}`;
             if (!choice) break;
 
             const content = choice.message?.content || "";
+            if (content) finalAssistantContent = content;
 
             if (choice.finish_reason === "tool_calls" || choice.message?.tool_calls?.length) {
               const toolCalls = choice.message.tool_calls;
