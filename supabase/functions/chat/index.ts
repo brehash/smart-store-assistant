@@ -1496,102 +1496,127 @@ async function executeTool(
         return { result: { error: `Could not fetch order #${args.order_id}: ${orderData?.error || "Not found"}` } };
       }
 
-      // 2. Find _coleteonline_courier_order in meta_data
-      const metaEntry = (orderData.meta_data || []).find((m: any) => m.key === "_coleteonline_courier_order");
-      if (!metaEntry) {
-        return { result: { error: `No Colete Online shipment found on order #${args.order_id}. This order does not have AWB/shipping data from Colete Online.` } };
+      // 2. Detect shipping provider from order metadata
+      const metaData = orderData.meta_data || [];
+      
+      // Provider detection map — extensible for future integrations
+      const SHIPPING_PROVIDERS: { metaKey: string; provider: string; integrationKey: string }[] = [
+        { metaKey: "_coleteonline_courier_order", provider: "Colete Online", integrationKey: "colete_online" },
+        // Future: { metaKey: "_fancourier_awb", provider: "FAN Courier", integrationKey: "fan_courier" },
+        // Future: { metaKey: "_sameday_awb", provider: "Sameday", integrationKey: "sameday" },
+      ];
+
+      let detectedProvider: typeof SHIPPING_PROVIDERS[0] | null = null;
+      let shippingMeta: any = null;
+
+      for (const provider of SHIPPING_PROVIDERS) {
+        const meta = metaData.find((m: any) => m.key === provider.metaKey);
+        if (meta) {
+          detectedProvider = provider;
+          shippingMeta = meta;
+          break;
+        }
       }
 
-      let metaValue = metaEntry.value;
-      if (typeof metaValue === "string") {
-        try { metaValue = JSON.parse(metaValue); } catch { /* keep as-is */ }
+      if (!detectedProvider || !shippingMeta) {
+        return { result: { error: `No shipping tracking data found on order #${args.order_id}. This order does not have AWB/shipping metadata from any supported provider.` } };
       }
 
-      const uniqueId = metaValue?.result?.uniqueId;
-      const awb = metaValue?.result?.awb;
-      const courierName = metaValue?.result?.service?.service?.courierName;
-      const serviceName = metaValue?.result?.service?.service?.name;
-
-      if (!uniqueId) {
-        return { result: { error: `Colete Online metadata found on order #${args.order_id} but missing uniqueId.` } };
-      }
-
-      // 3. Get user's Colete Online credentials
+      // 3. Get the integration config for the detected provider
       const { data: integrationData } = await supabase
         .from("woo_integrations")
-        .select("config")
+        .select("config, is_enabled")
         .eq("user_id", userId)
-        .eq("integration_key", "colete_online")
-        .eq("is_enabled", true)
+        .eq("integration_key", detectedProvider.integrationKey)
         .maybeSingle();
 
-      if (!integrationData?.config) {
-        return { result: { error: "Colete Online integration is not configured or not enabled. Go to Settings > Integrations to set it up." } };
+      if (!integrationData || !integrationData.is_enabled) {
+        return { result: { error: `This order uses ${detectedProvider.provider} shipping but you haven't connected the ${detectedProvider.provider} integration yet. Go to Settings > Integrations to enable it.` } };
       }
 
-      const clientId = (integrationData.config as any).client_id;
-      const clientSecret = (integrationData.config as any).client_secret;
-      if (!clientId || !clientSecret) {
-        return { result: { error: "Colete Online Client ID or Client Secret is missing. Go to Settings > Integrations to configure." } };
+      // 4. Handle Colete Online (current only provider)
+      if (detectedProvider.integrationKey === "colete_online") {
+        let metaValue = shippingMeta.value;
+        if (typeof metaValue === "string") {
+          try { metaValue = JSON.parse(metaValue); } catch { /* keep as-is */ }
+        }
+
+        const uniqueId = metaValue?.result?.uniqueId;
+        const awb = metaValue?.result?.awb;
+        const courierName = metaValue?.result?.service?.service?.courierName;
+        const serviceName = metaValue?.result?.service?.service?.name;
+
+        if (!uniqueId) {
+          return { result: { error: `${detectedProvider.provider} metadata found on order #${args.order_id} but missing uniqueId.` } };
+        }
+
+        const clientId = (integrationData.config as any).client_id;
+        const clientSecret = (integrationData.config as any).client_secret;
+        if (!clientId || !clientSecret) {
+          return { result: { error: `${detectedProvider.provider} Client ID or Client Secret is missing. Go to Settings > Integrations to configure.` } };
+        }
+
+        // Authenticate with Colete Online
+        const basicAuth = btoa(`${clientId}:${clientSecret}`);
+        const tokenResp = await fetch("https://auth.colete-online.ro/token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Authorization": `Basic ${basicAuth}`,
+          },
+          body: "grant_type=client_credentials",
+        });
+
+        if (!tokenResp.ok) {
+          return { result: { error: `${detectedProvider.provider} authentication failed (${tokenResp.status}). Check your credentials in Settings > Integrations.` } };
+        }
+
+        const tokenData = await tokenResp.json();
+        const accessToken = tokenData.access_token;
+
+        // Get shipping status
+        const statusResp = await fetch(`https://api.colete-online.ro/v1/order/status/${uniqueId}`, {
+          headers: { "Authorization": `Bearer ${accessToken}` },
+        });
+
+        if (!statusResp.ok) {
+          return { result: { error: `${detectedProvider.provider} status API error (${statusResp.status}) for uniqueId ${uniqueId}.` } };
+        }
+
+        const statusData = await statusResp.json();
+        const history = statusData.history || [];
+        const latestEvent = history.length > 0 ? history[history.length - 1] : null;
+
+        return {
+          result: {
+            order_id: args.order_id,
+            provider: detectedProvider.provider,
+            awb: awb || statusData?.summary?.awb || "N/A",
+            uniqueId,
+            courier: courierName || "Unknown",
+            service: serviceName || "Unknown",
+            current_status: latestEvent ? {
+              code: latestEvent.code,
+              name: latestEvent.statusTextParts?.ro?.name || "Unknown",
+              reason: latestEvent.statusTextParts?.ro?.reason || "",
+              date: latestEvent.dateTime,
+              comment: latestEvent.comment?.ro || "",
+            } : null,
+            status_name: latestEvent?.statusTextParts?.ro?.name || "Unknown",
+            is_delivered: latestEvent?.code === 20800,
+            history: history.map((h: any) => ({
+              code: h.code,
+              name: h.statusTextParts?.ro?.name || "",
+              reason: h.statusTextParts?.ro?.reason || "",
+              date: h.dateTime,
+              comment: h.comment?.ro || "",
+            })),
+          },
+          requestUri: `GET /v1/order/status/${uniqueId}`,
+        };
       }
 
-      // 4. Authenticate with Colete Online
-      const basicAuth = btoa(`${clientId}:${clientSecret}`);
-      const tokenResp = await fetch("https://auth.colete-online.ro/token", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          "Authorization": `Basic ${basicAuth}`,
-        },
-        body: "grant_type=client_credentials",
-      });
-
-      if (!tokenResp.ok) {
-        return { result: { error: `Colete Online authentication failed (${tokenResp.status}). Check your credentials in Settings > Integrations.` } };
-      }
-
-      const tokenData = await tokenResp.json();
-      const accessToken = tokenData.access_token;
-
-      // 5. Get shipping status
-      const statusResp = await fetch(`https://api.colete-online.ro/v1/order/status/${uniqueId}`, {
-        headers: { "Authorization": `Bearer ${accessToken}` },
-      });
-
-      if (!statusResp.ok) {
-        return { result: { error: `Colete Online status API error (${statusResp.status}) for uniqueId ${uniqueId}.` } };
-      }
-
-      const statusData = await statusResp.json();
-      const history = statusData.history || [];
-      const latestEvent = history.length > 0 ? history[history.length - 1] : null;
-
-      return {
-        result: {
-          order_id: args.order_id,
-          awb: awb || statusData?.summary?.awb || "N/A",
-          uniqueId,
-          courier: courierName || "Unknown",
-          service: serviceName || "Unknown",
-          current_status: latestEvent ? {
-            code: latestEvent.code,
-            name: latestEvent.statusTextParts?.ro?.name || "Unknown",
-            reason: latestEvent.statusTextParts?.ro?.reason || "",
-            date: latestEvent.dateTime,
-            comment: latestEvent.comment?.ro || "",
-          } : null,
-          status_name: latestEvent?.statusTextParts?.ro?.name || "Unknown",
-          is_delivered: latestEvent?.code === 20800,
-          history: history.map((h: any) => ({
-            code: h.code,
-            name: h.statusTextParts?.ro?.name || "",
-            reason: h.statusTextParts?.ro?.reason || "",
-            date: h.dateTime,
-            comment: h.comment?.ro || "",
-          })),
-        },
-        requestUri: `GET /v1/order/status/${uniqueId}`,
-      };
+      return { result: { error: `Provider ${detectedProvider.provider} detected but handler not implemented yet.` } };
     }
     default:
       return { result: { error: `Unknown tool: ${toolName}` } };
