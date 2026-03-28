@@ -411,6 +411,20 @@ const TOOLS = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "check_shipping_status",
+      description: "Check the shipping/delivery status of an order. Requires the WooCommerce order number (NOT an AWB). The tool automatically detects the shipping provider from order metadata and checks the status.",
+      parameters: {
+        type: "object",
+        properties: {
+          order_id: { type: "number", description: "WooCommerce order ID/number" },
+        },
+        required: ["order_id"],
+      },
+    },
+  },
 ];
 
 const WRITE_TOOLS = new Set([
