@@ -62,6 +62,7 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
   const [status, setStatus] = useState("processing");
   const [paymentMethod, setPaymentMethod] = useState("");
   const [note, setNote] = useState("");
+  const [couponCode, setCouponCode] = useState("");
   const [billingOpen, setBillingOpen] = useState(false);
   const [billing, setBilling] = useState({
     first_name: "", last_name: "", email: "", phone: "",
@@ -160,6 +161,7 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
         line_items: lineItems.map((li) => ({ product_id: li.product_id, quantity: li.quantity })),
       };
       if (note) orderBody.customer_note = note;
+      if (couponCode.trim()) orderBody.coupon_lines = [{ code: couponCode.trim() }];
       if (paymentMethod) {
         orderBody.payment_method = paymentMethod;
         const pm = paymentMethods?.find((p) => p.id === paymentMethod);
@@ -337,6 +339,12 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
             </Select>
           </div>
         )}
+
+        {/* Coupon / Voucher */}
+        <div>
+          <Label className="text-xs font-medium mb-1.5 block">Voucher / Coupon (optional)</Label>
+          <Input placeholder="Enter coupon code..." value={couponCode} onChange={(e) => setCouponCode(e.target.value)} className="h-9 text-sm" disabled={isDisabled} />
+        </div>
 
         {/* Note */}
         <div>
