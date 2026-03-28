@@ -1,37 +1,42 @@
 
 
-## Add Active Plugins Detection to Settings
+## Switch Plugin Detection from WP REST API to WooCommerce System Status
 
-### Overview
-Fetch active WordPress plugins via the REST API, display them as selectable checkboxes in Settings > Connection (below order statuses), and persist selections in the database.
+### Problem
+The current implementation calls `wp/v2/plugins?status=active` which requires WordPress admin privileges. Even if the WooCommerce API keys belong to an admin user, WooCommerce consumer key/secret auth doesn't grant WordPress admin scope — so the endpoint returns 401.
+
+### Solution
+Use the WooCommerce `wc/v3/system_status` endpoint instead, which already works with WooCommerce consumer key auth. The response includes an `active_plugins` array with objects containing `plugin`, `name`, `version`, `url`, `author_name`, etc.
+
+The `test` action in `woo-proxy` already calls `system_status` — so we know this endpoint works with the existing credentials.
 
 ### Changes
 
-#### 1. Database: Add `active_plugins` column to `woo_connections`
-Add a `text[]` column (like `order_statuses`) to store selected plugin slugs.
+#### File: `src/pages/Settings.tsx`
 
-```sql
-ALTER TABLE public.woo_connections 
-ADD COLUMN active_plugins text[] NOT NULL DEFAULT '{}';
+Update `fetchPlugins` (line 150-161) to call `wc/v3` system_status instead of `wp/v2/plugins`:
+
+```typescript
+const fetchPlugins = async (url: string, ck: string, cs: string) => {
+  setLoadingPlugins(true);
+  try {
+    const { data, error } = await supabase.functions.invoke("woo-proxy", {
+      body: { endpoint: "system_status", storeUrl: url, consumerKey: ck, consumerSecret: cs },
+    });
+    if (error) throw error;
+    if (data?.active_plugins && Array.isArray(data.active_plugins)) {
+      setPlugins(data.active_plugins.map((p: any) => ({
+        plugin: p.plugin,
+        name: p.name,
+        version: p.version,
+      })));
+    }
+  } catch { /* silent */ }
+  finally { setLoadingPlugins(false); }
+};
 ```
 
-#### 2. Settings UI (`src/pages/Settings.tsx`)
-- Add state: `plugins` (fetched list), `selectedPlugins` (user selections), `loadingPlugins`
-- Add `fetchPlugins()` — calls `woo-proxy` with `apiPrefix: "wp/v2"`, `endpoint: "plugins?status=active"` to get active plugins
-- Call it after successful test connection and on initial load (same as `fetchOrderStatuses`)
-- Render a new Card below "Default Order Statuses" with plugin checkboxes (name + version)
-- Include `active_plugins: selectedPlugins` in the `handleSave` payload
-- The WordPress plugins endpoint returns: `{ plugin, status, name, version, ... }` — use `plugin` (slug) as identifier, `name` for display
+Key difference: uses default `apiPrefix` (`wc/v3`), endpoint `system_status`, and reads `data.active_plugins` from the response object (not the response itself as an array).
 
-#### 3. Edge function (`supabase/functions/woo-proxy/index.ts`)
-No changes needed — the proxy already supports `apiPrefix: "wp/v2"` and arbitrary endpoints. The plugins endpoint `wp/v2/plugins?status=active` will work through the existing proxy with WooCommerce consumer key auth (which has WordPress application password scope).
-
-> **Note**: The `wp/v2/plugins` endpoint requires admin-level authentication. If the WooCommerce API keys don't have sufficient permissions, the call may return 401. We'll handle this gracefully with a fallback message.
-
-### Files to Modify
-
-| File | Change |
-|------|--------|
-| `woo_connections` table | Add `active_plugins text[]` column |
-| `src/pages/Settings.tsx` | Add plugins fetch, display, selection, and persistence |
+No other files need changes — the proxy, database column, UI rendering, and save logic all remain the same.
 
