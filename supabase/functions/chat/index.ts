@@ -1779,7 +1779,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                 // Fetch payment gateways
                 let paymentMethods: any[] = [];
                 try {
-                  const gwResp = await wooFetch(conn.store_url, "payment_gateways", conn.consumer_key, conn.consumer_secret);
+                  const gwResp = await callWooProxy(supabaseUrl, authHeader, { endpoint: "payment_gateways", storeUrl: conn.store_url, consumerKey: conn.consumer_key, consumerSecret: conn.consumer_secret });
                   paymentMethods = Array.isArray(gwResp) ? gwResp.filter((g: any) => g.enabled).map((g: any) => ({ id: g.id, title: g.title })) : [];
                 } catch { /* payment gateways may not be accessible */ }
                 // Fetch order statuses
