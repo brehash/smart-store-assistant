@@ -183,6 +183,36 @@ export type Database = {
         }
         Relationships: []
       }
+      memory_embeddings: {
+        Row: {
+          content: string
+          created_at: string
+          embedding: string
+          id: string
+          memory_type: string
+          metadata: Json | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          embedding: string
+          id?: string
+          memory_type?: string
+          metadata?: Json | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          embedding?: string
+          id?: string
+          memory_type?: string
+          metadata?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       message_limits: {
         Row: {
           created_at: string | null
