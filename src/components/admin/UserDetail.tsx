@@ -103,15 +103,16 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
   };
 
   const adjustCredits = async () => {
-    if (creditAdjustAmount === 0) return;
+    const amount = parseInt(creditAdjustInput);
+    if (!amount || isNaN(amount)) return;
     setSavingCredits(true);
     try {
       const data = await apiCall(`${baseUrl}/users/${user.user_id}/credits`, {
-        method: "PUT", body: JSON.stringify({ amount: creditAdjustAmount, reason: creditReason || "admin_grant" }),
+        method: "PUT", body: JSON.stringify({ amount, reason: creditReason || "admin_grant" }),
       });
       setCreditBalance((prev) => prev ? { ...prev, balance: data.balance } : null);
-      toast({ title: `${creditAdjustAmount > 0 ? "Added" : "Deducted"} ${Math.abs(creditAdjustAmount)} credits`, description: `New balance: ${data.balance}` });
-      setCreditAdjustAmount(0);
+      toast({ title: `${amount > 0 ? "Added" : "Deducted"} ${Math.abs(amount)} credits`, description: `New balance: ${data.balance}` });
+      setCreditAdjustInput("");
       setCreditReason("");
       const txData = await apiCall(`${baseUrl}/users/${user.user_id}/credits`);
       setCreditTransactions(txData.transactions || []);
