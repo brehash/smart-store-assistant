@@ -47,11 +47,12 @@ interface OrderFormCardProps {
   orderStatuses?: string[];
   allOrderStatuses?: { slug: string; name: string }[];
   paymentMethods?: PaymentMethod[];
+  cachedProducts?: any[];
   disabled?: boolean;
   onOrderCreated?: (data: OrderFormData, result: { orderNumber: string; orderId: number; total: string }) => void;
 }
 
-export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMethods, disabled, onOrderCreated }: OrderFormCardProps) {
+export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMethods, cachedProducts, disabled, onOrderCreated }: OrderFormCardProps) {
   const { session } = useAuth();
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
