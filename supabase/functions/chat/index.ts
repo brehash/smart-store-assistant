@@ -1548,6 +1548,22 @@ async function executeTool(
         return { result: { error: `This order uses ${detectedProvider.provider} shipping but you haven't connected the ${detectedProvider.provider} integration yet. Go to Settings > Integrations to enable it.` } };
       }
 
+      // Helper: fetch with 429 retry
+      async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 2): Promise<Response> {
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+          const resp = await fetch(url, options);
+          if (resp.status === 429) {
+            const retryAfter = parseInt(resp.headers.get("Retry-After") || "5", 10);
+            const waitSec = Math.min(retryAfter, 30);
+            console.log(`429 from ${url}, retrying in ${waitSec}s (attempt ${attempt + 1}/${maxRetries})`);
+            await new Promise(r => setTimeout(r, waitSec * 1000));
+            continue;
+          }
+          return resp;
+        }
+        return fetch(url, options); // final attempt
+      }
+
       // 4. Handle Colete Online (current only provider)
       if (detectedProvider.integrationKey === "colete_online") {
         let metaValue = shippingMeta.value;
@@ -1572,7 +1588,7 @@ async function executeTool(
 
         // Authenticate with Colete Online
         const basicAuth = btoa(`${clientId}:${clientSecret}`);
-        const tokenResp = await fetch("https://auth.colete-online.ro/token", {
+        const tokenResp = await fetchWithRetry("https://auth.colete-online.ro/token", {
           method: "POST",
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
@@ -1581,6 +1597,10 @@ async function executeTool(
           body: "grant_type=client_credentials",
         });
 
+        if (tokenResp.status === 429) {
+          const retryAfter = tokenResp.headers.get("Retry-After") || "unknown";
+          return { result: { error: `Rate limited by Colete Online. Please try again in ${retryAfter} seconds.` } };
+        }
         if (!tokenResp.ok) {
           return { result: { error: `${detectedProvider.provider} authentication failed (${tokenResp.status}). Check your credentials in Settings > Integrations.` } };
         }
@@ -1589,10 +1609,14 @@ async function executeTool(
         const accessToken = tokenData.access_token;
 
         // Get shipping status
-        const statusResp = await fetch(`https://api.colete-online.ro/v1/order/status/${uniqueId}`, {
+        const statusResp = await fetchWithRetry(`https://api.colete-online.ro/v1/order/status/${uniqueId}`, {
           headers: { "Authorization": `Bearer ${accessToken}` },
         });
 
+        if (statusResp.status === 429) {
+          const retryAfter = statusResp.headers.get("Retry-After") || "unknown";
+          return { result: { error: `Rate limited by Colete Online. Please try again in ${retryAfter} seconds.` } };
+        }
         if (!statusResp.ok) {
           return { result: { error: `${detectedProvider.provider} status API error (${statusResp.status}) for uniqueId ${uniqueId}.` } };
         }
