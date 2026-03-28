@@ -1979,16 +1979,16 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
             // Post-tool synthesis: tick remaining semantic steps
             sendSSE({ type: "reasoning", text: "Preparing your response..." });
             if (planSent && stepIndex > 0) {
-              // Mark remaining semantic steps (Building dashboard, Writing explanation)
+              // Collect titles of steps already completed (before stepIndex)
+              // Mark all remaining non-"Writing explanation" steps as done
+              const POST_RESPONSE_STEPS = new Set([
+                "Building dashboard", "Rendering results", "Building inventory report",
+                "Calculating burn rate", "Parsing metadata", "Aggregating by product",
+                "Building product report", "Comparing periods",
+              ]);
               for (let i = 0; i < semanticSteps.length; i++) {
                 const ss = semanticSteps[i];
-                if (
-                  ss.title === "Building dashboard" ||
-                  ss.title === "Rendering results" ||
-                  ss.title === "Building inventory report" ||
-                  ss.title === "Calculating burn rate" ||
-                  ss.title === "Parsing metadata"
-                ) {
+                if (POST_RESPONSE_STEPS.has(ss.title)) {
                   sendSSE({ type: "reasoning", text: `${ss.title}...` });
                   sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "running" });
                   sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "done" });

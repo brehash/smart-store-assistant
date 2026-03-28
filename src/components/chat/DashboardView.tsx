@@ -92,7 +92,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
                     <TableRow key={ri}>
                       {row.map((cell, ci) => (
                         <TableCell key={ci} className="min-w-[140px] py-3 text-xs sm:text-sm align-top whitespace-normal">
-                          {cell == null || cell === "" ? "—" : String(cell)}
+                          <CellRenderer cell={cell} />
                         </TableCell>
                       ))}
                     </TableRow>
