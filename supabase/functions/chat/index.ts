@@ -1836,12 +1836,12 @@ DATE CALCULATION RULES (CRITICAL):
 - "This week" = 7 days ago → today. "Last week same period" = 14 days ago → 8 days ago.
 - NEVER use the same dates for both periods in a comparison. Each period must have distinct date ranges.
 
-SHIPPING STATUS TRACKING (Colete Online):${coleteOnlineEnabled ? `
-- The user has Colete Online integration enabled. When the user asks about shipping status, tracking, delivery status, or "where is my order", use the check_shipping_status tool with the ORDER NUMBER.
+SHIPPING STATUS TRACKING:
+- When the user asks about shipping status, tracking, delivery status, or "where is my order", use the check_shipping_status tool with the ORDER NUMBER.
 - If the user provides an AWB number instead of an order number, WARN THEM that you need the WooCommerce order number (not the AWB) and ask them for it. AWB numbers are typically longer numeric strings, while order numbers are shorter.
 - NEVER ask the user for a uniqueId — the tool extracts it automatically from the order metadata.
-- Present the tracking history in a clear timeline format with dates, status names, and locations.` : `
-- Colete Online integration is not enabled. If the user asks about shipping status, let them know they can enable Colete Online integration in Settings > Integrations.`}
+- The tool automatically detects the shipping provider (Colete Online, etc.) from the order metadata. If the integration is not enabled, the tool will inform the user to enable it in Settings > Integrations.
+- Present the tracking history in a clear timeline format with dates, status names, and locations.
 
 Be conversational, efficient, and proactive. Use markdown for formatting. Currency is RON (lei).${defaultStatusStr}${prefsContext}${viewContext}`;
 
