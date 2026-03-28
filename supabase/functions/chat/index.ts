@@ -1176,6 +1176,90 @@ async function executeTool(
         );
       return { result: { success: true, message: `Saved preference: "${args.key}"` } };
     }
+    // ── CRUD: Orders ──
+    case "update_order": {
+      const endpoint = `orders/${args.order_id}`;
+      const body: any = {};
+      if (args.status) body.status = args.status;
+      if (args.billing) body.billing = args.billing;
+      if (args.shipping) body.shipping = args.shipping;
+      if (args.line_items) body.line_items = args.line_items;
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint, method: "PUT", body });
+      if (args.note) {
+        await callWooProxy(supabaseUrl, authHeader, { endpoint: `orders/${args.order_id}/notes`, method: "POST", body: { note: args.note } });
+      }
+      return { result: data, requestUri: `PUT /wp-json/wc/v3/${endpoint}` };
+    }
+    case "delete_order": {
+      const endpoint = `orders/${args.order_id}`;
+      const force = args.force ? "?force=true" : "";
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `${endpoint}${force}`, method: "DELETE" });
+      return { result: data, requestUri: `DELETE /wp-json/wc/v3/${endpoint}` };
+    }
+    // ── CRUD: Products ──
+    case "create_product": {
+      const body: any = { name: args.name };
+      if (args.type) body.type = args.type;
+      if (args.regular_price) body.regular_price = args.regular_price;
+      if (args.description) body.description = args.description;
+      if (args.short_description) body.short_description = args.short_description;
+      if (args.sku) body.sku = args.sku;
+      if (args.stock_quantity != null) body.stock_quantity = args.stock_quantity;
+      if (args.manage_stock != null) body.manage_stock = args.manage_stock;
+      if (args.categories) body.categories = args.categories;
+      if (args.images) body.images = args.images;
+      if (args.status) body.status = args.status;
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: "products", method: "POST", body });
+      return { result: data, richContent: data?.id ? { type: "products", data: [data] } : undefined, requestUri: `POST /wp-json/wc/v3/products` };
+    }
+    case "update_product": {
+      const endpoint = `products/${args.product_id}`;
+      const { product_id, ...rest } = args;
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint, method: "PUT", body: rest });
+      return { result: data, richContent: data?.id ? { type: "products", data: [data] } : undefined, requestUri: `PUT /wp-json/wc/v3/${endpoint}` };
+    }
+    case "delete_product": {
+      const endpoint = `products/${args.product_id}`;
+      const force = args.force ? "?force=true" : "";
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `${endpoint}${force}`, method: "DELETE" });
+      return { result: data, requestUri: `DELETE /wp-json/wc/v3/${endpoint}` };
+    }
+    // ── CRUD: Pages (WordPress) ──
+    case "create_page": {
+      const body: any = { title: args.title, status: args.status || "draft" };
+      if (args.content) body.content = args.content;
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: "pages", method: "POST", body, apiPrefix: "wp/v2" });
+      return { result: data, requestUri: `POST /wp-json/wp/v2/pages` };
+    }
+    case "update_page": {
+      const { page_id, ...rest } = args;
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `pages/${page_id}`, method: "PUT", body: rest, apiPrefix: "wp/v2" });
+      return { result: data, requestUri: `PUT /wp-json/wp/v2/pages/${page_id}` };
+    }
+    case "delete_page": {
+      const force = args.force ? "?force=true" : "";
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `pages/${args.page_id}${force}`, method: "DELETE", apiPrefix: "wp/v2" });
+      return { result: data, requestUri: `DELETE /wp-json/wp/v2/pages/${args.page_id}` };
+    }
+    // ── CRUD: Posts (WordPress) ──
+    case "create_post": {
+      const body: any = { title: args.title, status: args.status || "draft" };
+      if (args.content) body.content = args.content;
+      if (args.categories) body.categories = args.categories;
+      if (args.tags) body.tags = args.tags;
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: "posts", method: "POST", body, apiPrefix: "wp/v2" });
+      return { result: data, requestUri: `POST /wp-json/wp/v2/posts` };
+    }
+    case "update_post": {
+      const { post_id, ...rest } = args;
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `posts/${post_id}`, method: "PUT", body: rest, apiPrefix: "wp/v2" });
+      return { result: data, requestUri: `PUT /wp-json/wp/v2/posts/${post_id}` };
+    }
+    case "delete_post": {
+      const force = args.force ? "?force=true" : "";
+      const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `posts/${args.post_id}${force}`, method: "DELETE", apiPrefix: "wp/v2" });
+      return { result: data, requestUri: `DELETE /wp-json/wp/v2/posts/${args.post_id}` };
+    }
     default:
       return { result: { error: `Unknown tool: ${toolName}` } };
   }
