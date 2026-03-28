@@ -1,49 +1,60 @@
 
 
-## Auto-suggest Order Completion When Shipping Is Delivered
+## Optimize Token Usage for Shipping Status Checks
 
-### Problem
-When checking shipping status, if the package is delivered but the WooCommerce order status is not "completed", nothing happens. The user should be prompted to mark it as completed.
+### Root Cause
+The 10K+ tokens aren't from the shipping result itself (already well-truncated at ~100 tokens). The cost comes from **fixed overhead sent on every AI call**:
+- System prompt: ~2,500 tokens (huge prompt with CRUD rules, invoice detection, stock analysis, etc.)
+- Tool definitions: ~2,000 tokens (16+ tools always sent)
+- Conversation history: variable (up to 20 messages)
+
+A shipping check triggers **2 AI calls** (tool call + response), each carrying the full overhead.
 
 ### Changes
 
 **File: `supabase/functions/chat/index.ts`**
 
-1. **Fix `isDelivered` to include COD status** (line 1654): Change from checking only `20800` to also include `30500`:
-   ```typescript
-   const isDelivered = latestEvent?.code === 20800 || latestEvent?.code === 30500;
-   ```
+1. **Send only relevant tools per intent** — Before calling the AI, detect if the conversation is about shipping and pass only `check_shipping_status` and `update_order_status` tools (instead of all 16+). This alone saves ~1,500 tokens per call.
 
-2. **Include order status in `shippingData`** (line 1663-1674): Add the WooCommerce order status from `orderData.status` so the frontend and AI know the current order state:
+   Add a lightweight intent classifier that selects a tool subset:
    ```typescript
-   const shippingData = {
-     ...existing fields,
-     order_status: orderData.status,  // e.g. "processing", "completed"
-   };
-   ```
-
-3. **Update system prompt** (line 1908 area): Add instruction after the existing shipping prompt section:
-   ```
-   - After showing shipping status, if the shipment is delivered (is_delivered = true) but the order status is NOT "completed", proactively ask the user: "The package has been delivered but the order is still marked as [status]. Would you like me to mark it as completed?" If the user agrees, use update_order_status to set the order to "completed".
-   ```
-
-4. **Update `truncateForAI`** (line 671-681): Include `order_status` in the truncated result so the AI can see it:
-   ```typescript
-   if (toolName === "check_shipping_status") {
-     return {
-       ...existing fields,
-       order_status: result.order_status,
-     };
+   function selectToolsForIntent(lastUserMsg: string, hasToolResult: boolean): typeof TOOLS {
+     // If we're in a tool-result iteration, send minimal tools
+     if (hasToolResult) {
+       // Only keep tools the AI might chain (e.g. update_order_status after shipping)
+       return TOOLS.filter(t => ["update_order_status", "check_shipping_status"].includes(t.function.name));
+     }
+     // For shipping queries, limit tools
+     const shippingRe = /(shipping|tracking|delivery|livrare|colet|awb|status.*comand|comand.*status|unde.*comand)/i;
+     if (shippingRe.test(lastUserMsg)) {
+       return TOOLS.filter(t => ["check_shipping_status", "update_order_status", "search_orders"].includes(t.function.name));
+     }
+     return TOOLS; // full set for general queries
    }
    ```
 
-### How it works
-- The AI receives both `is_delivered` and `order_status` in the truncated tool result
-- The system prompt instructs it to compare these two values
-- If delivered but not completed, the AI asks the user in natural language
-- If user agrees, the AI calls the existing `update_order_status` tool (which is already a write tool requiring approval via ApprovalCard)
-- No new UI components needed — uses existing approval flow
+2. **Trim conversation history more aggressively for follow-up iterations** — During the tool-result loop (iterations 2+), reduce history to last 6 messages instead of 20, since the AI only needs the current context to interpret the tool result.
+
+3. **Shorten the system prompt for shipping-only queries** — Extract a minimal system prompt variant for shipping checks that excludes the lengthy sections about invoice detection, stock analysis, dashboard formatting, etc. This saves ~1,500 tokens.
+
+   ```typescript
+   const SHIPPING_PROMPT_SUFFIX = `
+   SHIPPING STATUS TRACKING:
+   - Do NOT list tracking history as text. The visual timeline handles it.
+   - After showing shipping status, if is_delivered=true but order_status!="completed", ask to mark as completed.
+   Be conversational. Currency is RON.`;
+   ```
+
+   Use the short prompt when the intent is purely shipping.
+
+### Expected Savings
+| Component | Before | After | Saved |
+|-----------|--------|-------|-------|
+| Tool definitions | ~2,000 | ~300 | ~1,700 |
+| System prompt | ~2,500 | ~800 | ~1,700 |
+| History (iteration 2) | ~2,000 | ~600 | ~1,400 |
+| **Total per check** | **~10K+** | **~5-6K** | **~40-50%** |
 
 ### Files
-1. `supabase/functions/chat/index.ts` — all 4 changes above
+1. `supabase/functions/chat/index.ts` — add intent-based tool selection, conditional prompt trimming, and tighter history in follow-up iterations
 
