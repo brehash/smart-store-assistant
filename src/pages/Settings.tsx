@@ -71,6 +71,11 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
 
+  // Credits tab state
+  const [creditBalance, setCreditBalance] = useState<any>(null);
+  const [topupPacks, setTopupPacks] = useState<any[]>([]);
+  const [loadingCredits, setLoadingCredits] = useState(true);
+
 
   // Appearance
   const [theme, setTheme] = useState<"system" | "dark" | "light">(() => {
