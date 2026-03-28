@@ -103,6 +103,17 @@ export function ChatMessage({
           />
         ))}
 
+        {/* Order form cards */}
+        {orderForms?.map((of, i) => (
+          <OrderFormCard
+            key={`order-form-${i}`}
+            data={of}
+            orderStatuses={orderStatuses}
+            disabled={isStreaming}
+            onOrderCreated={onOrderCreated}
+          />
+        ))}
+
         {/* Text content */}
         {content && (
           <div
