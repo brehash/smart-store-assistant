@@ -288,13 +288,16 @@ export default function Index() {
           }));
           scrollToBottom();
         } else if (event.type === "pipeline_complete") {
-          updateLastAssistant((m) => {
-            if (!m.pipeline) return m;
-            const steps = m.pipeline.steps.map((s) =>
+          // Update pipelineData OUTSIDE the React updater to avoid batching race
+          if (pipelineData) {
+            const doneSteps = pipelineData.steps.map((s) =>
               s.status === "pending" ? { ...s, status: "done" as const } : s
             );
-            pipelineData = { ...m.pipeline, steps };
-            return { ...m, pipeline: pipelineData };
+            pipelineData = { ...pipelineData, steps: doneSteps };
+          }
+          updateLastAssistant((m) => {
+            if (!m.pipeline) return m;
+            return { ...m, pipeline: pipelineData! };
           });
           scrollToBottom();
         } else if (event.type === "question_request") {
