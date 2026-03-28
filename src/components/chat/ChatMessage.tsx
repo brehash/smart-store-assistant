@@ -49,6 +49,7 @@ interface ChatMessageProps {
   orderStatuses?: string[];
   allOrderStatuses?: { slug: string; name: string }[];
   paymentMethods?: { id: string; title: string }[];
+  cachedProducts?: any[];
   onApproval?: (approval: ApprovalRequest, action: "approve" | "skip" | "edit", editedText?: string) => void;
   onQuestionAnswer?: (question: QuestionRequest, answer: string) => void;
   onOrderCreated?: (data: OrderFormData, result: { orderNumber: string; orderId: number; total: string }) => void;
@@ -57,7 +58,7 @@ interface ChatMessageProps {
 export function ChatMessage({
   role, content, richContents, isStreaming,
   pipeline, approvals, questions, orderForms, debugLogs, reasoningLogs, tokenUsage, creditUsage,
-  orderStatuses, allOrderStatuses, paymentMethods, onApproval, onQuestionAnswer, onOrderCreated,
+  orderStatuses, allOrderStatuses, paymentMethods, cachedProducts, onApproval, onQuestionAnswer, onOrderCreated,
 }: ChatMessageProps) {
   const isUser = role === "user";
 
@@ -114,6 +115,7 @@ export function ChatMessage({
             orderStatuses={orderStatuses}
             allOrderStatuses={allOrderStatuses}
             paymentMethods={paymentMethods}
+            cachedProducts={cachedProducts}
             disabled={isStreaming}
             onOrderCreated={onOrderCreated}
           />

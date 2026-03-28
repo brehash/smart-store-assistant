@@ -47,11 +47,12 @@ interface OrderFormCardProps {
   orderStatuses?: string[];
   allOrderStatuses?: { slug: string; name: string }[];
   paymentMethods?: PaymentMethod[];
+  cachedProducts?: any[];
   disabled?: boolean;
   onOrderCreated?: (data: OrderFormData, result: { orderNumber: string; orderId: number; total: string }) => void;
 }
 
-export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMethods, disabled, onOrderCreated }: OrderFormCardProps) {
+export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMethods, cachedProducts, disabled, onOrderCreated }: OrderFormCardProps) {
   const { session } = useAuth();
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -84,6 +85,20 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
 
   const searchProducts = useCallback(async (query: string) => {
     if (!query.trim() || !session) return;
+    const q = query.toLowerCase();
+    // Search cached products first
+    if (cachedProducts && cachedProducts.length > 0) {
+      const localResults = cachedProducts.filter((p: any) =>
+        p.name?.toLowerCase().includes(q) || p.sku?.toLowerCase().includes(q)
+      ).slice(0, 10);
+      if (localResults.length > 0) {
+        setSearchResults(localResults);
+        setShowResults(true);
+        setSearching(false);
+        return;
+      }
+    }
+    // Fall back to live API
     setSearching(true);
     try {
       const { data: result, error } = await supabase.functions.invoke("woo-proxy", {
@@ -95,7 +110,7 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
       }
     } catch { /* silent */ }
     finally { setSearching(false); }
-  }, [session]);
+  }, [session, cachedProducts]);
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);

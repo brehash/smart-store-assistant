@@ -73,6 +73,7 @@ export default function Index() {
   const [cachedPaymentMethods, setCachedPaymentMethods] = useState<{ id: string; title: string }[]>([]);
   const [cachedAllStatuses, setCachedAllStatuses] = useState<{ slug: string; name: string }[]>([]);
   const [cachedSelectedStatuses, setCachedSelectedStatuses] = useState<string[]>([]);
+  const [cachedProducts, setCachedProducts] = useState<any[]>([]);
 
   // Fetch credit balance and app settings on mount
   useEffect(() => {
@@ -114,12 +115,13 @@ export default function Index() {
       .from("woo_cache" as any)
       .select("cache_key, data")
       .eq("user_id", user.id)
-      .in("cache_key", ["payment_methods", "order_statuses"])
+      .in("cache_key", ["payment_methods", "order_statuses", "products"])
       .then(({ data }: any) => {
         if (Array.isArray(data)) {
           for (const row of data) {
             if (row.cache_key === "payment_methods") setCachedPaymentMethods(row.data || []);
             if (row.cache_key === "order_statuses") setCachedAllStatuses(row.data || []);
+            if (row.cache_key === "products") setCachedProducts(row.data || []);
           }
         }
       });
@@ -700,27 +702,28 @@ export default function Index() {
           ) : (
             <div className="mx-auto max-w-3xl py-4">
               {messages.map((msg, i) => (
-                <ChatMessage
-                  key={i}
-                  role={msg.role}
-                  content={msg.content}
-                  richContents={msg.richContents}
-                  isStreaming={isStreaming && i === messages.length - 1 && msg.role === "assistant"}
-                  pipeline={msg.pipeline}
-                  approvals={msg.approvals}
-                  questions={msg.questions}
-                  orderForms={msg.orderForms}
-                  debugLogs={msg.debugLogs}
-                  reasoningLogs={msg.reasoningLogs}
-                  tokenUsage={msg.tokenUsage}
-                  creditUsage={msg.creditUsage}
-                  orderStatuses={cachedSelectedStatuses}
-                  allOrderStatuses={cachedAllStatuses}
-                  paymentMethods={cachedPaymentMethods}
-                  onApproval={handleApproval}
-                  onQuestionAnswer={handleQuestionAnswer}
-                  onOrderCreated={handleOrderCreated}
-                />
+                 <ChatMessage
+                   key={i}
+                   role={msg.role}
+                   content={msg.content}
+                   richContents={msg.richContents}
+                   isStreaming={isStreaming && i === messages.length - 1 && msg.role === "assistant"}
+                   pipeline={msg.pipeline}
+                   approvals={msg.approvals}
+                   questions={msg.questions}
+                   orderForms={msg.orderForms}
+                   debugLogs={msg.debugLogs}
+                   reasoningLogs={msg.reasoningLogs}
+                   tokenUsage={msg.tokenUsage}
+                   creditUsage={msg.creditUsage}
+                   orderStatuses={cachedSelectedStatuses}
+                   allOrderStatuses={cachedAllStatuses}
+                   paymentMethods={cachedPaymentMethods}
+                   cachedProducts={cachedProducts}
+                   onApproval={handleApproval}
+                   onQuestionAnswer={handleQuestionAnswer}
+                   onOrderCreated={handleOrderCreated}
+                 />
               ))}
             </div>
           )}
