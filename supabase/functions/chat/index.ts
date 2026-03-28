@@ -676,6 +676,7 @@ function truncateForAI(toolName: string, result: any): any {
         service: result.service,
         status_name: result.status_name,
         is_delivered: result.is_delivered,
+        order_status: result.order_status,
         current_status: result.current_status,
         history_count: Array.isArray(result.history) ? result.history.length : 0,
       };
