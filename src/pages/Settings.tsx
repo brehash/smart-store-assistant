@@ -85,6 +85,13 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
   const [loadingCredits, setLoadingCredits] = useState(true);
 
 
+  // Integrations state
+  const [coleteOnlineEnabled, setColeteOnlineEnabled] = useState(false);
+  const [coleteClientId, setColeteClientId] = useState("");
+  const [coleteClientSecret, setColeteClientSecret] = useState("");
+  const [savingIntegration, setSavingIntegration] = useState(false);
+  const [integrationLoaded, setIntegrationLoaded] = useState(false);
+
   // Appearance
   const [theme, setTheme] = useState<"system" | "dark" | "light">(() => {
     return (localStorage.getItem("theme") as any) || "system";
