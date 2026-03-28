@@ -641,8 +641,27 @@ export default function Index() {
         </div>
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin">
-          {messages.length === 0 ? (
+          {hasConnection === false && messages.length === 0 ? (
+            <ConnectionSetupCard onComplete={() => {
+              setHasConnection(true);
+              setShowWebhookSetup(true);
+            }} />
+          ) : messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center px-4">
+              {showWebhookSetup && (
+                <div className="w-full mb-6">
+                  <WebhookSetupCard
+                    onComplete={() => {
+                      setShowWebhookSetup(false);
+                      localStorage.setItem(`webhook-setup-dismissed-${user?.id}`, "true");
+                    }}
+                    onDismiss={() => {
+                      setShowWebhookSetup(false);
+                      localStorage.setItem(`webhook-setup-dismissed-${user?.id}`, "true");
+                    }}
+                  />
+                </div>
+              )}
               <div className="rounded-2xl bg-primary/10 p-4 mb-4">
                 <svg className="h-8 w-8 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
