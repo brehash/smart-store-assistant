@@ -1670,6 +1670,7 @@ async function executeTool(
           current_status: currentStatus,
           status_name: currentStatus?.name || "Unknown",
           is_delivered: isDelivered,
+          order_status: orderData.status,
           history: mappedHistory,
         };
 
