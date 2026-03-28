@@ -139,6 +139,13 @@ export function ChatMessage({
 
         {/* Debug panel */}
         {debugLogs && debugLogs.length > 0 && !isUser && <DebugPanel logs={debugLogs} />}
+
+        {/* Token usage badge */}
+        {tokenUsage && !isUser && (
+          <span className="text-[11px] text-muted-foreground/60 tabular-nums">
+            {tokenUsage.total_tokens.toLocaleString()} tokens
+          </span>
+        )}
       </div>
     </div>
   );
