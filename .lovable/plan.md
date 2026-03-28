@@ -1,63 +1,66 @@
 
 
-## Two Fixes: Pipeline Disappearing on Tab Switch + New Product Sales Tool
+## Add CRUD Tools for Orders, Products, Pages & Posts (with Approval)
 
-### Issue 1: Pipeline disappears when switching tabs
+### Overview
+Add write tools (create/update/delete) for orders, products, pages, and posts. All write operations require user approval before execution via the existing ApprovalCard UI.
 
-**Root cause**: The pipeline UI state lives only in React state (`useState`). When you switch tabs and come back, React doesn't re-render — but the streaming assistant message (without an `id`) is identified by `!last.id` in `updateLastAssistant`. The real problem is that during streaming, the message has no `id` (it's not yet persisted). When the browser tab loses focus and regains it, React's state is intact, so this shouldn't cause disappearance on its own.
-
-The actual cause is likely the SSE connection being interrupted by the browser throttling background tabs. When the tab is backgrounded, Chrome throttles timers and may close idle connections. The stream dies silently, but `onDone`/`onError` may not fire cleanly, leaving `isStreaming = true` and the partial message without persistence.
-
-**Fix**:
-- Add a `visibilitychange` listener that, when the tab becomes visible again while `isStreaming` is true, checks if the stream is still alive. If the connection died, call `onError` to persist the partial message and show a toast.
-- In `onDone`, always persist the assistant message (currently it persists correctly, but the pipeline metadata should also be saved even if content is empty).
-- Add a `useRef` to track whether the stream is still active, so the visibility handler can detect stale streams.
-
-**Files**: `src/pages/Index.tsx`
+### Key Challenge: WooCommerce vs WordPress API
+The current `woo-proxy` hardcodes the path to `/wp-json/wc/v3/`. Pages and posts use the WordPress REST API at `/wp-json/wp/v2/`. The proxy needs a small update to support an optional `apiPrefix` parameter.
 
 ---
 
-### Issue 2: New `get_product_sales_report` tool
+### Changes
 
-**Problem**: `get_sales_report` returns only aggregate revenue + daily breakdown. It does NOT return per-product data (revenue per product, units sold per product). The AI has no single tool to answer "which products dominate" without calling `get_product_sales` for each product individually (which wastes iterations).
+#### 1. Update `supabase/functions/woo-proxy/index.ts`
+- Add optional `apiPrefix` parameter (default: `wc/v3`)
+- Also support `DELETE` method in fetch options
+- URL becomes: `${baseUrl}/wp-json/${apiPrefix}/${endpoint}...`
 
-**Fix**: Add a new tool `get_product_sales_report` that fetches all orders for a period and aggregates by product, returning for each product:
-- `product_id`, `product_name`
-- `total_revenue` (valoric)
-- `total_quantity` (cantitativ / units sold)
-- `order_count` (how many orders contained it)
-- `average_price` per unit
+#### 2. Update `supabase/functions/chat/index.ts`
 
-This is built from the same orders data as `get_sales_report` but aggregates by line item instead of by date.
+**New tool definitions (added to `TOOLS` array):**
 
-**Implementation** (in `supabase/functions/chat/index.ts`):
+| Tool | WooCommerce Endpoint | Method | Key Parameters |
+|------|---------------------|--------|----------------|
+| `update_order` | `orders/{id}` | PUT | `order_id`, `status`, `billing`, `shipping`, `line_items`, `note` |
+| `delete_order` | `orders/{id}` | DELETE | `order_id`, `force` (permanent delete) |
+| `create_product` | `products` | POST | `name`, `type`, `regular_price`, `description`, `sku`, `stock_quantity`, `categories`, `images` |
+| `update_product` | `products/{id}` | PUT | `product_id`, `name`, `regular_price`, `sale_price`, `stock_quantity`, `status`, `description` |
+| `delete_product` | `products/{id}` | DELETE | `product_id`, `force` |
+| `create_page` | `wp/v2/pages` | POST | `title`, `content`, `status` |
+| `update_page` | `wp/v2/pages/{id}` | PUT | `page_id`, `title`, `content`, `status` |
+| `delete_page` | `wp/v2/pages/{id}` | DELETE | `page_id`, `force` |
+| `create_post` | `wp/v2/posts` | POST | `title`, `content`, `status`, `categories` |
+| `update_post` | `wp/v2/posts/{id}` | PUT | `post_id`, `title`, `content`, `status` |
+| `delete_post` | `wp/v2/posts/{id}` | DELETE | `post_id`, `force` |
 
-1. Add tool definition:
-```
-name: "get_product_sales_report"
-description: "Get per-product sales breakdown for a date range. Returns each product with its total revenue, units sold, and order count. Use for product dominance, top sellers, and product-level analysis."
-parameters: date_min, date_max, period (same as get_sales_report), limit (default 50)
-```
+**Update `WRITE_TOOLS` set** to include all new write tools.
 
-2. Add tool execution in `executeTool`:
-   - Fetch orders for the period (same pagination as `get_product_sales`, up to 3 pages)
-   - Iterate `order.line_items`, aggregate by `product_id`
-   - Sort by `total_revenue` descending
-   - Return array of `{ product_id, product_name, total_revenue, total_quantity, order_count, average_price }`
-   - Rich content: product table or chart
+**Update `executeTool`** with cases for each new tool. For pages/posts, pass `apiPrefix: "wp/v2"` to `callWooProxy`.
 
-3. Add to `TOOL_LABELS`, `generateSemanticPlan`, `generateReasoningBefore/After`, `truncateForAI`
+**Update `callWooProxy`** to accept and forward an optional `apiPrefix` parameter.
 
-4. Update system prompt to instruct AI to use this tool for product dominance questions
+**Update `TOOL_LABELS`** with human-readable labels for each new tool.
 
-**Files**: `supabase/functions/chat/index.ts`
+**Update `generateSemanticPlan`** with semantic steps for each new tool (e.g., "Preparing product update" → "Awaiting approval").
+
+**Update `generateReasoningBefore/After`** with contextual messages for each tool.
+
+**Update system prompt** to instruct the AI:
+- For order modifications: search the order first, then call update/delete
+- For product creation: confirm details with the user via the approval card
+- For pages/posts: use WordPress endpoints
+
+#### 3. No frontend changes needed
+The existing `ApprovalCard` component and approval flow in `Index.tsx` already handle any tool in `WRITE_TOOLS` generically. New tools will automatically get the Approve/Skip/Edit UI.
 
 ---
 
-### Summary of changes
+### Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/pages/Index.tsx` | Add `visibilitychange` listener to detect dead streams when tab regains focus; persist partial messages |
-| `supabase/functions/chat/index.ts` | Add `get_product_sales_report` tool (definition, execution, semantic plan, reasoning, truncation, system prompt update) |
+| `supabase/functions/woo-proxy/index.ts` | Add `apiPrefix` param, support DELETE method |
+| `supabase/functions/chat/index.ts` | Add 11 new tool definitions, execution logic, labels, semantic plans, reasoning, update WRITE_TOOLS and system prompt |
 
