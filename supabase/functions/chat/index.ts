@@ -950,7 +950,9 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
     const aiAuthHeader = useOpenAI ? `Bearer ${userOpenAIKey}` : `Bearer ${LOVABLE_API_KEY}`;
     const aiModel = useOpenAI ? "gpt-5.4-nano" : "google/gemini-3-flash-preview";
 
-    let aiMessages: any[] = [{ role: "system", content: systemPrompt }, ...sanitizeAiHistory(messages)];
+    // Trim conversation history to last 20 messages to prevent context bloat
+    const trimmedHistory = sanitizeAiHistory(messages).slice(-20);
+    let aiMessages: any[] = [{ role: "system", content: systemPrompt }, ...trimmedHistory];
     const encoder = new TextEncoder();
 
     const stream = new ReadableStream({
