@@ -2885,7 +2885,7 @@ Be conversational. Currency is RON (lei).${defaultStatusStr}`;
           }
 
           // ── Vector Memory: Store conversation summary (fire-and-forget) ──
-          if (openaiKey && content && content.length > 30) {
+          if (openaiKey && finalAssistantContent && finalAssistantContent.length > 30) {
             const greetingRe = /^(hi|hello|hey|salut|buna|ola|ciao)\b/i;
             if (!greetingRe.test(lastUserMsg.trim())) {
               const summary = `Q: ${lastUserMsg.slice(0, 200)}\nA: ${content.slice(0, 300)}`;
