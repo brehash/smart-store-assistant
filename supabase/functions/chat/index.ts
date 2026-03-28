@@ -2276,7 +2276,16 @@ SHIPPING STATUS TRACKING:
 - Do NOT list the tracking history as text. The visual shipping timeline component shows the history automatically. Just provide a brief summary (current status, courier, AWB).
 - After showing shipping status, if the shipment is delivered (is_delivered = true) but the order_status is NOT "completed", proactively ask the user: "Coletul a fost livrat, dar comanda este încă marcată ca [order_status]. Vrei să o marchez ca finalizată?" If the user agrees, use update_order_status to set the order to "completed".
 
-Be conversational, efficient, and proactive. Use markdown for formatting. Currency is RON (lei).${defaultStatusStr}${prefsContext}${viewContext}`;
+GEO (GENERATIVE ENGINE OPTIMIZATION):
+- When the user asks about GEO, SEO for AI, optimizing for AI search, structured data, FAQ schema, or JSON-LD: use the GEO tools.
+- audit_geo: Analyzes a product/page/post for GEO readiness (0-100 score). Shows a visual report card with category breakdowns and recommendations.
+- generate_geo_content: Generates optimized content with FAQ schema, JSON-LD, and meta descriptions. Plugin-aware (detects Yoast/RankMath from active_plugins). If no SEO plugin is detected, injects JSON-LD directly into the description HTML.
+- bulk_geo_audit: Audits multiple products at once. Pass empty product_ids array to use cached products.
+- After generate_geo_content returns, the content changes will go through the approval flow. On approval, call update_product/update_page/update_post with the generated description + meta_data/meta fields.
+- The update_product tool now supports a meta_data array parameter for writing to WooCommerce custom fields (including SEO plugin meta like _yoast_wpseo_metadesc).
+- The update_page and update_post tools now support a meta object parameter for WordPress custom meta fields.
+
+Be conversational, efficient, and proactive. Use markdown for formatting. Currency is RON (lei).\${defaultStatusStr}\${prefsContext}\${viewContext}\`;
 
     // Minimal system prompt for shipping-only queries (saves ~1,700 tokens)
     const shippingSystemPrompt = `You are a WooCommerce store assistant.${languageInstruction}
