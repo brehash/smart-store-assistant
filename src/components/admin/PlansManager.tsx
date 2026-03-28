@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Save } from "lucide-react";
 
@@ -21,6 +22,8 @@ export function PlansManager({ accessToken }: { accessToken: string }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [edits, setEdits] = useState<Record<string, Partial<TopupPack>>>({});
+  const [topupModalEnabled, setTopupModalEnabled] = useState(true);
+  const [savingToggle, setSavingToggle] = useState(false);
 
   const baseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin`;
 
@@ -38,7 +41,20 @@ export function PlansManager({ accessToken }: { accessToken: string }) {
     }
   };
 
-  useEffect(() => { fetchPacks(); }, [accessToken]);
+  const fetchSettings = async () => {
+    try {
+      const resp = await fetch(`${baseUrl}/settings`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        const setting = data.find((s: any) => s.key === "enable_topup_modal");
+        if (setting) setTopupModalEnabled(setting.value === true || setting.value === "true");
+      }
+    } catch { /* ignore */ }
+  };
+
+  useEffect(() => { fetchPacks(); fetchSettings(); }, [accessToken]);
 
   const getEditValue = (pack: TopupPack, field: keyof TopupPack) => {
     return edits[pack.id]?.[field] ?? pack[field];
@@ -93,6 +109,25 @@ export function PlansManager({ accessToken }: { accessToken: string }) {
     }
   };
 
+  const handleToggleModal = async (enabled: boolean) => {
+    setSavingToggle(true);
+    setTopupModalEnabled(enabled);
+    try {
+      const resp = await fetch(`${baseUrl}/settings/enable_topup_modal`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ value: enabled }),
+      });
+      if (resp.ok) {
+        toast({ title: enabled ? "Enabled" : "Disabled", description: `Credit top-up modal ${enabled ? "enabled" : "disabled"} for users.` });
+      }
+    } catch {
+      toast({ title: "Error", description: "Failed to update setting.", variant: "destructive" });
+    } finally {
+      setSavingToggle(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -102,7 +137,20 @@ export function PlansManager({ accessToken }: { accessToken: string }) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Admin Toggle */}
+      <Card>
+        <CardContent className="pt-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-sm font-medium">Enable credit top-up modal for users</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">When enabled, users can click their credits badge to see plans and top-ups</p>
+            </div>
+            <Switch checked={topupModalEnabled} onCheckedChange={handleToggleModal} disabled={savingToggle} />
+          </div>
+        </CardContent>
+      </Card>
+
       <div>
         <h2 className="text-lg font-semibold">Credit Top-Up Packs</h2>
         <p className="text-sm text-muted-foreground">Manage one-time credit purchase options visible to users</p>

@@ -16,6 +16,7 @@ import type { PipelinePlanData } from "@/components/chat/PipelinePlan";
 import type { PipelineStepData } from "@/components/chat/PipelineStep";
 import type { DebugEntry } from "@/components/chat/DebugPanel";
 import type { ReasoningEntry } from "@/components/chat/ReasoningBubbles";
+import { CreditsModal } from "@/components/chat/CreditsModal";
 
 interface TokenUsage {
   prompt_tokens: number;
@@ -60,13 +61,25 @@ export default function Index() {
   const [settingsTab, setSettingsTab] = useState<SettingsTab>(() => (settingsParam as SettingsTab) || "general");
   const scrollRef = useRef<HTMLDivElement>(null);
   const streamAliveRef = useRef(false);
+  const [creditsModalOpen, setCreditsModalOpen] = useState(false);
+  const [topupModalEnabled, setTopupModalEnabled] = useState(true);
+  const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);
 
-  // Fetch credit balance on mount and when user changes
+  // Fetch credit balance and app settings on mount
   useEffect(() => {
     if (!user) return;
     (async () => {
       const { data } = await supabase.rpc("refill_credits_if_due", { _user_id: user.id });
-      if (data) setCreditBalance(data.balance);
+      if (data) {
+        setCreditBalance(data.balance);
+        setCurrentPlanId((data as any).plan_id || null);
+      }
+      const { data: settings } = await supabase
+        .from("app_settings")
+        .select("value")
+        .eq("key", "enable_topup_modal")
+        .maybeSingle();
+      if (settings) setTopupModalEnabled(settings.value === true || settings.value === "true");
     })();
   }, [user]);
 
@@ -530,9 +543,12 @@ export default function Index() {
           </Button>
           <h1 className="text-lg font-semibold truncate">WooCommerce AI Assistant</h1>
           {creditBalance !== null && (
-            <span className="ml-auto text-xs font-medium text-muted-foreground tabular-nums bg-muted px-2 py-1 rounded-full">
+            <button
+              onClick={() => topupModalEnabled && setCreditsModalOpen(true)}
+              className={`ml-auto text-xs font-medium text-muted-foreground tabular-nums bg-muted px-2 py-1 rounded-full ${topupModalEnabled ? "hover:bg-accent cursor-pointer" : ""} transition-colors`}
+            >
               {creditBalance} credit{creditBalance !== 1 ? "s" : ""}
-            </span>
+            </button>
           )}
         </div>
 
@@ -589,6 +605,14 @@ export default function Index() {
           <SettingsContent activeTab={settingsTab} onTabChange={handleSettingsTabChange} onClose={() => handleCloseSettings(false)} />
         </DialogContent>
       </Dialog>
+
+      {/* Credits Modal */}
+      <CreditsModal
+        open={creditsModalOpen}
+        onOpenChange={setCreditsModalOpen}
+        currentBalance={creditBalance}
+        currentPlanId={currentPlanId}
+      />
     </div>
   );
 }

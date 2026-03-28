@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, Save, Plus, Minus, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { AdminUser } from "@/pages/Admin";
@@ -14,36 +15,11 @@ interface Props {
   onBack: () => void;
 }
 
-interface ConversationItem {
-  id: string;
-  title: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface MessageItem {
-  id: string;
-  role: string;
-  content: string;
-  created_at: string;
-  conversation_id: string;
-  token_usage: { total_tokens: number } | null;
-}
-
-interface CreditBalance {
-  balance: number;
-  monthly_allowance: number;
-  last_refill_at: string;
-}
-
-interface CreditTransaction {
-  id: string;
-  amount: number;
-  balance_after: number;
-  reason: string;
-  created_at: string;
-  metadata: any;
-}
+interface ConversationItem { id: string; title: string; created_at: string; updated_at: string; }
+interface MessageItem { id: string; role: string; content: string; created_at: string; conversation_id: string; token_usage: { total_tokens: number } | null; }
+interface CreditBalance { balance: number; monthly_allowance: number; last_refill_at: string; plan_id: string | null; }
+interface CreditTransaction { id: string; amount: number; balance_after: number; reason: string; created_at: string; metadata: any; }
+interface SubscriptionPlan { id: string; name: string; credits: number; slug: string; }
 
 export function UserDetail({ user, accessToken, onBack }: Props) {
   const { toast } = useToast();
@@ -55,7 +31,6 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
   const [loadingData, setLoadingData] = useState(true);
   const [loadingCredits, setLoadingCredits] = useState(true);
 
-  // Credit state
   const [creditBalance, setCreditBalance] = useState<CreditBalance | null>(null);
   const [creditTransactions, setCreditTransactions] = useState<CreditTransaction[]>([]);
   const [creditAdjustAmount, setCreditAdjustAmount] = useState(0);
@@ -64,6 +39,11 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
   const [savingCredits, setSavingCredits] = useState(false);
   const [savingAllowance, setSavingAllowance] = useState(false);
 
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [selectedPlanId, setSelectedPlanId] = useState<string>("");
+  const [savingPlan, setSavingPlan] = useState(false);
+
+  const baseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin`;
   const apiCall = async (url: string, options?: RequestInit) => {
     const resp = await fetch(url, {
       ...options,
@@ -78,97 +58,98 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
     const load = async () => {
       setLoadingData(true);
       try {
-        const data = await apiCall(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin/users/${user.user_id}/messages`
-        );
+        const data = await apiCall(`${baseUrl}/users/${user.user_id}/messages`);
         setConversations(data.conversations || []);
         setMessages(data.messages || []);
       } catch (e: any) {
         toast({ title: "Failed to load messages", description: e.message, variant: "destructive" });
-      } finally {
-        setLoadingData(false);
-      }
+      } finally { setLoadingData(false); }
     };
     const loadCredits = async () => {
       setLoadingCredits(true);
       try {
-        const data = await apiCall(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin/users/${user.user_id}/credits`
-        );
+        const data = await apiCall(`${baseUrl}/users/${user.user_id}/credits`);
         setCreditBalance(data.balance || null);
         setCreditTransactions(data.transactions || []);
         if (data.balance?.monthly_allowance) setMonthlyAllowance(data.balance.monthly_allowance);
+        if (data.balance?.plan_id) setSelectedPlanId(data.balance.plan_id);
       } catch (e: any) {
         toast({ title: "Failed to load credits", description: e.message, variant: "destructive" });
-      } finally {
-        setLoadingCredits(false);
-      }
+      } finally { setLoadingCredits(false); }
+    };
+    const loadPlans = async () => {
+      try {
+        const data = await apiCall(`${baseUrl}/plans`);
+        setPlans(data || []);
+      } catch { /* ignore */ }
     };
     load();
     loadCredits();
+    loadPlans();
   }, [user.user_id, accessToken]);
 
   const saveLimits = async () => {
     setSavingLimits(true);
     try {
-      await apiCall(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin/users/${user.user_id}/limits`,
-        { method: "PUT", body: JSON.stringify({ daily_limit: dailyLimit, monthly_limit: monthlyLimit }) }
-      );
+      await apiCall(`${baseUrl}/users/${user.user_id}/limits`, {
+        method: "PUT", body: JSON.stringify({ daily_limit: dailyLimit, monthly_limit: monthlyLimit }),
+      });
       toast({ title: "Limits saved", description: `Daily: ${dailyLimit}, Monthly: ${monthlyLimit}` });
     } catch (e: any) {
       toast({ title: "Failed to save limits", description: e.message, variant: "destructive" });
-    } finally {
-      setSavingLimits(false);
-    }
+    } finally { setSavingLimits(false); }
   };
 
   const adjustCredits = async () => {
     if (creditAdjustAmount === 0) return;
     setSavingCredits(true);
     try {
-      const data = await apiCall(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin/users/${user.user_id}/credits`,
-        { method: "PUT", body: JSON.stringify({ amount: creditAdjustAmount, reason: creditReason || "admin_grant" }) }
-      );
+      const data = await apiCall(`${baseUrl}/users/${user.user_id}/credits`, {
+        method: "PUT", body: JSON.stringify({ amount: creditAdjustAmount, reason: creditReason || "admin_grant" }),
+      });
       setCreditBalance((prev) => prev ? { ...prev, balance: data.balance } : null);
-      const action = creditAdjustAmount > 0 ? "Added" : "Deducted";
-      toast({ title: `${action} ${Math.abs(creditAdjustAmount)} credits`, description: `New balance: ${data.balance}` });
+      toast({ title: `${creditAdjustAmount > 0 ? "Added" : "Deducted"} ${Math.abs(creditAdjustAmount)} credits`, description: `New balance: ${data.balance}` });
       setCreditAdjustAmount(0);
       setCreditReason("");
-      // Reload transactions
-      const txData = await apiCall(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin/users/${user.user_id}/credits`
-      );
+      const txData = await apiCall(`${baseUrl}/users/${user.user_id}/credits`);
       setCreditTransactions(txData.transactions || []);
     } catch (e: any) {
       toast({ title: "Failed to adjust credits", description: e.message, variant: "destructive" });
-    } finally {
-      setSavingCredits(false);
-    }
+    } finally { setSavingCredits(false); }
   };
 
   const saveAllowance = async () => {
     setSavingAllowance(true);
     try {
-      await apiCall(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin/users/${user.user_id}/allowance`,
-        { method: "PUT", body: JSON.stringify({ monthly_allowance: monthlyAllowance }) }
-      );
+      await apiCall(`${baseUrl}/users/${user.user_id}/allowance`, {
+        method: "PUT", body: JSON.stringify({ monthly_allowance: monthlyAllowance }),
+      });
       toast({ title: "Monthly allowance updated", description: `Set to ${monthlyAllowance} credits/month` });
     } catch (e: any) {
       toast({ title: "Failed to update allowance", description: e.message, variant: "destructive" });
-    } finally {
-      setSavingAllowance(false);
-    }
+    } finally { setSavingAllowance(false); }
+  };
+
+  const assignPlan = async (planId: string) => {
+    setSavingPlan(true);
+    setSelectedPlanId(planId);
+    try {
+      const data = await apiCall(`${baseUrl}/users/${user.user_id}/plan`, {
+        method: "PUT", body: JSON.stringify({ plan_id: planId }),
+      });
+      const plan = plans.find((p) => p.id === planId);
+      toast({ title: "Plan assigned", description: `${plan?.name || "Plan"} assigned. Monthly allowance set to ${data.monthly_allowance}.` });
+      setMonthlyAllowance(data.monthly_allowance);
+      setCreditBalance((prev) => prev ? { ...prev, plan_id: planId, monthly_allowance: data.monthly_allowance } : null);
+    } catch (e: any) {
+      toast({ title: "Failed to assign plan", description: e.message, variant: "destructive" });
+    } finally { setSavingPlan(false); }
   };
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={onBack}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
+        <Button variant="ghost" size="icon" onClick={onBack}><ArrowLeft className="h-5 w-5" /></Button>
         <h2 className="text-xl font-bold">{user.display_name || "Unknown User"}</h2>
       </div>
 
@@ -204,13 +185,29 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
         <CardHeader><CardTitle>Credit Management</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           {loadingCredits ? (
-            <div className="space-y-3">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </div>
+            <div className="space-y-3"><Skeleton className="h-10 w-full" /><Skeleton className="h-10 w-full" /></div>
           ) : (
             <>
+              {/* Plan Assignment */}
               <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <Label>Subscription Plan</Label>
+                  <div className="flex gap-2">
+                    <Select value={selectedPlanId} onValueChange={assignPlan} disabled={savingPlan}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="No plan assigned" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {plans.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name} ({p.credits} credits/mo)
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {savingPlan && <Loader2 className="h-4 w-4 animate-spin self-center" />}
+                  </div>
+                </div>
                 <div>
                   <Label>Monthly Allowance (auto-refill every 30 days)</Label>
                   <div className="flex gap-2">
@@ -220,36 +217,20 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
                     </Button>
                   </div>
                 </div>
-                <div>
-                  <Label>Last Refill</Label>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {creditBalance?.last_refill_at ? new Date(creditBalance.last_refill_at).toLocaleDateString() : "Never"}
-                  </p>
-                </div>
+              </div>
+              <div>
+                <Label>Last Refill</Label>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {creditBalance?.last_refill_at ? new Date(creditBalance.last_refill_at).toLocaleDateString() : "Never"}
+                </p>
               </div>
               <div>
                 <Label>Grant / Deduct Credits</Label>
                 <div className="flex gap-2 mt-1">
-                  <Input
-                    type="number"
-                    placeholder="Amount (positive to add, negative to deduct)"
-                    value={creditAdjustAmount || ""}
-                    onChange={(e) => setCreditAdjustAmount(parseInt(e.target.value) || 0)}
-                  />
-                  <Input
-                    placeholder="Reason (optional)"
-                    value={creditReason}
-                    onChange={(e) => setCreditReason(e.target.value)}
-                    className="max-w-[200px]"
-                  />
+                  <Input type="number" placeholder="Amount (positive to add, negative to deduct)" value={creditAdjustAmount || ""} onChange={(e) => setCreditAdjustAmount(parseInt(e.target.value) || 0)} />
+                  <Input placeholder="Reason (optional)" value={creditReason} onChange={(e) => setCreditReason(e.target.value)} className="max-w-[200px]" />
                   <Button onClick={adjustCredits} disabled={savingCredits || creditAdjustAmount === 0}>
-                    {savingCredits ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-1" />
-                    ) : creditAdjustAmount >= 0 ? (
-                      <Plus className="h-4 w-4 mr-1" />
-                    ) : (
-                      <Minus className="h-4 w-4 mr-1" />
-                    )}
+                    {savingCredits ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : creditAdjustAmount >= 0 ? <Plus className="h-4 w-4 mr-1" /> : <Minus className="h-4 w-4 mr-1" />}
                     {savingCredits ? "Applying..." : "Apply"}
                   </Button>
                 </div>
@@ -289,14 +270,8 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
         <CardHeader><CardTitle>Message Limits</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <Label>Daily Limit</Label>
-              <Input type="number" value={dailyLimit} onChange={(e) => setDailyLimit(parseInt(e.target.value) || 0)} />
-            </div>
-            <div>
-              <Label>Monthly Limit</Label>
-              <Input type="number" value={monthlyLimit} onChange={(e) => setMonthlyLimit(parseInt(e.target.value) || 0)} />
-            </div>
+            <div><Label>Daily Limit</Label><Input type="number" value={dailyLimit} onChange={(e) => setDailyLimit(parseInt(e.target.value) || 0)} /></div>
+            <div><Label>Monthly Limit</Label><Input type="number" value={monthlyLimit} onChange={(e) => setMonthlyLimit(parseInt(e.target.value) || 0)} /></div>
           </div>
           <Button onClick={saveLimits} disabled={savingLimits}>
             {savingLimits ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
@@ -310,17 +285,13 @@ export function UserDetail({ user, accessToken, onBack }: Props) {
         <CardHeader><CardTitle>Recent Messages ({messages.length})</CardTitle></CardHeader>
         <CardContent>
           {loadingData ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}
-            </div>
+            <div className="space-y-3">{[1, 2, 3].map((i) => <Skeleton key={i} className="h-16 w-full" />)}</div>
           ) : (
             <div className="max-h-96 overflow-y-auto space-y-2">
               {messages.map((m) => (
                 <div key={m.id} className="rounded border p-3 text-sm">
                   <div className="flex justify-between items-center mb-1">
-                    <span className={`font-medium ${m.role === "assistant" ? "text-primary" : "text-muted-foreground"}`}>
-                      {m.role}
-                    </span>
+                    <span className={`font-medium ${m.role === "assistant" ? "text-primary" : "text-muted-foreground"}`}>{m.role}</span>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       {m.token_usage && <span className="tabular-nums">{m.token_usage.total_tokens} tokens</span>}
                       <span>{new Date(m.created_at).toLocaleString()}</span>

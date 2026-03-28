@@ -1597,6 +1597,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
           let planSent = false;
           let contentSent = false;
           let semanticSteps: SemanticStep[] = [];
+          const totalUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
 
           // Emit "Understanding request" immediately
           sendSSE({ type: "pipeline_plan", title: "Execution Plan", steps: ["Understanding request"] });
@@ -1644,6 +1645,11 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
             }
 
             const aiData = await aiResp.json();
+            if (aiData.usage) {
+              totalUsage.prompt_tokens += aiData.usage.prompt_tokens || 0;
+              totalUsage.completion_tokens += aiData.usage.completion_tokens || 0;
+              totalUsage.total_tokens += aiData.usage.total_tokens || 0;
+            }
             const choice = aiData.choices?.[0];
             if (!choice) break;
 
@@ -1922,6 +1928,11 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
               ],
             });
             sendSSE({ type: "pipeline_complete", lastStepIndex: stepIndex });
+          }
+
+          // ── Emit accumulated token usage ──
+          if (totalUsage.total_tokens > 0) {
+            sendSSE({ type: "token_usage", ...totalUsage });
           }
 
           // ── Credit deduction ──

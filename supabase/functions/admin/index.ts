@@ -320,6 +320,116 @@ serve(async (req) => {
       });
     }
 
+    // Route: PUT /users/:id/plan -- assign subscription plan
+    const planAssignMatch = path.match(/^users\/([^/]+)\/plan$/);
+    if (req.method === "PUT" && planAssignMatch) {
+      const targetUserId = planAssignMatch[1];
+      const body = await req.json();
+      const { plan_id } = body;
+      // Fetch plan to get credits
+      const { data: plan } = await serviceClient
+        .from("subscription_plans")
+        .select("credits")
+        .eq("id", plan_id)
+        .single();
+      if (!plan) {
+        return new Response(JSON.stringify({ error: "Plan not found" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      await serviceClient
+        .from("credit_balances")
+        .upsert({ user_id: targetUserId, plan_id, monthly_allowance: plan.credits }, { onConflict: "user_id" });
+      return new Response(JSON.stringify({ success: true, monthly_allowance: plan.credits }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Route: GET /plans
+    if (req.method === "GET" && path === "plans") {
+      const { data } = await serviceClient
+        .from("subscription_plans")
+        .select("*")
+        .order("sort_order", { ascending: true });
+      return new Response(JSON.stringify(data || []), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Route: PUT /plans/:id
+    const planEditMatch = path.match(/^plans\/([^/]+)$/);
+    if (req.method === "PUT" && planEditMatch) {
+      const planId = planEditMatch[1];
+      const body = await req.json();
+      const { data, error } = await serviceClient
+        .from("subscription_plans")
+        .update(body)
+        .eq("id", planId)
+        .select()
+        .single();
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Route: POST /users -- create a new user
+    if (req.method === "POST" && (path === "users" || path === "")) {
+      const body = await req.json();
+      const { email, password, display_name } = body;
+      if (!email || !password) {
+        return new Response(JSON.stringify({ error: "Email and password are required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const { data: newUser, error: createErr } = await serviceClient.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { full_name: display_name || email },
+      });
+      if (createErr) {
+        return new Response(JSON.stringify({ error: createErr.message }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ success: true, user_id: newUser.user?.id }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Route: GET /settings
+    if (req.method === "GET" && path === "settings") {
+      const { data } = await serviceClient.from("app_settings").select("*");
+      return new Response(JSON.stringify(data || []), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Route: PUT /settings/:key
+    const settingsMatch = path.match(/^settings\/([^/]+)$/);
+    if (req.method === "PUT" && settingsMatch) {
+      const settingKey = decodeURIComponent(settingsMatch[1]);
+      const body = await req.json();
+      const { data, error } = await serviceClient
+        .from("app_settings")
+        .upsert({ key: settingKey, value: body.value }, { onConflict: "key" })
+        .select()
+        .single();
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ error: "Not found" }), {
       status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

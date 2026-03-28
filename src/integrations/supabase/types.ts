@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          updated_at: string
+          value: Json
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          updated_at?: string
+          value?: Json
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          updated_at?: string
+          value?: Json
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
           created_at: string
@@ -59,6 +83,7 @@ export type Database = {
           id: string
           last_refill_at: string
           monthly_allowance: number
+          plan_id: string | null
           updated_at: string
           user_id: string
         }
@@ -68,6 +93,7 @@ export type Database = {
           id?: string
           last_refill_at?: string
           monthly_allowance?: number
+          plan_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -77,10 +103,19 @@ export type Database = {
           id?: string
           last_refill_at?: string
           monthly_allowance?: number
+          plan_id?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "credit_balances_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       credit_topup_packs: {
         Row: {
@@ -246,6 +281,45 @@ export type Database = {
         }
         Relationships: []
       }
+      subscription_plans: {
+        Row: {
+          created_at: string
+          credits: number
+          description: string | null
+          id: string
+          is_active: boolean
+          monthly_price_cents: number
+          name: string
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          credits?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          monthly_price_cents?: number
+          name: string
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          credits?: number
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          monthly_price_cents?: number
+          name?: string
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_preferences: {
         Row: {
           created_at: string
@@ -380,6 +454,7 @@ export type Database = {
           id: string
           last_refill_at: string
           monthly_allowance: number
+          plan_id: string | null
           updated_at: string
           user_id: string
         }

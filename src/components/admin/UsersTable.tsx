@@ -1,8 +1,13 @@
+import { useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { RefreshCw, Shield, ShieldOff } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { RefreshCw, Shield, ShieldOff, UserPlus, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import type { AdminUser } from "@/pages/Admin";
 
 interface Props {
@@ -14,6 +19,13 @@ interface Props {
 }
 
 export function UsersTable({ users, loading, onSelectUser, onRefresh, accessToken }: Props) {
+  const { toast } = useToast();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newDisplayName, setNewDisplayName] = useState("");
+
   const toggleAdmin = async (user: AdminUser, e: React.MouseEvent) => {
     e.stopPropagation();
     const isAdmin = user.roles.includes("admin");
@@ -28,6 +40,36 @@ export function UsersTable({ users, loading, onSelectUser, onRefresh, accessToke
     onRefresh();
   };
 
+  const handleCreate = async () => {
+    if (!newEmail || !newPassword) return;
+    setCreating(true);
+    try {
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin/users`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ email: newEmail, password: newPassword, display_name: newDisplayName || undefined }),
+        }
+      );
+      const data = await resp.json();
+      if (resp.ok) {
+        toast({ title: "User created", description: `${newEmail} has been created.` });
+        setCreateOpen(false);
+        setNewEmail("");
+        setNewPassword("");
+        setNewDisplayName("");
+        onRefresh();
+      } else {
+        toast({ title: "Error", description: data.error || "Failed to create user.", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Error", description: "Network error.", variant: "destructive" });
+    } finally {
+      setCreating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-3">
@@ -40,7 +82,10 @@ export function UsersTable({ users, loading, onSelectUser, onRefresh, accessToke
 
   return (
     <div className="space-y-3">
-      <div className="flex justify-end">
+      <div className="flex justify-between">
+        <Button variant="default" size="sm" onClick={() => setCreateOpen(true)}>
+          <UserPlus className="h-4 w-4 mr-1" /> Create User
+        </Button>
         <Button variant="outline" size="sm" onClick={onRefresh}>
           <RefreshCw className="h-4 w-4 mr-1" /> Refresh
         </Button>
@@ -89,6 +134,36 @@ export function UsersTable({ users, loading, onSelectUser, onRefresh, accessToke
           </TableBody>
         </Table>
       </div>
+
+      {/* Create User Dialog */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New User</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Email *</Label>
+              <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="user@example.com" />
+            </div>
+            <div>
+              <Label>Password *</Label>
+              <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Min 6 characters" />
+            </div>
+            <div>
+              <Label>Display Name</Label>
+              <Input value={newDisplayName} onChange={(e) => setNewDisplayName(e.target.value)} placeholder="Optional" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreate} disabled={creating || !newEmail || !newPassword}>
+              {creating ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <UserPlus className="h-4 w-4 mr-1" />}
+              Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
