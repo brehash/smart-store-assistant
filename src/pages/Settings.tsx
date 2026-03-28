@@ -69,6 +69,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
   const [plugins, setPlugins] = useState<{ plugin: string; name: string; version: string }[]>([]);
   const [selectedPlugins, setSelectedPlugins] = useState<string[]>([]);
   const [loadingPlugins, setLoadingPlugins] = useState(false);
+  const [refreshingCache, setRefreshingCache] = useState(false);
 
   // General tab state
   const [displayName, setDisplayName] = useState("");
