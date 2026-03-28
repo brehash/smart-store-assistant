@@ -90,6 +90,8 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
   const [coleteClientId, setColeteClientId] = useState("");
   const [coleteClientSecret, setColeteClientSecret] = useState("");
   const [savingIntegration, setSavingIntegration] = useState(false);
+  const [testingColete, setTestingColete] = useState(false);
+  const [coleteTestResult, setColeteTestResult] = useState<"success" | "error" | null>(null);
   const [integrationLoaded, setIntegrationLoaded] = useState(false);
 
   // Appearance

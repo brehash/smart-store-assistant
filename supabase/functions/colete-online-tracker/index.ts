@@ -10,6 +10,44 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const url = new URL(req.url);
+    const action = url.searchParams.get("action");
+
+    // ── Test Connection action ──
+    if (action === "test") {
+      const { client_id, client_secret } = await req.json();
+      if (!client_id || !client_secret) {
+        return new Response(JSON.stringify({ success: false, error: "Client ID and Client Secret are required." }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const basicAuth = btoa(`${client_id}:${client_secret}`);
+      const tokenResp = await fetch("https://auth.colete-online.ro/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Authorization": `Basic ${basicAuth}`,
+        },
+        body: "grant_type=client_credentials",
+      });
+
+      if (!tokenResp.ok) {
+        const errText = await tokenResp.text();
+        return new Response(JSON.stringify({ success: false, error: `Authentication failed (${tokenResp.status}): ${errText.slice(0, 200)}` }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const tokenData = await tokenResp.json();
+      return new Response(JSON.stringify({ success: true, message: "Connection successful!", expires_in: tokenData.expires_in }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ── Default: tracker action ──
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
