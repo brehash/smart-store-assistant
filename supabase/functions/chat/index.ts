@@ -1721,6 +1721,32 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
           let semanticIdx = 0; // Track across tool-phase and post-response phase
           const totalUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
 
+          // ── Order-creation intent detection ──
+          const lastUserMsg = (messages as any[]).filter((m: any) => m.role === "user").pop()?.content || "";
+          const orderIntentRe = /\b(cre(?:ea)?z[aă]|f[aă]|plaseaz[aă]|adaug[aă]|pune|place|create|make|add|new)\b.*\b(comand[aă]|order)\b/i;
+          if (orderIntentRe.test(lastUserMsg)) {
+            sendSSE({ type: "pipeline_plan", title: "Execution Plan", steps: ["Creating order form"] });
+            sendSSE({ type: "pipeline_step", stepIndex: 0, title: "Creating order form", status: "done" });
+            sendSSE({ type: "order_form", toolCallId: "manual-order", stepIndex: 0, prefill: {} });
+            const formText = responseLanguage !== "English"
+              ? "Completați formularul de mai jos pentru a crea comanda."
+              : "Please fill in the order form below to create the order.";
+            sendSSE({ choices: [{ delta: { content: formText } }] });
+            sendSSE({ type: "pipeline_complete" });
+
+            // Deduct credit
+            const CREDIT_COST = 1;
+            const newBalance = (creditBalance?.balance || 1) - CREDIT_COST;
+            await serviceClient.from("credit_balances").update({ balance: newBalance }).eq("user_id", userId);
+            await serviceClient.from("credit_transactions").insert({
+              user_id: userId, amount: -CREDIT_COST, balance_after: newBalance, reason: "chat_message",
+            });
+            sendSSE({ type: "credit_usage", cost: CREDIT_COST, remaining_balance: newBalance });
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            controller.close();
+            return;
+          }
+
           // Emit "Understanding request" immediately
           sendSSE({ type: "pipeline_plan", title: "Execution Plan", steps: ["Understanding request"] });
           sendSSE({ type: "pipeline_step", stepIndex: 0, title: "Understanding request", status: "running" });

@@ -20,13 +20,26 @@ serve(async (req) => {
       });
     }
 
-    const topic = req.headers.get("x-wc-webhook-topic") || "unknown";
+    let topic = req.headers.get("x-wc-webhook-topic") || "unknown";
 
-    let payload = {};
+    let payload: any = {};
     try {
       payload = await req.json();
     } catch {
       // body may be empty for ping events
+    }
+
+    // Detect WooCommerce webhook ping/verification requests — skip DB insert
+    const isPing =
+      topic === "unknown" ||
+      topic.startsWith("action.") ||
+      (payload && payload.webhook_id && !payload.id && !payload.number && !payload.email);
+
+    if (isPing) {
+      return new Response(JSON.stringify({ ok: true, skipped: "ping" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const supabase = createClient(
