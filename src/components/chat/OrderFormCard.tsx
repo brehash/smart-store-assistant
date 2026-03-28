@@ -198,7 +198,7 @@ export function OrderFormCard({ data, orderStatuses, disabled, onOrderCreated }:
           </div>
           {showResults && searchResults.length > 0 && (
             <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg">
-              <ScrollArea className="max-h-48">
+              <div className="max-h-48 overflow-y-auto">
                 {searchResults.map((p) => (
                   <button
                     key={p.id}
