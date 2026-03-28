@@ -2375,6 +2375,7 @@ Be conversational. Currency is RON (lei).${defaultStatusStr}`;
           let stepIndex = 0;
           let planSent = false;
           let contentSent = false;
+          let finalAssistantContent = "";
           let semanticSteps: SemanticStep[] = [];
           let semanticIdx = 0; // Track across tool-phase and post-response phase
           const totalUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
