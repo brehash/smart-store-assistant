@@ -1796,6 +1796,260 @@ async function executeTool(
 
       return { result: { error: `Provider ${detectedProvider.provider} detected but handler not implemented yet.` } };
     }
+    // ── GEO Tools ──
+    case "audit_geo": {
+      const { entity_id, entity_type } = args;
+      let entityData: any;
+      if (entity_type === "product") {
+        entityData = await callWooProxy(supabaseUrl, authHeader, { endpoint: `products/${entity_id}` });
+      } else if (entity_type === "page") {
+        entityData = await callWooProxy(supabaseUrl, authHeader, { endpoint: `pages/${entity_id}`, apiPrefix: "wp/v2" });
+      } else {
+        entityData = await callWooProxy(supabaseUrl, authHeader, { endpoint: `posts/${entity_id}`, apiPrefix: "wp/v2" });
+      }
+      if (entityData?.error || (!entityData?.id && !entityData?.name && !entityData?.title)) {
+        return { result: { error: `Could not fetch ${entity_type} #${entity_id}` } };
+      }
+
+      const entityName = entity_type === "product" ? entityData.name : (entityData.title?.rendered || entityData.title || "Unknown");
+      const description = entity_type === "product" ? (entityData.description || "") : (entityData.content?.rendered || entityData.content || "");
+      const shortDesc = entity_type === "product" ? (entityData.short_description || "") : "";
+      const metaData = entityData.meta_data || entityData.meta || [];
+
+      // Analyze content for GEO readiness
+      const descLen = description.replace(/<[^>]*>/g, "").length;
+      const hasHeadings = /<h[2-6][^>]*>/i.test(description);
+      const hasFaqSchema = /application\/ld\+json/i.test(description) || /FAQPage/i.test(description);
+      const hasDetailsSummary = /<details/i.test(description) && /<summary/i.test(description);
+      const hasMetaDesc = Array.isArray(metaData) && metaData.some((m: any) =>
+        ["_yoast_wpseo_metadesc", "rank_math_description", "_aioseop_description"].includes(m.key) && m.value
+      );
+      const hasStructuredData = /itemtype|itemscope|application\/ld\+json/i.test(description);
+
+      // Score categories
+      const contentScore = Math.min(20, Math.round((descLen / 1500) * 20));
+      const structureScore = (hasHeadings ? 10 : 0) + (descLen > 300 ? 5 : 0) + (shortDesc.length > 50 ? 5 : 0);
+      const schemaScore = (hasStructuredData ? 10 : 0) + (hasFaqSchema ? 10 : 0);
+      const metaScore = hasMetaDesc ? 20 : 0;
+      const faqScore = (hasFaqSchema ? 10 : 0) + (hasDetailsSummary ? 10 : 0);
+      const totalScore = Math.min(100, contentScore + structureScore + schemaScore + metaScore + faqScore);
+
+      const categories = [
+        { name: "Content Length & Quality", score: contentScore, maxScore: 20, details: `${descLen} characters` },
+        { name: "Heading Structure", score: structureScore, maxScore: 20 },
+        { name: "Schema/Structured Data", score: schemaScore, maxScore: 20 },
+        { name: "Meta Description", score: metaScore, maxScore: 20 },
+        { name: "FAQ Presence", score: faqScore, maxScore: 20 },
+      ];
+
+      const recommendations: any[] = [];
+      if (descLen < 300) recommendations.push({ text: "Description too short. Aim for 800+ characters with detailed, citation-worthy content.", priority: "high", category: "Content" });
+      if (!hasHeadings) recommendations.push({ text: "Add H2/H3 headings to structure content for AI crawlers.", priority: "high", category: "Structure" });
+      if (!hasFaqSchema) recommendations.push({ text: "Add FAQ schema (JSON-LD) to improve AI search snippet eligibility.", priority: "high", category: "Schema" });
+      if (!hasMetaDesc) recommendations.push({ text: "Add a meta description via your SEO plugin or custom meta field.", priority: "medium", category: "Meta" });
+      if (!hasDetailsSummary) recommendations.push({ text: "Add visible FAQ section using <details>/<summary> HTML tags.", priority: "medium", category: "FAQs" });
+      if (!hasStructuredData) recommendations.push({ text: "Add Product/Article structured data (JSON-LD) to the content.", priority: "medium", category: "Schema" });
+      if (descLen >= 300 && descLen < 800) recommendations.push({ text: "Expand description to 800+ characters for better AI comprehension.", priority: "low", category: "Content" });
+
+      const reportData = {
+        mode: "single",
+        entityName,
+        entityType: entity_type,
+        entityId: entity_id,
+        score: totalScore,
+        categories,
+        recommendations,
+      };
+
+      return {
+        result: { score: totalScore, entityName, categories, recommendations },
+        richContent: { type: "geo_report", data: reportData },
+        requestUri: `GET /wp-json/${entity_type === "product" ? "wc/v3" : "wp/v2"}/${entity_type === "product" ? "products" : entity_type + "s"}/${entity_id}`,
+      };
+    }
+    case "generate_geo_content": {
+      const { entity_id, entity_type } = args;
+      let entityData: any;
+      if (entity_type === "product") {
+        entityData = await callWooProxy(supabaseUrl, authHeader, { endpoint: `products/${entity_id}` });
+      } else if (entity_type === "page") {
+        entityData = await callWooProxy(supabaseUrl, authHeader, { endpoint: `pages/${entity_id}`, apiPrefix: "wp/v2" });
+      } else {
+        entityData = await callWooProxy(supabaseUrl, authHeader, { endpoint: `posts/${entity_id}`, apiPrefix: "wp/v2" });
+      }
+      if (entityData?.error || (!entityData?.id && !entityData?.name && !entityData?.title)) {
+        return { result: { error: `Could not fetch ${entity_type} #${entity_id}` } };
+      }
+
+      // Get active_plugins from connection
+      const { data: connPlugins } = await supabase
+        .from("woo_connections")
+        .select("active_plugins")
+        .eq("user_id", userId)
+        .eq("is_active", true)
+        .maybeSingle();
+      const plugins: string[] = (connPlugins as any)?.active_plugins || [];
+      const hasYoast = plugins.some((p: string) => /yoast/i.test(p));
+      const hasRankMath = plugins.some((p: string) => /rank.?math/i.test(p));
+
+      const entityName = entity_type === "product" ? entityData.name : (entityData.title?.rendered || entityData.title || "Unknown");
+      const currentDesc = entity_type === "product" ? (entityData.description || "") : (entityData.content?.rendered || entityData.content || "");
+      const shortDesc = entity_type === "product" ? (entityData.short_description || "") : "";
+
+      // Use AI to generate optimized content
+      const LOVABLE_KEY = Deno.env.get("LOVABLE_API_KEY");
+      const USER_KEY = Deno.env.get("OPENAI_API_KEY");
+      const geoAiUrl = USER_KEY ? "https://api.openai.com/v1/chat/completions" : "https://ai.gateway.lovable.dev/v1/chat/completions";
+      const geoAiAuth = USER_KEY ? `Bearer ${USER_KEY}` : `Bearer ${LOVABLE_KEY}`;
+      const geoModel = USER_KEY ? "gpt-5.4-mini" : "google/gemini-3-flash-preview";
+
+      const geoPrompt = `You are a GEO (Generative Engine Optimization) expert. Optimize the following ${entity_type} content for AI search engines (ChatGPT, Google AI, Perplexity).
+
+Current title: ${entityName}
+Current description: ${currentDesc.replace(/<[^>]*>/g, "").slice(0, 2000)}
+Current short description: ${shortDesc.replace(/<[^>]*>/g, "").slice(0, 500)}
+${entity_type === "product" ? `Price: ${entityData.regular_price || entityData.price || "N/A"}` : ""}
+${entity_type === "product" ? `Categories: ${(entityData.categories || []).map((c: any) => c.name).join(", ")}` : ""}
+
+SEO Plugin detected: ${hasYoast ? "Yoast SEO" : hasRankMath ? "RankMath" : "None"}
+
+Generate the following as a JSON object using the generate_geo_output tool:
+1. "optimized_description": An HTML description with:
+   - H2/H3 headings for structure
+   - Citation-worthy, detailed content (800+ chars)
+   - A visible FAQ section using <details> and <summary> tags (3-5 relevant FAQs)
+   - An inline <script type="application/ld+json"> block with FAQPage schema at the end
+2. "meta_description": A 150-160 char meta description optimized for AI search
+3. "short_description": An optimized short description (50-100 chars)
+4. "meta_fields": Array of {key, value} for SEO plugin meta fields:
+${hasYoast ? '   - {key: "_yoast_wpseo_metadesc", value: "..."}\n   - {key: "_yoast_wpseo_title", value: "..."}' : hasRankMath ? '   - {key: "rank_math_description", value: "..."}\n   - {key: "rank_math_title", value: "..."}' : '   - Empty array (no SEO plugin detected, JSON-LD is already in description)'}
+
+Maintain the original language of the content. If the content is in Romanian, write in Romanian.`;
+
+      const geoResp = await fetch(geoAiUrl, {
+        method: "POST",
+        headers: { Authorization: geoAiAuth, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: geoModel,
+          messages: [{ role: "user", content: geoPrompt }],
+          tools: [{
+            type: "function",
+            function: {
+              name: "generate_geo_output",
+              description: "Return the GEO-optimized content",
+              parameters: {
+                type: "object",
+                properties: {
+                  optimized_description: { type: "string", description: "HTML description with FAQs and JSON-LD" },
+                  meta_description: { type: "string", description: "150-160 char meta description" },
+                  short_description: { type: "string", description: "Optimized short description" },
+                  meta_fields: {
+                    type: "array",
+                    items: { type: "object", properties: { key: { type: "string" }, value: { type: "string" } } },
+                  },
+                },
+                required: ["optimized_description", "meta_description", "short_description", "meta_fields"],
+              },
+            },
+          }],
+          tool_choice: { type: "function", function: { name: "generate_geo_output" } },
+          stream: false,
+        }),
+      });
+
+      if (!geoResp.ok) {
+        return { result: { error: `AI generation failed (${geoResp.status})` } };
+      }
+
+      const geoData = await geoResp.json();
+      const toolCall = geoData.choices?.[0]?.message?.tool_calls?.[0];
+      if (!toolCall) {
+        return { result: { error: "AI did not return structured output" } };
+      }
+
+      let geoOutput: any;
+      try {
+        geoOutput = JSON.parse(toolCall.function.arguments);
+      } catch {
+        return { result: { error: "Failed to parse AI output" } };
+      }
+
+      return {
+        result: {
+          optimized: true,
+          entityName,
+          entity_type,
+          entity_id,
+          description: geoOutput.optimized_description,
+          short_description: geoOutput.short_description,
+          meta_description: geoOutput.meta_description,
+          meta_fields: geoOutput.meta_fields,
+          seo_plugin: hasYoast ? "yoast" : hasRankMath ? "rankmath" : "none",
+        },
+      };
+    }
+    case "bulk_geo_audit": {
+      let productIds: number[] = args.product_ids || [];
+
+      // If empty, load from cache
+      if (!productIds.length) {
+        const { data: cachedProducts } = await supabase
+          .from("woo_cache")
+          .select("data")
+          .eq("user_id", userId)
+          .eq("cache_key", "products")
+          .maybeSingle();
+        if (cachedProducts?.data && Array.isArray(cachedProducts.data)) {
+          productIds = (cachedProducts.data as any[]).slice(0, 20).map((p: any) => p.id);
+        }
+      }
+
+      if (!productIds.length) {
+        return { result: { error: "No products to audit. Please refresh your product cache first or provide product IDs." } };
+      }
+
+      const items: any[] = [];
+      for (const pid of productIds.slice(0, 20)) {
+        try {
+          const product = await callWooProxy(supabaseUrl, authHeader, { endpoint: `products/${pid}` });
+          if (!product?.id) continue;
+
+          const desc = (product.description || "").replace(/<[^>]*>/g, "");
+          const descLen = desc.length;
+          const hasHeadings = /<h[2-6]/i.test(product.description || "");
+          const hasFaq = /FAQPage|application\/ld\+json/i.test(product.description || "");
+          const hasMeta = (product.meta_data || []).some((m: any) =>
+            ["_yoast_wpseo_metadesc", "rank_math_description"].includes(m.key) && m.value
+          );
+
+          const score = Math.min(100,
+            Math.min(20, Math.round((descLen / 1500) * 20)) +
+            (hasHeadings ? 15 : 0) + (descLen > 300 ? 5 : 0) +
+            (hasFaq ? 20 : 0) +
+            (hasMeta ? 20 : 0) +
+            (/application\/ld\+json/i.test(product.description || "") ? 10 : 0) +
+            (/<details/i.test(product.description || "") ? 10 : 0)
+          );
+
+          let topIssue = "Looks good";
+          if (descLen < 300) topIssue = "Description too short";
+          else if (!hasFaq) topIssue = "No FAQ schema";
+          else if (!hasMeta) topIssue = "No meta description";
+          else if (!hasHeadings) topIssue = "No heading structure";
+
+          items.push({ id: pid, name: product.name, score, topIssue, type: "product" });
+        } catch { /* skip failed products */ }
+      }
+
+      const averageScore = items.length ? Math.round(items.reduce((s, i) => s + i.score, 0) / items.length) : 0;
+
+      const reportData = { mode: "bulk", items, averageScore };
+      return {
+        result: { items, averageScore },
+        richContent: { type: "geo_report", data: reportData },
+        requestUri: `GET /wp-json/wc/v3/products (x${items.length})`,
+      };
+    }
     default:
       return { result: { error: `Unknown tool: ${toolName}` } };
   }
