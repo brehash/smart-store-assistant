@@ -1305,6 +1305,41 @@ async function executeTool(
         );
       return { result: { success: true, message: `Saved preference: "${args.key}"` } };
     }
+    case "get_orders_with_meta": {
+      const perPage = Math.min(args.per_page || 100, 100);
+      let allOrders: any[] = [];
+      for (let page = 1; page <= 5; page++) {
+        const params = new URLSearchParams();
+        params.set("per_page", String(perPage));
+        params.set("page", String(page));
+        if (args.after) params.set("after", args.after);
+        if (args.before) params.set("before", args.before);
+        if (args.status) params.set("status", args.status);
+        else if (defaultOrderStatuses.length) params.set("status", defaultOrderStatuses.join(","));
+        const orders = await callWooProxy(supabaseUrl, authHeader, { endpoint: `orders?${params.toString()}` });
+        if (!Array.isArray(orders) || orders.length === 0) break;
+        allOrders = allOrders.concat(orders);
+        if (orders.length < perPage) break;
+      }
+      // Return orders with meta_data, line_items (name+quantity), billing, and key fields
+      const cleaned = allOrders.map((o: any) => ({
+        id: o.id,
+        status: o.status,
+        total: o.total,
+        currency: o.currency,
+        date_created: o.date_created,
+        billing: o.billing ? { first_name: o.billing.first_name, last_name: o.billing.last_name, email: o.billing.email, company: o.billing.company } : undefined,
+        meta_data: o.meta_data || [],
+        line_items: Array.isArray(o.line_items)
+          ? o.line_items.map((li: any) => ({ name: li.name, quantity: li.quantity, total: li.total }))
+          : [],
+      }));
+      return {
+        result: cleaned,
+        richContent: { type: "orders", data: allOrders },
+        requestUri: `GET /wp-json/wc/v3/orders (with meta_data, ${allOrders.length} orders)`,
+      };
+    }
     // ── CRUD: Orders ──
     case "update_order": {
       const endpoint = `orders/${args.order_id}`;
