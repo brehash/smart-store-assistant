@@ -1466,6 +1466,36 @@ async function executeTool(
           { user_id: userId, preference_type: args.preference_type, key: args.key, value: args.value },
           { onConflict: "user_id,preference_type,key" },
         );
+
+      // Fire-and-forget: also store as embedding for semantic search
+      const oaiKey = Deno.env.get("OPENAI_API_KEY");
+      if (oaiKey) {
+        const prefText = `Preference [${args.preference_type}]: ${args.key} = ${JSON.stringify(args.value)}`;
+        (async () => {
+          try {
+            const embResp = await fetch("https://api.openai.com/v1/embeddings", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${oaiKey}`, "Content-Type": "application/json" },
+              body: JSON.stringify({ model: "text-embedding-3-small", input: prefText }),
+            });
+            if (embResp.ok) {
+              const embData = await embResp.json();
+              const { createClient: cc } = await import("https://esm.sh/@supabase/supabase-js@2");
+              const svc = cc(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {});
+              await svc.from("memory_embeddings").insert({
+                user_id: userId,
+                content: prefText,
+                embedding: JSON.stringify(embData.data[0].embedding),
+                memory_type: "preference",
+                metadata: { preference_type: args.preference_type, key: args.key },
+              });
+            }
+          } catch (memErr) {
+            console.error("Preference embedding storage error (non-fatal):", memErr);
+          }
+        })();
+      }
+
       return { result: { success: true, message: `Saved preference: "${args.key}"` } };
     }
     case "get_orders_with_meta": {
