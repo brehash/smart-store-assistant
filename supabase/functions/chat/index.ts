@@ -1072,6 +1072,13 @@ function generateSemanticPlan(toolCalls: any[]): SemanticStep[] {
         steps.push({ title: "Building product report" });
         break;
       }
+      case "get_top_customers": {
+        const dateDetail = args.date_min && args.date_max ? `${args.date_min} → ${args.date_max}` : undefined;
+        steps.push({ title: "Fetching orders for period", details: dateDetail });
+        steps.push({ title: "Aggregating by customer" });
+        steps.push({ title: "Building customer report" });
+        break;
+      }
       case "create_order":
       case "update_order_status":
       case "update_order":
