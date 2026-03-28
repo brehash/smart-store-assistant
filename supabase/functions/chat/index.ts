@@ -628,6 +628,21 @@ function truncateForAI(toolName: string, result: any): any {
       }));
     }
 
+    if (toolName === "get_orders_with_meta" && Array.isArray(result)) {
+      return result.slice(0, 30).map((item: any) => ({
+        id: item.id,
+        status: item.status,
+        total: item.total,
+        currency: item.currency,
+        date_created: item.date_created,
+        billing: item.billing ? { first_name: item.billing.first_name, last_name: item.billing.last_name } : undefined,
+        meta_data: item.meta_data,
+        line_items: Array.isArray(item.line_items)
+          ? item.line_items.map((li: any) => ({ name: li.name, quantity: li.quantity }))
+          : [],
+      }));
+    }
+
     if (toolName === "search_products" && Array.isArray(result)) {
       return result.slice(0, 10).map((item: any) => ({
         id: item.id,
