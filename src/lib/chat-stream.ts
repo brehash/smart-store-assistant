@@ -22,6 +22,8 @@ export interface PipelineEvent {
   prompt_tokens?: number;
   completion_tokens?: number;
   total_tokens?: number;
+  cost?: number;
+  remaining_balance?: number;
 }
 
 function handleSsePayload(
