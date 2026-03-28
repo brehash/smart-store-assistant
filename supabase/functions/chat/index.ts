@@ -427,6 +427,26 @@ const TOOLS = [
   },
 ];
 
+// ── Intent-based tool selection for token optimization ──
+const SHIPPING_TOOL_NAMES = new Set(["check_shipping_status", "update_order_status", "search_orders"]);
+const SHIPPING_FOLLOWUP_TOOL_NAMES = new Set(["check_shipping_status", "update_order_status"]);
+const SHIPPING_INTENT_RE = /(shipping|tracking|delivery|livrare|colet|awb|status.*comand|comand.*status|unde.*comand|unde.*colet|stare.*comand|stare.*colet)/i;
+
+function selectToolsForIntent(lastUserMsg: string, hasToolResult: boolean, allTools: typeof TOOLS): typeof TOOLS {
+  if (hasToolResult) {
+    // After a tool result, only keep tools the AI might chain
+    return allTools.filter(t => SHIPPING_FOLLOWUP_TOOL_NAMES.has(t.function.name));
+  }
+  if (SHIPPING_INTENT_RE.test(lastUserMsg)) {
+    return allTools.filter(t => SHIPPING_TOOL_NAMES.has(t.function.name));
+  }
+  return allTools;
+}
+
+function isShippingIntent(lastUserMsg: string): boolean {
+  return SHIPPING_INTENT_RE.test(lastUserMsg);
+}
+
 const WRITE_TOOLS = new Set([
   "create_order",
   "update_order_status",
