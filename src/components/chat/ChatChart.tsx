@@ -35,6 +35,14 @@ const COLORS = [
 export function ChatChart({ chartData }: { chartData: ChartData }) {
   if (!chartData?.data?.length) return null;
 
+  const tooltipStyle = {
+    backgroundColor: 'hsl(var(--card))',
+    border: '1px solid hsl(var(--border))',
+    borderRadius: '8px',
+    color: 'hsl(var(--foreground))',
+  };
+  const tooltipLabelStyle = { color: 'hsl(var(--foreground))' };
+
   const dk = chartData.dataKey || "value";
   const nk = chartData.nameKey || "name";
   const numericValues = chartData.data.map((item) => Number(item?.[dk] ?? 0));
@@ -54,7 +62,7 @@ export function ChatChart({ chartData }: { chartData: ChartData }) {
                 <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" opacity={0.35} />
                 <XAxis dataKey={nk} tick={{ fontSize: 11 }} tickMargin={8} minTickGap={20} />
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                <Tooltip />
+                <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
                 <Legend />
                 {chartData.dataKeys.map((key, i) => (
                   <Bar key={key} dataKey={key} fill={COLORS[i % COLORS.length]} radius={[4, 4, 0, 0]} />
@@ -65,7 +73,7 @@ export function ChatChart({ chartData }: { chartData: ChartData }) {
                 <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" opacity={0.35} />
                 <XAxis dataKey={nk} tick={{ fontSize: 11 }} tickMargin={8} minTickGap={20} />
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                <Tooltip />
+                <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
                 <Bar dataKey={dk} fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
               </BarChart>
             ) : chartData.type === "line" ? (
@@ -73,7 +81,7 @@ export function ChatChart({ chartData }: { chartData: ChartData }) {
                 <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" opacity={0.35} />
                 <XAxis dataKey={nk} tick={{ fontSize: 11 }} tickMargin={8} minTickGap={20} />
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} domain={[0, maxValue === 0 ? 1 : maxValue]} />
-                <Tooltip />
+                <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
                 <Line
                   type="monotone"
                   dataKey={dk}
@@ -91,7 +99,7 @@ export function ChatChart({ chartData }: { chartData: ChartData }) {
                     <Cell key={i} fill={COLORS[i % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
               </PieChart>
             )}
           </ResponsiveContainer>

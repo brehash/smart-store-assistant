@@ -476,6 +476,23 @@ const TOOLS = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_top_customers",
+      description:
+        "Get top customers by revenue for a date range. Returns each customer with total revenue, order count, and average order value. Use for 'top clients', 'best customers', 'top clienti', 'cei mai buni clienti' queries.",
+      parameters: {
+        type: "object",
+        properties: {
+          date_min: { type: "string", description: "Start date (YYYY-MM-DD)" },
+          date_max: { type: "string", description: "End date (YYYY-MM-DD)" },
+          limit: { type: "number", description: "Max customers to return (default 5)" },
+        },
+        required: ["date_min", "date_max"],
+      },
+    },
+  },
 ];
 
 // ── Intent-based tool selection for token optimization ──
@@ -609,6 +626,7 @@ const TOOL_LABELS: Record<string, string> = {
   audit_geo: "Auditing GEO readiness",
   generate_geo_content: "Generating GEO content",
   bulk_geo_audit: "Running bulk GEO audit",
+  get_top_customers: "Analyzing top customers",
 };
 
 interface SemanticStep {
@@ -709,6 +727,15 @@ function truncateForAI(toolName: string, result: any): any {
       };
     }
 
+    if (toolName === "get_top_customers") {
+      return {
+        total_revenue: result.total_revenue,
+        total_orders: result.total_orders,
+        customer_count: result.customer_count,
+        customers: Array.isArray(result.customers) ? result.customers.slice(0, 20) : result.customers,
+      };
+    }
+
     if (toolName === "search_orders" && Array.isArray(result)) {
       return result.slice(0, 10).map((item: any) => ({
         id: item.id,
@@ -799,6 +826,8 @@ function generateReasoningBefore(toolName: string, args: any): string {
       return `Fetching sales history for product #${args.product_id} over last ${args.days || 60} days...`;
     case "get_product_sales_report":
       return `Aggregating per-product sales from ${args.date_min} to ${args.date_max}...`;
+    case "get_top_customers":
+      return `Aggregating top customers from ${args.date_min} to ${args.date_max}...`;
     case "create_order":
       return `Preparing new order with ${args.line_items?.length || 0} items...`;
     case "update_order_status":
@@ -896,6 +925,14 @@ function generateReasoningAfter(toolName: string, result: any): string | null {
           const count = result.products.length;
           const top = result.products[0];
           return `${count} products found. Top: ${top?.product_name || "N/A"} (${top?.total_revenue || 0} lei, ${top?.total_quantity || 0} units).`;
+        }
+        return null;
+      }
+      case "get_top_customers": {
+        if (Array.isArray(result?.customers)) {
+          const count = result.customers.length;
+          const top = result.customers[0];
+          return `${count} customers found. Top: ${top?.customer_name || "N/A"} (${top?.total_revenue || 0} lei, ${top?.order_count || 0} orders).`;
         }
         return null;
       }
@@ -1033,6 +1070,13 @@ function generateSemanticPlan(toolCalls: any[]): SemanticStep[] {
         steps.push({ title: "Fetching orders for period", details: dateDetail });
         steps.push({ title: "Aggregating by product" });
         steps.push({ title: "Building product report" });
+        break;
+      }
+      case "get_top_customers": {
+        const dateDetail = args.date_min && args.date_max ? `${args.date_min} → ${args.date_max}` : undefined;
+        steps.push({ title: "Fetching orders for period", details: dateDetail });
+        steps.push({ title: "Aggregating by customer" });
+        steps.push({ title: "Building customer report" });
         break;
       }
       case "create_order":
@@ -1457,6 +1501,72 @@ async function executeTool(
           },
         },
         requestUri: `GET /wp-json/wc/v3/orders (aggregated by product)`,
+      };
+    }
+    case "get_top_customers": {
+      const startDate = args.date_min;
+      const endDate = args.date_max;
+      const limit = args.limit || 5;
+
+      let allOrders: any[] = [];
+      for (let page = 1; page <= 5; page++) {
+        const params = new URLSearchParams();
+        params.set("per_page", "100");
+        params.set("page", String(page));
+        params.set("after", `${startDate}T00:00:00`);
+        params.set("before", `${endDate}T23:59:59`);
+        if (defaultOrderStatuses.length) params.set("status", defaultOrderStatuses.join(","));
+        const orders = await callWooProxy(supabaseUrl, authHeader, { endpoint: `orders?${params.toString()}` });
+        if (!Array.isArray(orders) || orders.length === 0) break;
+        allOrders = allOrders.concat(orders);
+        if (orders.length < 100) break;
+      }
+
+      const customerMap: Record<string, { customer_name: string; total_revenue: number; order_count: number; email: string }> = {};
+
+      for (const order of allOrders) {
+        const b = order.billing || {};
+        const name = `${b.first_name || ""} ${b.last_name || ""}`.trim() || b.email || `Customer #${order.customer_id || "unknown"}`;
+        const key = name.toLowerCase();
+        if (!customerMap[key]) {
+          customerMap[key] = { customer_name: name, total_revenue: 0, order_count: 0, email: b.email || "" };
+        }
+        customerMap[key].total_revenue += parseFloat(order.total || "0");
+        customerMap[key].order_count++;
+      }
+
+      const customers = Object.values(customerMap)
+        .map((c) => ({
+          customer_name: c.customer_name,
+          email: c.email,
+          total_revenue: Math.round(c.total_revenue * 100) / 100,
+          order_count: c.order_count,
+          average_order_value: c.order_count > 0 ? Math.round((c.total_revenue / c.order_count) * 100) / 100 : 0,
+        }))
+        .sort((a, b) => b.total_revenue - a.total_revenue)
+        .slice(0, limit);
+
+      const totalRevenue = customers.reduce((s, c) => s + c.total_revenue, 0);
+
+      return {
+        result: {
+          period: `${startDate} → ${endDate}`,
+          total_revenue: Math.round(totalRevenue * 100) / 100,
+          total_orders: allOrders.length,
+          customer_count: customers.length,
+          customers,
+        },
+        richContent: {
+          type: "chart",
+          data: {
+            type: "bar",
+            title: `Top Customers (${startDate} → ${endDate})`,
+            data: customers.map((c) => ({ name: c.customer_name.slice(0, 25), value: c.total_revenue })),
+            dataKey: "value",
+            nameKey: "name",
+          },
+        },
+        requestUri: `GET /wp-json/wc/v3/orders (aggregated by customer)`,
       };
     }
     case "save_preference": {
@@ -2281,6 +2391,7 @@ AUTONOMOUS DATA GATHERING (ABSOLUTE RULE):
 - If the user asks a question and you realize you don't have enough data to answer, your ONLY correct response is to call the appropriate tools. NEVER say "let me know if you want me to fetch this" or "I need to pull this data first, shall I proceed?"
 - When the user asks about predictions, estimates, or forecasts: ALWAYS call get_product_sales_report with date ranges to get per-product data, then analyze it. Do not explain what you would need — just get it.
 - For product dominance / top products / best sellers / worst performers / "produse dominante" analysis: ALWAYS call get_product_sales_report with the relevant date range. This returns per-product revenue, units sold, and order count. Use it directly. Do NOT use get_sales_report for product-level analysis.
+- For top customers / best clients / "top clienti" / "cei mai buni clienti" / customer ranking / customer analysis: ALWAYS call get_top_customers with the relevant date range. This returns per-customer revenue, order count, and average order value. Do NOT try to extract customer data from other tools.
 - WRONG: "I need product-level data. Should I fetch it?"
 - RIGHT: *calls get_product_sales_report tool with date range*
 
