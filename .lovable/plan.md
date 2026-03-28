@@ -1,45 +1,63 @@
 
 
-## Fix: Pipeline Completes All Steps But Renders Nothing
+## Two Fixes: Pipeline Disappearing on Tab Switch + New Product Sales Tool
 
-### Root Cause
+### Issue 1: Pipeline disappears when switching tabs
 
-The while loop has `maxIterations = 8`. When the AI calls tools across multiple rounds (your screenshot shows 10+ "Searching orders" steps), the iteration counter exhausts. When the loop exits naturally (maxIterations hits 0), the code falls through to line 1227 which just sends `[DONE]` — **without sending any content, error message, or pipeline_complete event**. The frontend receives `[DONE]`, sets `isStreaming = false`, but there's no text content, no dashboard, and no error toast. The user sees a completed pipeline with nothing rendered.
+**Root cause**: The pipeline UI state lives only in React state (`useState`). When you switch tabs and come back, React doesn't re-render — but the streaming assistant message (without an `id`) is identified by `!last.id` in `updateLastAssistant`. The real problem is that during streaming, the message has no `id` (it's not yet persisted). When the browser tab loses focus and regains it, React's state is intact, so this shouldn't cause disappearance on its own.
 
-### Fix (in `supabase/functions/chat/index.ts`)
+The actual cause is likely the SSE connection being interrupted by the browser throttling background tabs. When the tab is backgrounded, Chrome throttles timers and may close idle connections. The stream dies silently, but `onDone`/`onError` may not fire cleanly, leaving `isStreaming = true` and the partial message without persistence.
 
-#### 1. Add fallback after the while loop exits
-After the `while` loop (line 1225, before line 1227), add a check: if no content was ever sent to the user (no delta text, no dashboard), emit an error message so the user isn't left staring at nothing.
+**Fix**:
+- Add a `visibilitychange` listener that, when the tab becomes visible again while `isStreaming` is true, checks if the stream is still alive. If the connection died, call `onError` to persist the partial message and show a toast.
+- In `onDone`, always persist the assistant message (currently it persists correctly, but the pipeline metadata should also be saved even if content is empty).
+- Add a `useRef` to track whether the stream is still active, so the visibility handler can detect stale streams.
 
-```typescript
-// After the while loop ends (whether by break or iteration exhaustion)
-if (!contentSent) {
-  sendSSE({ type: "reasoning", text: "Error: Ran out of processing steps before generating a response." });
-  sendSSE({ choices: [{ delta: { content: "⚠️ I gathered the data but ran out of processing steps before I could write the analysis. Please try asking again — I'll be more concise this time." } }] });
-  sendSSE({ type: "pipeline_complete", lastStepIndex: stepIndex });
-}
+**Files**: `src/pages/Index.tsx`
+
+---
+
+### Issue 2: New `get_product_sales_report` tool
+
+**Problem**: `get_sales_report` returns only aggregate revenue + daily breakdown. It does NOT return per-product data (revenue per product, units sold per product). The AI has no single tool to answer "which products dominate" without calling `get_product_sales` for each product individually (which wastes iterations).
+
+**Fix**: Add a new tool `get_product_sales_report` that fetches all orders for a period and aggregates by product, returning for each product:
+- `product_id`, `product_name`
+- `total_revenue` (valoric)
+- `total_quantity` (cantitativ / units sold)
+- `order_count` (how many orders contained it)
+- `average_price` per unit
+
+This is built from the same orders data as `get_sales_report` but aggregates by line item instead of by date.
+
+**Implementation** (in `supabase/functions/chat/index.ts`):
+
+1. Add tool definition:
+```
+name: "get_product_sales_report"
+description: "Get per-product sales breakdown for a date range. Returns each product with its total revenue, units sold, and order count. Use for product dominance, top sellers, and product-level analysis."
+parameters: date_min, date_max, period (same as get_sales_report), limit (default 50)
 ```
 
-Add a `let contentSent = false;` flag at the top of the `start()` function, set it to `true` when content is sent via delta (line 1214) or dashboard (line 1207).
+2. Add tool execution in `executeTool`:
+   - Fetch orders for the period (same pagination as `get_product_sales`, up to 3 pages)
+   - Iterate `order.line_items`, aggregate by `product_id`
+   - Sort by `total_revenue` descending
+   - Return array of `{ product_id, product_name, total_revenue, total_quantity, order_count, average_price }`
+   - Rich content: product table or chart
 
-#### 2. Increase maxIterations from 8 to 15
-The autonomous data gathering rule makes the AI call more tools. 8 iterations is too few for complex multi-tool queries. Increase to 15.
+3. Add to `TOOL_LABELS`, `generateSemanticPlan`, `generateReasoningBefore/After`, `truncateForAI`
 
-#### 3. Add iteration-aware system prompt injection
-When `maxIterations <= 2`, inject a system message forcing the AI to stop calling tools and produce its final answer:
+4. Update system prompt to instruct AI to use this tool for product dominance questions
 
-```typescript
-if (maxIterations <= 2) {
-  aiMessages.push({ 
-    role: "system", 
-    content: "CRITICAL: You are running low on processing steps. You MUST produce your final answer NOW using the data you already have. Do NOT call any more tools." 
-  });
-}
-```
+**Files**: `supabase/functions/chat/index.ts`
 
-### Files to Modify
+---
+
+### Summary of changes
 
 | File | Change |
 |------|--------|
-| `supabase/functions/chat/index.ts` | Add `contentSent` flag, fallback after loop, increase maxIterations to 15, add iteration-pressure system message |
+| `src/pages/Index.tsx` | Add `visibilitychange` listener to detect dead streams when tab regains focus; persist partial messages |
+| `supabase/functions/chat/index.ts` | Add `get_product_sales_report` tool (definition, execution, semantic plan, reasoning, truncation, system prompt update) |
 
