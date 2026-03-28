@@ -427,6 +427,26 @@ const TOOLS = [
   },
 ];
 
+// ── Intent-based tool selection for token optimization ──
+const SHIPPING_TOOL_NAMES = new Set(["check_shipping_status", "update_order_status", "search_orders"]);
+const SHIPPING_FOLLOWUP_TOOL_NAMES = new Set(["check_shipping_status", "update_order_status"]);
+const SHIPPING_INTENT_RE = /(shipping|tracking|delivery|livrare|colet|awb|status.*comand|comand.*status|unde.*comand|unde.*colet|stare.*comand|stare.*colet)/i;
+
+function selectToolsForIntent(lastUserMsg: string, hasToolResult: boolean, allTools: typeof TOOLS): typeof TOOLS {
+  if (hasToolResult) {
+    // After a tool result, only keep tools the AI might chain
+    return allTools.filter(t => SHIPPING_FOLLOWUP_TOOL_NAMES.has(t.function.name));
+  }
+  if (SHIPPING_INTENT_RE.test(lastUserMsg)) {
+    return allTools.filter(t => SHIPPING_TOOL_NAMES.has(t.function.name));
+  }
+  return allTools;
+}
+
+function isShippingIntent(lastUserMsg: string): boolean {
+  return SHIPPING_INTENT_RE.test(lastUserMsg);
+}
+
 const WRITE_TOOLS = new Set([
   "create_order",
   "update_order_status",
@@ -1912,6 +1932,19 @@ SHIPPING STATUS TRACKING:
 
 Be conversational, efficient, and proactive. Use markdown for formatting. Currency is RON (lei).${defaultStatusStr}${prefsContext}${viewContext}`;
 
+    // Minimal system prompt for shipping-only queries (saves ~1,700 tokens)
+    const shippingSystemPrompt = `You are a WooCommerce store assistant.${languageInstruction}
+
+SHIPPING STATUS TRACKING:
+- When the user asks about shipping status, tracking, delivery status, or "where is my order", use the check_shipping_status tool with the ORDER NUMBER.
+- If the user provides an AWB number instead of an order number, WARN THEM that you need the WooCommerce order number (not the AWB) and ask them for it.
+- NEVER ask the user for a uniqueId — the tool extracts it automatically from the order metadata.
+- The tool automatically detects the shipping provider from the order metadata. If the integration is not enabled, inform the user to enable it in Settings > Integrations.
+- Do NOT list the tracking history as text. The visual shipping timeline component shows the history automatically. Just provide a brief summary (current status, courier, AWB).
+- After showing shipping status, if the shipment is delivered (is_delivered = true) but the order_status is NOT "completed", proactively ask the user: "Coletul a fost livrat, dar comanda este încă marcată ca [order_status]. Vrei să o marchez ca finalizată?" If the user agrees, use update_order_status to set the order to "completed".
+
+Be conversational. Currency is RON (lei).${defaultStatusStr}`;
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY && !userOpenAIKey) throw new Error("No AI API key configured");
 
@@ -1922,9 +1955,15 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
     const aiAuthHeader = useOpenAI ? `Bearer ${userOpenAIKey}` : `Bearer ${LOVABLE_API_KEY}`;
     const aiModel = useOpenAI ? "gpt-5.4-mini" : "google/gemini-3-flash-preview";
 
-    // Trim conversation history to last 20 messages to prevent context bloat
-    const trimmedHistory = sanitizeAiHistory(messages).slice(-20);
-    let aiMessages: any[] = [{ role: "system", content: systemPrompt }, ...trimmedHistory];
+    // Detect shipping intent for optimized prompt/tool selection
+    const lastUserMsg = (messages as any[]).filter((m: any) => m.role === "user").pop()?.content || "";
+    const shippingQuery = isShippingIntent(lastUserMsg);
+    const effectiveSystemPrompt = shippingQuery ? shippingSystemPrompt : systemPrompt;
+
+    // Trim conversation history — aggressive for shipping (6 msgs), normal otherwise (20 msgs)
+    const historyLimit = shippingQuery ? 6 : 20;
+    const trimmedHistory = sanitizeAiHistory(messages).slice(-historyLimit);
+    let aiMessages: any[] = [{ role: "system", content: effectiveSystemPrompt }, ...trimmedHistory];
     const encoder = new TextEncoder();
 
     const stream = new ReadableStream({
@@ -1943,7 +1982,6 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
           const totalUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
 
           // ── Order-creation intent detection ──
-          const lastUserMsg = (messages as any[]).filter((m: any) => m.role === "user").pop()?.content || "";
           const orderIntentRe = /(cre(?:ea)?z[aă]|f[aă]|plaseaz[aă]|adaug[aă]|pune|place|create|make|add|new)\s.*?(comand[aă]|order)/i;
           if (orderIntentRe.test(lastUserMsg)) {
             sendSSE({ type: "pipeline_plan", title: "Execution Plan", steps: ["Creating order form"] });
@@ -2063,11 +2101,25 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
             }
             sendSSE({ type: "reasoning", text: "Thinking..." });
 
+            // Select tools based on intent — shipping queries get minimal tool set
+            const hasToolResult = aiMessages.some((m: any) => m.role === "tool");
+            const iterationTools = shippingQuery
+              ? selectToolsForIntent(lastUserMsg, hasToolResult, activeTools)
+              : activeTools;
+
+            // For follow-up iterations in shipping queries, trim history aggressively
+            if (shippingQuery && hasToolResult) {
+              // Keep system prompt + last 6 messages (tool results + context)
+              const sysMsg = aiMessages[0];
+              const recentMsgs = aiMessages.slice(1).slice(-6);
+              aiMessages = [sysMsg, ...recentMsgs];
+            }
+
             // Keep-alive: send periodic pings during AI fetch to prevent connection drops
             const aiRequest = fetch(aiBaseUrl, {
               method: "POST",
               headers: { Authorization: aiAuthHeader, "Content-Type": "application/json" },
-              body: JSON.stringify({ model: aiModel, messages: aiMessages, tools: activeTools, stream: false }),
+              body: JSON.stringify({ model: aiModel, messages: aiMessages, tools: iterationTools, stream: false }),
             });
             const keepAliveInterval = setInterval(() => {
               sendSSE({ type: "reasoning", text: "Still processing..." });
