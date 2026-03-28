@@ -698,6 +698,30 @@ function generateReasoningAfter(toolName: string, result: any): string | null {
         }
         return null;
       }
+      case "update_order":
+      case "update_order_status":
+        if (result?.id) return `Order #${result.id} updated (status: ${result.status}).`;
+        return result?.error ? `Error: ${result.error}` : null;
+      case "delete_order":
+        return result?.id ? `Order #${result.id} deleted.` : (result?.error ? `Error: ${result.error}` : null);
+      case "create_product":
+        return result?.id ? `Product created: #${result.id} "${result.name}".` : (result?.error ? `Error: ${result.error}` : null);
+      case "update_product":
+        return result?.id ? `Product #${result.id} updated.` : (result?.error ? `Error: ${result.error}` : null);
+      case "delete_product":
+        return result?.id ? `Product #${result.id} deleted.` : (result?.error ? `Error: ${result.error}` : null);
+      case "create_page":
+        return result?.id ? `Page created: #${result.id} "${result.title?.rendered || result.title}".` : (result?.error ? `Error: ${result.error}` : null);
+      case "update_page":
+        return result?.id ? `Page #${result.id} updated.` : (result?.error ? `Error: ${result.error}` : null);
+      case "delete_page":
+        return result?.id ? `Page #${result.id} deleted.` : (result?.error ? `Error: ${result.error}` : null);
+      case "create_post":
+        return result?.id ? `Post created: #${result.id} "${result.title?.rendered || result.title}".` : (result?.error ? `Error: ${result.error}` : null);
+      case "update_post":
+        return result?.id ? `Post #${result.id} updated.` : (result?.error ? `Error: ${result.error}` : null);
+      case "delete_post":
+        return result?.id ? `Post #${result.id} deleted.` : (result?.error ? `Error: ${result.error}` : null);
       default:
         return null;
     }
