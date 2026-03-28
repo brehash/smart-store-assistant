@@ -1750,6 +1750,86 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
             return;
           }
 
+          // ── Cache refresh intent detection ──
+          const cacheIntentRe = /(update|refresh|actualizeaz[aă]|sincronizeaz[aă]|sync)\s.*(product|cache|memor|produs)/i;
+          if (cacheIntentRe.test(lastUserMsg)) {
+            sendSSE({ type: "pipeline_plan", title: "Execution Plan", steps: ["Refreshing product cache"] });
+            sendSSE({ type: "pipeline_step", stepIndex: 0, title: "Refreshing product cache", status: "running" });
+
+            // Fetch connection details
+            const { data: conn } = await supabase
+              .from("woo_connections")
+              .select("store_url, consumer_key, consumer_secret")
+              .eq("user_id", userId)
+              .eq("is_active", true)
+              .maybeSingle();
+
+            if (conn) {
+              try {
+                // Fetch all products
+                let allProducts: any[] = [];
+                let page = 1;
+                while (true) {
+                  const wooResp = await callWooProxy(supabaseUrl, authHeader, { endpoint: `products?per_page=100&page=${page}`, storeUrl: conn.store_url, consumerKey: conn.consumer_key, consumerSecret: conn.consumer_secret });
+                  if (!Array.isArray(wooResp) || wooResp.length === 0) break;
+                  allProducts = [...allProducts, ...wooResp.map((p: any) => ({ id: p.id, name: p.name, sku: p.sku, price: p.price, regular_price: p.regular_price, stock_status: p.stock_status, images: p.images?.slice(0, 1) }))];
+                  if (wooResp.length < 100) break;
+                  page++;
+                }
+                // Fetch payment gateways
+                let paymentMethods: any[] = [];
+                try {
+                  const gwResp = await callWooProxy(supabaseUrl, authHeader, { endpoint: "payment_gateways", storeUrl: conn.store_url, consumerKey: conn.consumer_key, consumerSecret: conn.consumer_secret });
+                  paymentMethods = Array.isArray(gwResp) ? gwResp.filter((g: any) => g.enabled).map((g: any) => ({ id: g.id, title: g.title })) : [];
+                } catch { /* payment gateways may not be accessible */ }
+                // Fetch order statuses
+                let allStatuses: any[] = [];
+                try {
+                  const stResp = await callWooProxy(supabaseUrl, authHeader, { endpoint: "reports/orders/totals", storeUrl: conn.store_url, consumerKey: conn.consumer_key, consumerSecret: conn.consumer_secret });
+                  allStatuses = Array.isArray(stResp) ? stResp.map((s: any) => ({ slug: s.slug, name: s.name })) : [];
+                } catch { /* silent */ }
+                // Upsert cache
+                const upserts = [
+                  { user_id: userId, cache_key: "products", data: allProducts, updated_at: new Date().toISOString() },
+                  { user_id: userId, cache_key: "payment_methods", data: paymentMethods, updated_at: new Date().toISOString() },
+                  { user_id: userId, cache_key: "order_statuses", data: allStatuses, updated_at: new Date().toISOString() },
+                ];
+                for (const row of upserts) {
+                  await serviceClient.from("woo_cache").upsert(row, { onConflict: "user_id,cache_key" });
+                }
+                sendSSE({ type: "pipeline_step", stepIndex: 0, title: "Refreshing product cache", status: "done" });
+                const doneText = responseLanguage !== "English"
+                  ? `✅ Cache actualizat: ${allProducts.length} produse, ${paymentMethods.length} metode de plată, ${allStatuses.length} statusuri.`
+                  : `✅ Cache refreshed: ${allProducts.length} products, ${paymentMethods.length} payment methods, ${allStatuses.length} statuses.`;
+                sendSSE({ choices: [{ delta: { content: doneText } }] });
+              } catch (err) {
+                sendSSE({ type: "pipeline_step", stepIndex: 0, title: "Refreshing product cache", status: "error" });
+                const errText = responseLanguage !== "English"
+                  ? "❌ Nu am putut actualiza cache-ul. Verificați conexiunea."
+                  : "❌ Failed to refresh cache. Check your connection.";
+                sendSSE({ choices: [{ delta: { content: errText } }] });
+              }
+            } else {
+              sendSSE({ type: "pipeline_step", stepIndex: 0, title: "Refreshing product cache", status: "error" });
+              const noConnText = responseLanguage !== "English"
+                ? "❌ Nu aveți o conexiune WooCommerce activă."
+                : "❌ No active WooCommerce connection found.";
+              sendSSE({ choices: [{ delta: { content: noConnText } }] });
+            }
+
+            sendSSE({ type: "pipeline_complete" });
+            const CREDIT_COST = 1;
+            const newBalance = (creditBalance?.balance || 1) - CREDIT_COST;
+            await serviceClient.from("credit_balances").update({ balance: newBalance }).eq("user_id", userId);
+            await serviceClient.from("credit_transactions").insert({
+              user_id: userId, amount: -CREDIT_COST, balance_after: newBalance, reason: "chat_message",
+            });
+            sendSSE({ type: "credit_usage", cost: CREDIT_COST, remaining_balance: newBalance });
+            controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+            controller.close();
+            return;
+          }
+
           // Emit "Understanding request" immediately
           sendSSE({ type: "pipeline_plan", title: "Execution Plan", steps: ["Understanding request"] });
           sendSSE({ type: "pipeline_step", stepIndex: 0, title: "Understanding request", status: "running" });

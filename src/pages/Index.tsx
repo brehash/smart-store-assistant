@@ -70,6 +70,9 @@ export default function Index() {
   const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);
   const [hasConnection, setHasConnection] = useState<boolean | null>(null); // null = loading
   const [showWebhookSetup, setShowWebhookSetup] = useState(false);
+  const [cachedPaymentMethods, setCachedPaymentMethods] = useState<{ id: string; title: string }[]>([]);
+  const [cachedAllStatuses, setCachedAllStatuses] = useState<{ slug: string; name: string }[]>([]);
+  const [cachedSelectedStatuses, setCachedSelectedStatuses] = useState<string[]>([]);
 
   // Fetch credit balance and app settings on mount
   useEffect(() => {
@@ -89,21 +92,35 @@ export default function Index() {
     })();
   }, [user]);
 
-  // Check if user has a WooCommerce connection
+  // Check if user has a WooCommerce connection + fetch cached data
   useEffect(() => {
     if (!user) return;
     supabase
       .from("woo_connections")
-      .select("id")
+      .select("id, order_statuses")
       .eq("user_id", user.id)
       .eq("is_active", true)
       .maybeSingle()
       .then(({ data }) => {
         setHasConnection(!!data);
         if (data) {
-          // Check if webhooks prompt was dismissed
+          setCachedSelectedStatuses((data as any).order_statuses || []);
           const dismissed = localStorage.getItem(`webhook-setup-dismissed-${user.id}`);
           if (!dismissed) setShowWebhookSetup(true);
+        }
+      });
+    // Fetch cached payment methods and order statuses
+    supabase
+      .from("woo_cache" as any)
+      .select("cache_key, data")
+      .eq("user_id", user.id)
+      .in("cache_key", ["payment_methods", "order_statuses"])
+      .then(({ data }: any) => {
+        if (Array.isArray(data)) {
+          for (const row of data) {
+            if (row.cache_key === "payment_methods") setCachedPaymentMethods(row.data || []);
+            if (row.cache_key === "order_statuses") setCachedAllStatuses(row.data || []);
+          }
         }
       });
   }, [user]);
@@ -697,6 +714,9 @@ export default function Index() {
                   reasoningLogs={msg.reasoningLogs}
                   tokenUsage={msg.tokenUsage}
                   creditUsage={msg.creditUsage}
+                  orderStatuses={cachedSelectedStatuses}
+                  allOrderStatuses={cachedAllStatuses}
+                  paymentMethods={cachedPaymentMethods}
                   onApproval={handleApproval}
                   onQuestionAnswer={handleQuestionAnswer}
                   onOrderCreated={handleOrderCreated}

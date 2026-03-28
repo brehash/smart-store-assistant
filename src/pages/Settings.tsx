@@ -18,7 +18,7 @@ import {
 import {
   Settings, Globe, Palette, Store, User, Coins,
   Save, Trash2, CheckCircle2, XCircle, ListChecks, Loader2,
-  Sun, Moon, Monitor, X,
+  Sun, Moon, Monitor, X, RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -69,6 +69,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
   const [plugins, setPlugins] = useState<{ plugin: string; name: string; version: string }[]>([]);
   const [selectedPlugins, setSelectedPlugins] = useState<string[]>([]);
   const [loadingPlugins, setLoadingPlugins] = useState(false);
+  const [refreshingCache, setRefreshingCache] = useState(false);
 
   // General tab state
   const [displayName, setDisplayName] = useState("");
@@ -204,6 +205,55 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
       fetchPlugins(storeUrl, consumerKey, consumerSecret);
     } catch { setTestResult("error"); toast({ title: "Connection failed", description: "Check your API keys and store URL.", variant: "destructive" }); }
     finally { setTesting(false); }
+  };
+
+  const refreshCache = async (url?: string, ck?: string, cs?: string) => {
+    if (!user) return;
+    const su = url || storeUrl;
+    const key = ck || consumerKey;
+    const sec = cs || consumerSecret;
+    if (!su || !key || !sec) return;
+    setRefreshingCache(true);
+    try {
+      // Fetch products (all pages)
+      let allProducts: any[] = [];
+      let page = 1;
+      while (true) {
+        const { data: products } = await supabase.functions.invoke("woo-proxy", {
+          body: { endpoint: `products?per_page=100&page=${page}`, storeUrl: su, consumerKey: key, consumerSecret: sec },
+        });
+        if (!Array.isArray(products) || products.length === 0) break;
+        allProducts = [...allProducts, ...products.map((p: any) => ({ id: p.id, name: p.name, sku: p.sku, price: p.price, regular_price: p.regular_price, stock_status: p.stock_status, images: p.images?.slice(0, 1) }))];
+        if (products.length < 100) break;
+        page++;
+      }
+      // Fetch payment gateways
+      const { data: gateways } = await supabase.functions.invoke("woo-proxy", {
+        body: { endpoint: "payment_gateways", storeUrl: su, consumerKey: key, consumerSecret: sec },
+      });
+      const paymentMethods = Array.isArray(gateways)
+        ? gateways.filter((g: any) => g.enabled).map((g: any) => ({ id: g.id, title: g.title }))
+        : [];
+      // Fetch order statuses
+      const { data: statuses } = await supabase.functions.invoke("woo-proxy", {
+        body: { endpoint: "reports/orders/totals", storeUrl: su, consumerKey: key, consumerSecret: sec },
+      });
+      const allStatuses = Array.isArray(statuses) ? statuses.map((s: any) => ({ slug: s.slug, name: s.name })) : [];
+      // Upsert into woo_cache
+      const upserts = [
+        { user_id: user.id, cache_key: "products", data: allProducts, updated_at: new Date().toISOString() },
+        { user_id: user.id, cache_key: "payment_methods", data: paymentMethods, updated_at: new Date().toISOString() },
+        { user_id: user.id, cache_key: "order_statuses", data: allStatuses, updated_at: new Date().toISOString() },
+      ];
+      for (const row of upserts) {
+        await supabase.from("woo_cache" as any).upsert(row as any, { onConflict: "user_id,cache_key" });
+      }
+      toast({ title: "Cache refreshed", description: `${allProducts.length} products, ${paymentMethods.length} payment methods, ${allStatuses.length} statuses cached.` });
+    } catch (err) {
+      toast({ title: "Cache refresh failed", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
+    } finally {
+      setRefreshingCache(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -386,7 +436,13 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
               <Save className="h-4 w-4" /> {saving ? "Saving…" : "Save"}
             </Button>
             {existingConnection && (
-              <Button onClick={handleDelete} variant="destructive" size="icon"><Trash2 className="h-4 w-4" /></Button>
+              <>
+                <Button onClick={() => refreshCache()} variant="outline" disabled={refreshingCache} className="gap-1.5">
+                  <RefreshCw className={cn("h-4 w-4", refreshingCache && "animate-spin")} />
+                  {refreshingCache ? "Refreshing…" : "Refresh Cache"}
+                </Button>
+                <Button onClick={handleDelete} variant="destructive" size="icon"><Trash2 className="h-4 w-4" /></Button>
+              </>
             )}
           </div>
         </CardContent>

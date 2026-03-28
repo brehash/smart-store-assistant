@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,14 +37,21 @@ export interface OrderFormData {
   resolved?: { orderNumber: string; orderId: number; total: string } | "error";
 }
 
+interface PaymentMethod {
+  id: string;
+  title: string;
+}
+
 interface OrderFormCardProps {
   data: OrderFormData;
   orderStatuses?: string[];
+  allOrderStatuses?: { slug: string; name: string }[];
+  paymentMethods?: PaymentMethod[];
   disabled?: boolean;
   onOrderCreated?: (data: OrderFormData, result: { orderNumber: string; orderId: number; total: string }) => void;
 }
 
-export function OrderFormCard({ data, orderStatuses, disabled, onOrderCreated }: OrderFormCardProps) {
+export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMethods, disabled, onOrderCreated }: OrderFormCardProps) {
   const { session } = useAuth();
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -52,6 +59,7 @@ export function OrderFormCard({ data, orderStatuses, disabled, onOrderCreated }:
   const [searching, setSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [status, setStatus] = useState("processing");
+  const [paymentMethod, setPaymentMethod] = useState("");
   const [note, setNote] = useState("");
   const [billingOpen, setBillingOpen] = useState(false);
   const [billing, setBilling] = useState({
@@ -136,6 +144,11 @@ export function OrderFormCard({ data, orderStatuses, disabled, onOrderCreated }:
         line_items: lineItems.map((li) => ({ product_id: li.product_id, quantity: li.quantity })),
       };
       if (note) orderBody.customer_note = note;
+      if (paymentMethod) {
+        orderBody.payment_method = paymentMethod;
+        const pm = paymentMethods?.find((p) => p.id === paymentMethod);
+        if (pm) orderBody.payment_method_title = pm.title;
+      }
       const hasBilling = Object.values(billing).some((v) => v.trim());
       if (hasBilling) orderBody.billing = billing;
 
@@ -258,12 +271,56 @@ export function OrderFormCard({ data, orderStatuses, disabled, onOrderCreated }:
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {(orderStatuses?.length ? orderStatuses : ["pending", "processing", "on-hold", "completed"]).map((s) => (
-                <SelectItem key={s} value={s}>{s}</SelectItem>
-              ))}
+              {(() => {
+                const preferred = orderStatuses || [];
+                const all = allOrderStatuses || [];
+                const allSlugs = all.map((s) => s.slug);
+                const preferredSet = new Set(preferred);
+                // Preferred first, then the rest
+                const sorted = [
+                  ...all.filter((s) => preferredSet.has(s.slug)),
+                  ...all.filter((s) => !preferredSet.has(s.slug)),
+                ];
+                if (sorted.length === 0) {
+                  return ["pending", "processing", "on-hold", "completed"].map((s) => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ));
+                }
+                return sorted.map((s, i) => {
+                  const isPreferred = preferredSet.has(s.slug);
+                  const isFirstNonPreferred = !isPreferred && (i === 0 || preferredSet.has(sorted[i - 1].slug));
+                  return (
+                    <React.Fragment key={s.slug}>
+                      {isFirstNonPreferred && preferred.length > 0 && (
+                        <div className="my-1 h-px bg-border mx-2" />
+                      )}
+                      <SelectItem value={s.slug}>
+                        <span className={isPreferred ? "font-medium" : ""}>{s.name}</span>
+                      </SelectItem>
+                    </React.Fragment>
+                  );
+                });
+              })()}
             </SelectContent>
           </Select>
         </div>
+
+        {/* Payment Method */}
+        {paymentMethods && paymentMethods.length > 0 && (
+          <div>
+            <Label className="text-xs font-medium mb-1.5 block">Payment Method</Label>
+            <Select value={paymentMethod} onValueChange={setPaymentMethod} disabled={isDisabled}>
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue placeholder="Select payment method..." />
+              </SelectTrigger>
+              <SelectContent>
+                {paymentMethods.map((pm) => (
+                  <SelectItem key={pm.id} value={pm.id}>{pm.title}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Note */}
         <div>
