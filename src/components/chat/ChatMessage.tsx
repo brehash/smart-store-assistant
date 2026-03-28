@@ -141,10 +141,12 @@ export function ChatMessage({
         {/* Debug panel */}
         {debugLogs && debugLogs.length > 0 && !isUser && <DebugPanel logs={debugLogs} />}
 
-        {/* Token usage badge */}
-        {tokenUsage && !isUser && (
+        {/* Token & credit usage badge */}
+        {(tokenUsage || creditUsage) && !isUser && (
           <span className="text-[11px] text-muted-foreground/60 tabular-nums">
-            {tokenUsage.total_tokens.toLocaleString()} tokens
+            {creditUsage && <>{creditUsage.cost} credit{creditUsage.cost !== 1 ? "s" : ""}</>}
+            {creditUsage && tokenUsage && <> · </>}
+            {tokenUsage && <>{tokenUsage.total_tokens.toLocaleString()} tokens</>}
           </span>
         )}
       </div>

@@ -317,6 +317,13 @@ export default function Index() {
             total_tokens: event.total_tokens || 0,
           };
           updateLastAssistant((m) => ({ ...m, tokenUsage: tokenUsage! }));
+        } else if (event.type === "credit_usage") {
+          creditUsage = {
+            cost: event.cost || 0,
+            remaining_balance: event.remaining_balance || 0,
+          };
+          setCreditBalance(creditUsage.remaining_balance);
+          updateLastAssistant((m) => ({ ...m, creditUsage: creditUsage! }));
         }
       },
       onDone: async () => {
