@@ -1,41 +1,37 @@
 
 
-## Fix: Pipeline Steps Reverting on Tab Switch
+## Add Active Plugins Detection to Settings
 
-### Root Cause
+### Overview
+Fetch active WordPress plugins via the REST API, display them as selectable checkboxes in Settings > Connection (below order statuses), and persist selections in the database.
 
-React 18 automatic batching. When `pipeline_complete` fires, it calls `updateLastAssistant` which queues a `setMessages` update. The closure variable `pipelineData` is only updated **inside** the React updater function. But React doesn't execute the updater immediately — it batches it. Then `[DONE]` arrives on the very next SSE line, triggering `onDone()` which saves `pipelineData` to the database. At this point, `pipelineData` still reflects the old state (only steps 0-1 done), so the DB gets stale data. When the user switches tabs and React re-renders, the stale persisted state appears.
+### Changes
 
-### Fix
+#### 1. Database: Add `active_plugins` column to `woo_connections`
+Add a `text[]` column (like `order_statuses`) to store selected plugin slugs.
 
-**File: `src/pages/Index.tsx`**
-
-In the `pipeline_complete` handler (line 291-299), update `pipelineData` **before** calling `updateLastAssistant`, not inside the updater:
-
-```typescript
-} else if (event.type === "pipeline_complete") {
-  // Update pipelineData OUTSIDE the React updater to avoid batching race
-  if (pipelineData) {
-    const doneSteps = pipelineData.steps.map((s) =>
-      s.status === "pending" ? { ...s, status: "done" as const } : s
-    );
-    pipelineData = { ...pipelineData, steps: doneSteps };
-  }
-  updateLastAssistant((m) => {
-    if (!m.pipeline) return m;
-    return { ...m, pipeline: pipelineData! };
-  });
-  scrollToBottom();
-}
+```sql
+ALTER TABLE public.woo_connections 
+ADD COLUMN active_plugins text[] NOT NULL DEFAULT '{}';
 ```
 
-Apply the same fix to the `pipeline_step` handler — update `pipelineData` outside the updater too, so it's always in sync when `onDone` reads it.
+#### 2. Settings UI (`src/pages/Settings.tsx`)
+- Add state: `plugins` (fetched list), `selectedPlugins` (user selections), `loadingPlugins`
+- Add `fetchPlugins()` — calls `woo-proxy` with `apiPrefix: "wp/v2"`, `endpoint: "plugins?status=active"` to get active plugins
+- Call it after successful test connection and on initial load (same as `fetchOrderStatuses`)
+- Render a new Card below "Default Order Statuses" with plugin checkboxes (name + version)
+- Include `active_plugins: selectedPlugins` in the `handleSave` payload
+- The WordPress plugins endpoint returns: `{ plugin, status, name, version, ... }` — use `plugin` (slug) as identifier, `name` for display
 
-Same pattern for the approval-flow `pipeline_complete` handler at line 456-464.
+#### 3. Edge function (`supabase/functions/woo-proxy/index.ts`)
+No changes needed — the proxy already supports `apiPrefix: "wp/v2"` and arbitrary endpoints. The plugins endpoint `wp/v2/plugins?status=active` will work through the existing proxy with WooCommerce consumer key auth (which has WordPress application password scope).
+
+> **Note**: The `wp/v2/plugins` endpoint requires admin-level authentication. If the WooCommerce API keys don't have sufficient permissions, the call may return 401. We'll handle this gracefully with a fallback message.
 
 ### Files to Modify
 
 | File | Change |
 |------|--------|
-| `src/pages/Index.tsx` | Move `pipelineData` mutations outside React updater functions in `pipeline_complete` and `pipeline_step` handlers (both in main stream and approval flow) |
+| `woo_connections` table | Add `active_plugins text[]` column |
+| `src/pages/Settings.tsx` | Add plugins fetch, display, selection, and persistence |
 
