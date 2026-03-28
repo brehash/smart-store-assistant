@@ -868,6 +868,13 @@ function generateSemanticPlan(toolCalls: any[]): SemanticStep[] {
         steps.push({ title: "Searching orders", details: args.search || args.status || undefined });
         steps.push({ title: "Rendering results" });
         break;
+      case "get_orders_with_meta": {
+        const dateDetail = args.after && args.before ? `${args.after} → ${args.before}` : undefined;
+        steps.push({ title: "Fetching orders with metadata", details: dateDetail });
+        steps.push({ title: "Parsing metadata" });
+        steps.push({ title: "Building dashboard" });
+        break;
+      }
       case "get_product_sales": {
         const daysVal = args.days || 60;
         steps.push({
