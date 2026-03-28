@@ -606,6 +606,9 @@ const TOOL_LABELS: Record<string, string> = {
   get_orders_with_meta: "Fetching orders with metadata",
   save_preference: "Saving preference",
   check_shipping_status: "Checking shipping status",
+  audit_geo: "Auditing GEO readiness",
+  generate_geo_content: "Generating GEO content",
+  bulk_geo_audit: "Running bulk GEO audit",
 };
 
 interface SemanticStep {
