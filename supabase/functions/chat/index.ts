@@ -626,6 +626,7 @@ const TOOL_LABELS: Record<string, string> = {
   audit_geo: "Auditing GEO readiness",
   generate_geo_content: "Generating GEO content",
   bulk_geo_audit: "Running bulk GEO audit",
+  get_top_customers: "Analyzing top customers",
 };
 
 interface SemanticStep {
