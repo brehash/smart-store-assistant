@@ -18,6 +18,7 @@ export interface PipelineEvent {
   toolCallId?: string;
   result?: any;
   requestUri?: string;
+  prefill?: any;
   text?: string;
   prompt_tokens?: number;
   completion_tokens?: number;
