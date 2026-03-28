@@ -1770,7 +1770,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                 let allProducts: any[] = [];
                 let page = 1;
                 while (true) {
-                  const wooResp = await wooFetch(conn.store_url, `products?per_page=100&page=${page}`, conn.consumer_key, conn.consumer_secret);
+                  const wooResp = await callWooProxy(supabaseUrl, authHeader, { endpoint: `products?per_page=100&page=${page}`, storeUrl: conn.store_url, consumerKey: conn.consumer_key, consumerSecret: conn.consumer_secret });
                   if (!Array.isArray(wooResp) || wooResp.length === 0) break;
                   allProducts = [...allProducts, ...wooResp.map((p: any) => ({ id: p.id, name: p.name, sku: p.sku, price: p.price, regular_price: p.regular_price, stock_status: p.stock_status, images: p.images?.slice(0, 1) }))];
                   if (wooResp.length < 100) break;
