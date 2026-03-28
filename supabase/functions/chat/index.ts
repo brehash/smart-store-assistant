@@ -163,6 +163,24 @@ const TOOLS = [
   {
     type: "function",
     function: {
+      name: "get_orders_with_meta",
+      description:
+        "Fetch orders for a date range with FULL meta_data included. Use this when the user asks about invoices (facturi), AWBs, tracking numbers, or any custom order attributes. Returns meta_data, line_items, billing, and all order fields needed for classification and analysis.",
+      parameters: {
+        type: "object",
+        properties: {
+          after: { type: "string", description: "Start date (ISO 8601, e.g. 2024-01-01T00:00:00)" },
+          before: { type: "string", description: "End date (ISO 8601, e.g. 2024-01-31T23:59:59)" },
+          status: { type: "string", description: "Order status filter (optional)" },
+          per_page: { type: "number", description: "Number of results per page (default 100, max 100)" },
+        },
+        required: ["after", "before"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "save_preference",
       description: "Save a user preference/alias.",
       parameters: {
@@ -498,6 +516,7 @@ const TOOL_LABELS: Record<string, string> = {
   compare_sales: "Comparing sales periods",
   get_product_sales: "Analyzing product sales",
   get_product_sales_report: "Analyzing product performance",
+  get_orders_with_meta: "Fetching orders with metadata",
   save_preference: "Saving preference",
 };
 
@@ -609,6 +628,21 @@ function truncateForAI(toolName: string, result: any): any {
       }));
     }
 
+    if (toolName === "get_orders_with_meta" && Array.isArray(result)) {
+      return result.slice(0, 30).map((item: any) => ({
+        id: item.id,
+        status: item.status,
+        total: item.total,
+        currency: item.currency,
+        date_created: item.date_created,
+        billing: item.billing ? { first_name: item.billing.first_name, last_name: item.billing.last_name } : undefined,
+        meta_data: item.meta_data,
+        line_items: Array.isArray(item.line_items)
+          ? item.line_items.map((li: any) => ({ name: li.name, quantity: li.quantity }))
+          : [],
+      }));
+    }
+
     if (toolName === "search_products" && Array.isArray(result)) {
       return result.slice(0, 10).map((item: any) => ({
         id: item.id,
@@ -676,6 +710,12 @@ function generateReasoningBefore(toolName: string, args: any): string {
       return `Updating post #${args.post_id}...`;
     case "delete_post":
       return `Deleting post #${args.post_id}${args.force ? " permanently" : ""}...`;
+    case "get_orders_with_meta": {
+      const parts: string[] = [];
+      if (args.after) parts.push(`from ${args.after}`);
+      if (args.before) parts.push(`to ${args.before}`);
+      return `Fetching orders with full metadata ${parts.join(" ")}...`;
+    }
     case "save_preference":
       return `Saving preference: "${args.key}"...`;
     default:
@@ -702,6 +742,13 @@ function generateReasoningAfter(toolName: string, result: any): string | null {
       }
       case "search_orders": {
         if (Array.isArray(result)) return `Found ${result.length} order${result.length !== 1 ? "s" : ""}.`;
+        return null;
+      }
+      case "get_orders_with_meta": {
+        if (Array.isArray(result)) {
+          const withMeta = result.filter((o: any) => o.meta_data?.length > 0).length;
+          return `Found ${result.length} order${result.length !== 1 ? "s" : ""}. ${withMeta} have metadata.`;
+        }
         return null;
       }
       case "get_sales_report": {
@@ -821,6 +868,13 @@ function generateSemanticPlan(toolCalls: any[]): SemanticStep[] {
         steps.push({ title: "Searching orders", details: args.search || args.status || undefined });
         steps.push({ title: "Rendering results" });
         break;
+      case "get_orders_with_meta": {
+        const dateDetail = args.after && args.before ? `${args.after} → ${args.before}` : undefined;
+        steps.push({ title: "Fetching orders with metadata", details: dateDetail });
+        steps.push({ title: "Parsing metadata" });
+        steps.push({ title: "Building dashboard" });
+        break;
+      }
       case "get_product_sales": {
         const daysVal = args.days || 60;
         steps.push({
@@ -1251,6 +1305,41 @@ async function executeTool(
         );
       return { result: { success: true, message: `Saved preference: "${args.key}"` } };
     }
+    case "get_orders_with_meta": {
+      const perPage = Math.min(args.per_page || 100, 100);
+      let allOrders: any[] = [];
+      for (let page = 1; page <= 5; page++) {
+        const params = new URLSearchParams();
+        params.set("per_page", String(perPage));
+        params.set("page", String(page));
+        if (args.after) params.set("after", args.after);
+        if (args.before) params.set("before", args.before);
+        if (args.status) params.set("status", args.status);
+        else if (defaultOrderStatuses.length) params.set("status", defaultOrderStatuses.join(","));
+        const orders = await callWooProxy(supabaseUrl, authHeader, { endpoint: `orders?${params.toString()}` });
+        if (!Array.isArray(orders) || orders.length === 0) break;
+        allOrders = allOrders.concat(orders);
+        if (orders.length < perPage) break;
+      }
+      // Return orders with meta_data, line_items (name+quantity), billing, and key fields
+      const cleaned = allOrders.map((o: any) => ({
+        id: o.id,
+        status: o.status,
+        total: o.total,
+        currency: o.currency,
+        date_created: o.date_created,
+        billing: o.billing ? { first_name: o.billing.first_name, last_name: o.billing.last_name, email: o.billing.email, company: o.billing.company } : undefined,
+        meta_data: o.meta_data || [],
+        line_items: Array.isArray(o.line_items)
+          ? o.line_items.map((li: any) => ({ name: li.name, quantity: li.quantity, total: li.total }))
+          : [],
+      }));
+      return {
+        result: cleaned,
+        richContent: { type: "orders", data: allOrders },
+        requestUri: `GET /wp-json/wc/v3/orders (with meta_data, ${allOrders.length} orders)`,
+      };
+    }
     // ── CRUD: Orders ──
     case "update_order": {
       const endpoint = `orders/${args.order_id}`;
@@ -1502,6 +1591,20 @@ CRITICAL TOOL USAGE RULES — YOU MUST FOLLOW THESE:
 4. When the user asks to compare periods: you MUST call compare_sales with proper date ranges and then emit a \`\`\`dashboard code block.
 5. NEVER respond with plain text summaries of data that should come from a tool. If data is needed, call the tool first.
 6. NEVER ask the user for information you can look up with tools. NEVER ask permission to run a tool. NEVER explain what data you need before fetching it. Just call the tool. This applies especially in follow-up messages where you realize you need more data.
+7. When the user asks about invoices (facturi/factura), AWBs, tracking numbers, or any custom order attributes/metadata: you MUST call get_orders_with_meta for the requested date range. Then parse each order's meta_data array to identify the requested attributes.
+
+ORDER META-DATA ANALYSIS:
+- When the user asks about invoices (facturi), AWBs, tracking numbers, or any custom order attributes:
+  1. Call get_orders_with_meta for the requested period
+  2. Parse the meta_data array on each order looking for keys containing: invoice, factura, facturi, awb, tracking, colet, curier, and similar patterns (case-insensitive)
+  3. Also check for keys like: _billing_invoice, _invoice_number, _factura_seria, _factura_numar, _awb_number, _tracking_number, invoice_series, invoice_number
+  4. Classify orders as having/not having the requested attribute based on whether the meta_data value is non-empty
+  5. Present results as a \`\`\`dashboard block with:
+     - Stat cards: total orders, orders with attribute, orders without, amounts for each
+     - Table: order details with the relevant meta_data values
+     - If comparing invoiced vs non-invoiced: show "Invoiced Revenue" and "Non-Invoiced Revenue" cards
+- If orders are already in context from a previous tool call that included meta_data, parse them directly without re-fetching
+- Common meta_data keys for Romanian WooCommerce stores: _factura, _invoice, _awb, _tracking, factura_seria, factura_numar, av_factura, av_invoice, _billing_invoice, wc_invoice, _awb_number, fan_courier_awb, sameday_awb
 
 AUTONOMOUS DATA GATHERING (ABSOLUTE RULE):
 - You MUST NEVER tell the user you need more data or ask permission to fetch data. If you need product-level data, sales breakdowns, order details, or ANY information available through your tools — CALL THE TOOLS IMMEDIATELY without asking.
@@ -1868,7 +1971,8 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                   ss.title === "Building dashboard" ||
                   ss.title === "Rendering results" ||
                   ss.title === "Building inventory report" ||
-                  ss.title === "Calculating burn rate"
+                  ss.title === "Calculating burn rate" ||
+                  ss.title === "Parsing metadata"
                 ) {
                   sendSSE({ type: "reasoning", text: `${ss.title}...` });
                   sendSSE({ type: "pipeline_step", stepIndex, title: ss.title, status: "running" });
