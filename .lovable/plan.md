@@ -1,47 +1,46 @@
 
 
-## Fix Credit Management + Add Loading States and Toast Messages
+## Credit Top-Up Packs — Profitable Pricing
 
-### Root Cause
+### Top-Up Tiers (one-time purchases, max 1000 credits)
 
-The admin edge function uses `auth.getClaims()` which may not be reliably available in the Supabase JS client version used in edge functions. This could silently fail, causing the auth check to reject the request with a 401. The frontend also doesn't properly handle or display error responses from the backend.
+| Pack | Credits | Price | Cost per Credit | Your Margin vs base |
+|------|---------|-------|-----------------|---------------------|
+| **Starter** | 100 | $12 | $0.120 | baseline |
+| **Basic** | 250 | $27 | $0.108 | 10% discount to user |
+| **Plus** | 500 | $49 | $0.098 | 18% discount to user |
+| **Max** | 1,000 | $89 | $0.089 | 26% discount to user |
 
-### Changes
+Even the biggest pack keeps a healthy margin — users get a volume discount but you still profit well above cost on every tier.
 
-#### 1. Fix admin edge function auth (`supabase/functions/admin/index.ts`)
-- Replace `userClient.auth.getClaims()` with `userClient.auth.getUser()` which is the standard, reliable method
-- Extract `userId` from `user.id` instead of `claims.sub`
-- Add error logging for credit operations to help debug
+### Implementation
 
-#### 2. Improve UserDetail UI (`src/components/admin/UserDetail.tsx`)
-- Add proper loading states with spinners/disabled states on all buttons (Save Limits, Save Allowance, Apply Credits)
-- Add detailed toast messages for success AND error cases with descriptive text
-- Show loading skeleton while credits data is being fetched
-- Handle non-OK responses by reading the error body and displaying it in the toast
-- Add loading state for initial data fetch (conversations, messages, credits)
+#### 1. Database Migration
+- Create `credit_topup_packs` table: `id`, `name`, `credits` (int), `price_cents` (int), `is_active` (bool), `sort_order` (int)
+- Seed with the 4 packs above
+- RLS: public SELECT for all authenticated users, admin-only for mutations
 
-### Files to modify
+#### 2. Admin Edge Function (`supabase/functions/admin/index.ts`)
+- `GET /topup-packs` — list all packs
+- `PUT /topup-packs/:id` — admin edits a pack (credits, price, active status)
 
-| File | Change |
+#### 3. Settings Page — "Credits" Tab (`src/pages/Settings.tsx`)
+- Add a new "Credits" tab showing:
+  - Current balance and plan info
+  - Top-up pack cards with "Buy" buttons (for now, admin-assigned — no Stripe yet)
+  - Each card shows credits, price, and per-credit cost
+
+#### 4. Admin UI — Plans Manager (`src/components/admin/PlansManager.tsx`)
+- New component: table of top-up packs with inline editing (credits, price, active toggle)
+- Add as a tab in Admin page
+
+### Files to Create/Modify
+
+| File | Action |
 |------|--------|
-| `supabase/functions/admin/index.ts` | Fix auth: replace `getClaims` with `getUser` |
-| `src/components/admin/UserDetail.tsx` | Add loading states, error handling, detailed toasts |
-
-### Technical Details
-
-**Auth fix:**
-```typescript
-// Before (broken):
-const { data: claimsData } = await userClient.auth.getClaims(token);
-const userId = claimsData.claims.sub;
-
-// After (correct):
-const { data: { user }, error } = await userClient.auth.getUser();
-const userId = user.id;
-```
-
-**Toast improvements:**
-- Success: "Added 1000 credits to user. New balance: 1100"
-- Error: "Failed to adjust credits: {error message from server}"
-- Loading: Button text changes to "Saving..." with disabled state
+| DB migration | Create `credit_topup_packs`, seed 4 packs |
+| `supabase/functions/admin/index.ts` | Add topup-pack CRUD routes |
+| `src/pages/Settings.tsx` | Add "Credits" tab with pack display |
+| `src/components/admin/PlansManager.tsx` | Create — admin pack management |
+| `src/pages/Admin.tsx` | Add "Plans" tab linking to PlansManager |
 
