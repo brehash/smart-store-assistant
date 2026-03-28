@@ -49,7 +49,8 @@ function handleSsePayload(
     parsed.type === "debug_api" ||
     parsed.type === "reasoning" ||
     parsed.type === "token_usage" ||
-    parsed.type === "credit_usage"
+    parsed.type === "credit_usage" ||
+    parsed.type === "order_form"
   ) {
     callbacks.onPipelineEvent?.(parsed);
     return true;

@@ -159,9 +159,9 @@ export function OrderFormCard({ data, orderStatuses, disabled, onOrderCreated }:
   // Resolved state
   if (data.resolved && data.resolved !== "error") {
     return (
-      <Card className="border-green-500/30 bg-green-500/5">
+      <Card className="border-[hsl(var(--success))]/30 bg-[hsl(var(--success))]/5">
         <CardContent className="flex items-center gap-3 py-4">
-          <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+          <CheckCircle2 className="h-5 w-5 text-[hsl(var(--success))] shrink-0" />
           <div>
             <p className="font-medium text-sm">Order #{data.resolved.orderNumber} created</p>
             <p className="text-xs text-muted-foreground">Total: {data.resolved.total}</p>
