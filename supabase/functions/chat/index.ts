@@ -442,6 +442,14 @@ function generateReasoningAfter(toolName: string, result: any): string | null {
         }
         return null;
       }
+      case "get_product_sales_report": {
+        if (Array.isArray(result?.products)) {
+          const count = result.products.length;
+          const top = result.products[0];
+          return `${count} products found. Top: ${top?.product_name || "N/A"} (${top?.total_revenue || 0} lei, ${top?.total_quantity || 0} units).`;
+        }
+        return null;
+      }
       default:
         return null;
     }
