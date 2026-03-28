@@ -445,27 +445,6 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
   );
 
   const renderCredits = () => {
-    const [creditBalance, setCreditBalance] = useState<any>(null);
-    const [topupPacks, setTopupPacks] = useState<any[]>([]);
-    const [loadingCredits, setLoadingCredits] = useState(true);
-
-    useEffect(() => {
-      if (!user) return;
-      const load = async () => {
-        setLoadingCredits(true);
-        try {
-          const [balRes, packsRes] = await Promise.all([
-            supabase.from("credit_balances").select("*").eq("user_id", user.id).maybeSingle(),
-            supabase.from("credit_topup_packs").select("*").eq("is_active", true).order("sort_order"),
-          ]);
-          setCreditBalance(balRes.data);
-          setTopupPacks(packsRes.data || []);
-        } catch { /* silent */ }
-        finally { setLoadingCredits(false); }
-      };
-      load();
-    }, [user]);
-
     return (
       <div className="space-y-6">
         <div>
