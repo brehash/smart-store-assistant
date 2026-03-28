@@ -970,9 +970,10 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
         };
 
         try {
-          let maxIterations = 8;
+          let maxIterations = 15;
           let stepIndex = 0;
           let planSent = false;
+          let contentSent = false;
           let semanticSteps: SemanticStep[] = [];
 
           // Emit "Understanding request" immediately
@@ -980,6 +981,13 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
           sendSSE({ type: "pipeline_step", stepIndex: 0, title: "Understanding request", status: "running" });
 
           while (maxIterations-- > 0) {
+            // Iteration pressure: force final answer when running low
+            if (maxIterations <= 2) {
+              aiMessages.push({
+                role: "system",
+                content: "CRITICAL: You are running low on processing steps. You MUST produce your final answer NOW using the data you already have. Do NOT call any more tools. Summarize and present what you have.",
+              });
+            }
             sendSSE({ type: "reasoning", text: "Thinking..." });
 
             // Keep-alive: send periodic pings during AI fetch to prevent connection drops
@@ -1205,6 +1213,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
                 try {
                   const dashboardData = JSON.parse(match[1].trim());
                   sendSSE({ type: "dashboard", data: dashboardData });
+                  contentSent = true;
                   textContent = textContent.replace(match[0], "").trim();
                 } catch {
                   /* ignore malformed JSON */
@@ -1212,6 +1221,7 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
               }
               if (textContent) {
                 sendSSE({ choices: [{ delta: { content: textContent } }] });
+                contentSent = true;
               }
             }
 
@@ -1222,6 +1232,13 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
             }
             sendSSE({ type: "pipeline_complete", lastStepIndex: stepIndex });
             break;
+          }
+
+          // Fallback: if loop exhausted without sending content, notify the user
+          if (!contentSent) {
+            sendSSE({ type: "reasoning", text: "Error: Ran out of processing steps before generating a response." });
+            sendSSE({ choices: [{ delta: { content: "⚠️ Am adunat datele dar am epuizat pașii de procesare înainte de a putea scrie analiza. Te rog încearcă din nou — voi fi mai concis de data aceasta." } }] });
+            sendSSE({ type: "pipeline_complete", lastStepIndex: stepIndex });
           }
 
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
