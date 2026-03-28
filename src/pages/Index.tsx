@@ -304,6 +304,18 @@ export default function Index() {
             return { ...m, pipeline: pipelineData! };
           });
           scrollToBottom();
+        } else if (event.type === "order_form") {
+          const orderForm: OrderFormData = {
+            toolCallId: event.toolCallId || "",
+            stepIndex: event.stepIndex || 0,
+            prefill: event.prefill,
+          };
+          orderFormsList = [...orderFormsList, orderForm];
+          updateLastAssistant((m) => ({
+            ...m,
+            orderForms: [...(m.orderForms || []), orderForm],
+          }));
+          scrollToBottom();
         } else if (event.type === "question_request") {
           const question: QuestionRequest = {
             question: event.question || "",
