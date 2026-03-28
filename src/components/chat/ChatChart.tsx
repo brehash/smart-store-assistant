@@ -73,7 +73,7 @@ export function ChatChart({ chartData }: { chartData: ChartData }) {
                 <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" opacity={0.35} />
                 <XAxis dataKey={nk} tick={{ fontSize: 11 }} tickMargin={8} minTickGap={20} />
                 <YAxis tick={{ fontSize: 11 }} allowDecimals={false} domain={[0, maxValue === 0 ? 1 : maxValue]} />
-                <Tooltip />
+                <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} />
                 <Line
                   type="monotone"
                   dataKey={dk}
