@@ -14,7 +14,7 @@ import { OrderFormCard, type OrderFormData } from "./OrderFormCard";
 import { ShippingTimeline } from "./ShippingTimeline";
 
 export interface RichContent {
-  type: "products" | "orders" | "chart" | "confirmation" | "pipeline" | "dashboard" | "shipping";
+  type: "products" | "orders" | "chart" | "confirmation" | "pipeline" | "dashboard" | "shipping" | "geo_report";
   data: any;
 }
 
