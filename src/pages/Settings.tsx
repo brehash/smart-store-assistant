@@ -669,12 +669,6 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
     setTestingColete(true);
     setColeteTestResult(null);
     try {
-      const { data, error } = await supabase.functions.invoke("colete-online-tracker", {
-        body: { client_id: coleteClientId, client_secret: coleteClientSecret },
-        headers: { "x-action": "test" },
-      });
-      // The function uses ?action=test query param, but supabase.functions.invoke doesn't support query params easily
-      // So we'll use fetch directly
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const session = await supabase.auth.getSession();
       const token = session.data.session?.access_token;
