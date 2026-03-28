@@ -183,6 +183,36 @@ export type Database = {
         }
         Relationships: []
       }
+      memory_embeddings: {
+        Row: {
+          content: string
+          created_at: string
+          embedding: string
+          id: string
+          memory_type: string
+          metadata: Json | null
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          embedding: string
+          id?: string
+          memory_type?: string
+          metadata?: Json | null
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          embedding?: string
+          id?: string
+          memory_type?: string
+          metadata?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       message_limits: {
         Row: {
           created_at: string | null
@@ -529,6 +559,21 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      match_memories: {
+        Args: {
+          _embedding: string
+          _match_count?: number
+          _match_threshold?: number
+          _user_id: string
+        }
+        Returns: {
+          content: string
+          id: string
+          memory_type: string
+          metadata: Json
+          similarity: number
+        }[]
       }
       refill_credits_if_due: {
         Args: { _user_id: string }

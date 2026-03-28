@@ -2116,6 +2116,39 @@ serve(async (req) => {
         prefs.map((p: any) => `- ${p.preference_type}: "${p.key}" → ${JSON.stringify(p.value)}`).join("\n");
     }
 
+    // ── Vector Memory: Retrieve relevant memories ──
+    let memoriesContext = "";
+    const openaiKey = Deno.env.get("OPENAI_API_KEY");
+    if (openaiKey) {
+      try {
+        const lastMsg = (messages as any[]).filter((m: any) => m.role === "user").pop()?.content || "";
+        if (lastMsg.length > 5) {
+          const embResp = await fetch("https://api.openai.com/v1/embeddings", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ model: "text-embedding-3-small", input: lastMsg }),
+          });
+          if (embResp.ok) {
+            const embData = await embResp.json();
+            const queryEmbedding = embData.data[0].embedding;
+            const { data: memories } = await serviceClient.rpc("match_memories", {
+              _user_id: userId,
+              _embedding: JSON.stringify(queryEmbedding),
+              _match_count: 5,
+              _match_threshold: 0.7,
+            });
+            if (memories?.length) {
+              memoriesContext =
+                "\n\nRelevant memories from past conversations:\n" +
+                memories.map((m: any) => `- [${m.memory_type}] ${m.content}`).join("\n");
+            }
+          }
+        }
+      } catch (memErr) {
+        console.error("Memory retrieval error (non-fatal):", memErr);
+      }
+    }
+
     const { data: connData } = await supabase
       .from("woo_connections")
       .select("response_language, order_statuses")
@@ -2295,7 +2328,7 @@ GEO (GENERATIVE ENGINE OPTIMIZATION):
 - The update_product tool now supports a meta_data array parameter for writing to WooCommerce custom fields (including SEO plugin meta like _yoast_wpseo_metadesc).
 - The update_page and update_post tools now support a meta object parameter for WordPress custom meta fields.
 
-Be conversational, efficient, and proactive. Use markdown for formatting. Currency is RON (lei).${defaultStatusStr}${prefsContext}${viewContext}`;
+Be conversational, efficient, and proactive. Use markdown for formatting. Currency is RON (lei).${defaultStatusStr}${prefsContext}${memoriesContext}${viewContext}`;
 
     // Minimal system prompt for shipping-only queries (saves ~1,700 tokens)
     const shippingSystemPrompt = `You are a WooCommerce store assistant.${languageInstruction}
@@ -2342,6 +2375,7 @@ Be conversational. Currency is RON (lei).${defaultStatusStr}`;
           let stepIndex = 0;
           let planSent = false;
           let contentSent = false;
+          let finalAssistantContent = "";
           let semanticSteps: SemanticStep[] = [];
           let semanticIdx = 0; // Track across tool-phase and post-response phase
           const totalUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
@@ -2520,6 +2554,7 @@ Be conversational. Currency is RON (lei).${defaultStatusStr}`;
             if (!choice) break;
 
             const content = choice.message?.content || "";
+            if (content) finalAssistantContent = content;
 
             if (choice.finish_reason === "tool_calls" || choice.message?.tool_calls?.length) {
               const toolCalls = choice.message.tool_calls;
@@ -2847,6 +2882,35 @@ Be conversational. Currency is RON (lei).${defaultStatusStr}`;
             sendSSE({ type: "credit_usage", cost: creditCost, remaining_balance: newBalance });
           } catch (creditErr) {
             console.error("Credit deduction error:", creditErr);
+          }
+
+          // ── Vector Memory: Store conversation summary (fire-and-forget) ──
+          if (openaiKey && finalAssistantContent && finalAssistantContent.length > 30) {
+            const greetingRe = /^(hi|hello|hey|salut|buna|ola|ciao)\b/i;
+            if (!greetingRe.test(lastUserMsg.trim())) {
+              const summary = `Q: ${lastUserMsg.slice(0, 200)}\nA: ${finalAssistantContent.slice(0, 300)}`;
+              (async () => {
+                try {
+                  const embResp = await fetch("https://api.openai.com/v1/embeddings", {
+                    method: "POST",
+                    headers: { Authorization: `Bearer ${openaiKey}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({ model: "text-embedding-3-small", input: summary }),
+                  });
+                  if (embResp.ok) {
+                    const embData = await embResp.json();
+                    await serviceClient.from("memory_embeddings").insert({
+                      user_id: userId,
+                      content: summary,
+                      embedding: JSON.stringify(embData.data[0].embedding),
+                      memory_type: "conversation_summary",
+                      metadata: { conversation_id: conversationId },
+                    });
+                  }
+                } catch (memStoreErr) {
+                  console.error("Memory storage error (non-fatal):", memStoreErr);
+                }
+              })();
+            }
           }
 
           controller.enqueue(encoder.encode("data: [DONE]\n\n"));
