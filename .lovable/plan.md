@@ -1,51 +1,37 @@
 
 
-## Add "Check Shipping Status" AI Tool (Colete Online)
+## Three Changes: Always-available shipping tool, not-connected message, test connection button
 
-### Overview
-Add a new `check_shipping_status` tool to the AI that lets users ask about the shipping status of an order. The tool fetches the order from WooCommerce, extracts the `uniqueId` from `_coleteonline_courier_order` metadata, authenticates with Colete Online API, and returns the tracking history. If the user provides an AWB instead of an order number, the AI warns them to use the order number.
+### 1. Make `check_shipping_status` always available (future-proof for multiple integrations)
 
-### Changes
+**File: `supabase/functions/chat/index.ts`**
 
-**1. Tool Definition (add to `TOOLS` array)**
+- Move `check_shipping_status` from conditionally-injected into the base `TOOLS` array (always available)
+- Update description: "Check the shipping/delivery status of an order. Requires the WooCommerce order number (NOT an AWB). The tool automatically detects the shipping provider from order metadata."
+- In the tool execution handler (`case "check_shipping_status"`): instead of checking Colete Online credentials upfront, first check order metadata to detect which shipping provider is present (currently only `_coleteonline_courier_order`), then fetch the relevant integration config
+- If no integration is enabled/configured for the detected provider, return a clear error: "This order uses Colete Online shipping but you haven't connected the Colete Online integration yet. Go to Settings > Integrations to enable it."
+- If no shipping metadata is found at all, return: "No shipping tracking data found on this order."
 
-New tool `check_shipping_status` with a single required param `order_id` (number). Description instructs the AI that this checks Colete Online shipping status by looking up the order's metadata automatically.
+**System prompt update**: Remove the conditional branching. Always include instructions about using the tool. If no shipping integration is enabled, the tool itself will inform the user — the AI doesn't need to gatekeep.
 
-**2. System Prompt Update**
+### 2. Test Connection button for Colete Online
 
-Add a section to the system prompt (conditionally, only when Colete Online integration is enabled):
-- "When the user asks about shipping status, tracking, or delivery of an order, use `check_shipping_status` with the order number."
-- "If the user provides an AWB number instead of an order number, warn them that you need the order number (not the AWB) and ask them for it."
-- "NEVER ask the user for a uniqueId — the tool extracts it automatically from order metadata."
+**File: `src/pages/Settings.tsx`**
 
-**3. Conditional Tool Injection**
+- Add a "Test Connection" button next to the "Save Integration" button
+- On click: call the Colete Online auth endpoint (`POST https://auth.colete-online.ro/token` with client credentials grant) via a small edge function or directly (since it's CORS-friendly)
+- Since the auth endpoint likely won't support CORS from the browser, route the test through the existing `colete-online-tracker` edge function with a `?action=test` query param
+- Display success toast with "Connection successful!" or error toast with the failure reason
 
-Before building the tools list, query `woo_integrations` for `colete_online` where `is_enabled = true` for this user. If enabled, push the `check_shipping_status` tool to the tools array and append the system prompt section.
+**File: `supabase/functions/colete-online-tracker/index.ts`**
 
-**4. Tool Execution Handler (in `executeTool` switch)**
-
-```
-case "check_shipping_status":
-  1. Fetch order from WooCommerce: GET orders/{order_id}
-  2. Find meta_data key "_coleteonline_courier_order"
-  3. Parse the value, extract result.uniqueId and result.awb
-  4. If not found → return error "No Colete Online shipment found on this order"
-  5. Get user's Colete Online credentials from woo_integrations
-  6. Authenticate: POST https://auth.colete-online.ro/token (Basic auth, client_credentials)
-  7. GET https://api.colete-online.ro/v1/order/status/{uniqueId}
-  8. Return formatted status with AWB, courier name, and history entries (statusTextParts.ro.name + dateTime)
-```
-
-**5. Labels & Semantic Plan**
-
-- Add `check_shipping_status: "Checking shipping status"` to `TOOL_LABELS`
-- Add semantic plan steps: "Fetching order details" → "Checking Colete Online status" → "Writing explanation"
+- Add a `test` action handler: accept `client_id` and `client_secret` in the request body, attempt OAuth2 token fetch, return success/failure JSON
 
 ### Files to modify
 
 | File | Change |
 |------|--------|
-| `supabase/functions/chat/index.ts` | Add tool definition, conditional injection, execution handler, system prompt section, labels |
-
-No database changes needed — uses existing `woo_integrations` table.
+| `supabase/functions/chat/index.ts` | Move `check_shipping_status` to base TOOLS, update execution to detect provider, simplify system prompt |
+| `src/pages/Settings.tsx` | Add "Test Connection" button calling colete-online-tracker with `?action=test` |
+| `supabase/functions/colete-online-tracker/index.ts` | Add `test` action handler for credential validation |
 
