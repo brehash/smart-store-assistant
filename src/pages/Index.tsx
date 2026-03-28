@@ -7,6 +7,8 @@ import { ChatMessage, type RichContent, type ApprovalRequest, type QuestionReque
 import type { OrderFormData } from "@/components/chat/OrderFormCard";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { ConversationSidebar } from "@/components/chat/ConversationSidebar";
+import { ConnectionSetupCard } from "@/components/chat/ConnectionSetupCard";
+import { WebhookSetupCard } from "@/components/chat/WebhookSetupCard";
 import { SettingsContent, type SettingsTab } from "@/pages/Settings";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -66,6 +68,8 @@ export default function Index() {
   const [creditsModalOpen, setCreditsModalOpen] = useState(false);
   const [topupModalEnabled, setTopupModalEnabled] = useState(true);
   const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);
+  const [hasConnection, setHasConnection] = useState<boolean | null>(null); // null = loading
+  const [showWebhookSetup, setShowWebhookSetup] = useState(false);
 
   // Fetch credit balance and app settings on mount
   useEffect(() => {
@@ -84,6 +88,60 @@ export default function Index() {
       if (settings) setTopupModalEnabled(settings.value === true || settings.value === "true");
     })();
   }, [user]);
+
+  // Check if user has a WooCommerce connection
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("woo_connections")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .maybeSingle()
+      .then(({ data }) => {
+        setHasConnection(!!data);
+        if (data) {
+          // Check if webhooks prompt was dismissed
+          const dismissed = localStorage.getItem(`webhook-setup-dismissed-${user.id}`);
+          if (!dismissed) setShowWebhookSetup(true);
+        }
+      });
+  }, [user]);
+
+  // Realtime webhook event notifications
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("webhook-events")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "webhook_events", filter: `user_id=eq.${user.id}` },
+        (payload: any) => {
+          const { topic, payload: eventData } = payload.new;
+          let title = "Webhook Event";
+          let description = topic;
+          if (topic === "order.created" && eventData) {
+            const num = eventData.number || eventData.id;
+            const total = eventData.total || "—";
+            const name = eventData.billing?.first_name
+              ? `${eventData.billing.first_name} ${eventData.billing.last_name || ""}`
+              : "";
+            title = "🛒 New Order";
+            description = `Order #${num} — ${total}${name ? ` from ${name}` : ""}`;
+          } else if (topic === "customer.created" && eventData) {
+            title = "👤 New Customer";
+            description = eventData.email || `${eventData.first_name || ""} ${eventData.last_name || ""}`;
+          } else if (topic === "order.updated" && eventData) {
+            const num = eventData.number || eventData.id;
+            title = "📦 Order Updated";
+            description = `Order #${num} status: ${eventData.status || "unknown"}`;
+          }
+          toast({ title, description });
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, toast]);
 
   const handleToggleSidebar = () => {
     setSidebarCollapsed((prev) => {
@@ -583,8 +641,27 @@ export default function Index() {
         </div>
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin">
-          {messages.length === 0 ? (
+          {hasConnection === false && messages.length === 0 ? (
+            <ConnectionSetupCard onComplete={() => {
+              setHasConnection(true);
+              setShowWebhookSetup(true);
+            }} />
+          ) : messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center px-4">
+              {showWebhookSetup && (
+                <div className="w-full mb-6">
+                  <WebhookSetupCard
+                    onComplete={() => {
+                      setShowWebhookSetup(false);
+                      localStorage.setItem(`webhook-setup-dismissed-${user?.id}`, "true");
+                    }}
+                    onDismiss={() => {
+                      setShowWebhookSetup(false);
+                      localStorage.setItem(`webhook-setup-dismissed-${user?.id}`, "true");
+                    }}
+                  />
+                </div>
+              )}
               <div className="rounded-2xl bg-primary/10 p-4 mb-4">
                 <svg className="h-8 w-8 text-primary" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
