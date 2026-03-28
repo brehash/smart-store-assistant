@@ -981,6 +981,13 @@ Be conversational, efficient, and proactive. Use markdown for formatting. Curren
           sendSSE({ type: "pipeline_step", stepIndex: 0, title: "Understanding request", status: "running" });
 
           while (maxIterations-- > 0) {
+            // Iteration pressure: force final answer when running low
+            if (maxIterations <= 2) {
+              aiMessages.push({
+                role: "system",
+                content: "CRITICAL: You are running low on processing steps. You MUST produce your final answer NOW using the data you already have. Do NOT call any more tools. Summarize and present what you have.",
+              });
+            }
             sendSSE({ type: "reasoning", text: "Thinking..." });
 
             // Keep-alive: send periodic pings during AI fetch to prevent connection drops
