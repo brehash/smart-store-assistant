@@ -106,9 +106,17 @@ export async function executeTool(
       }
       if (startDate) params.set("after", `${startDate}T00:00:00`);
       if (endDate) params.set("before", `${endDate}T23:59:59`);
-      const endpoint = `orders?${params.toString()}`;
-      const orders = await callWooProxy(supabaseUrl, authHeader, { endpoint });
-      if (!Array.isArray(orders)) return { result: orders, requestUri: `GET /wp-json/wc/v3/${endpoint}` };
+
+      // Paginate through all orders (up to 1000)
+      let orders: any[] = [];
+      for (let page = 1; page <= 10; page++) {
+        params.set("page", String(page));
+        const endpoint = `orders?${params.toString()}`;
+        const pageOrders = await callWooProxy(supabaseUrl, authHeader, { endpoint });
+        if (!Array.isArray(pageOrders)) break;
+        orders = orders.concat(pageOrders);
+        if (pageOrders.length < 100) break;
+      }
       const totalRevenue = orders.reduce((s: number, o: any) => s + parseFloat(o.total || "0"), 0);
       const byDate: Record<string, number> = {};
       orders.forEach((o: any) => {
