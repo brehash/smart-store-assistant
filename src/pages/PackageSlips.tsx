@@ -60,7 +60,7 @@ export default function PackageSlips() {
   const [loading, setLoading] = useState(false);
   const [packedIds, setPackedIds] = useState<Set<number>>(new Set());
   const [updatingIds, setUpdatingIds] = useState<Set<number>>(new Set());
-  const [pickedKeys, setPickedKeys] = useState<Set<string>>(new Set());
+  const [collectedByKey, setCollectedByKey] = useState<Record<string, number>>({});
 
   // Confirmation dialog state
   const [confirmOrderId, setConfirmOrderId] = useState<number | null>(null);
@@ -155,12 +155,18 @@ export default function PackageSlips() {
     savePrefs(sourceStatuses, val);
   };
 
-  const togglePicked = (key: string) => {
-    setPickedKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      return next;
-    });
+  const collectOne = (key: string, totalQty: number) => {
+    setCollectedByKey((prev) => ({
+      ...prev,
+      [key]: Math.min((prev[key] || 0) + 1, totalQty),
+    }));
+  };
+
+  const uncollectOne = (key: string) => {
+    setCollectedByKey((prev) => ({
+      ...prev,
+      [key]: Math.max((prev[key] || 0) - 1, 0),
+    }));
   };
 
   // Load orders
@@ -172,7 +178,7 @@ export default function PackageSlips() {
     setLoading(true);
     setOrders([]);
     setPackedIds(new Set());
-    setPickedKeys(new Set());
+    setCollectedByKey({});
     try {
       const statusParam = sourceStatuses.join(",");
       const { data, error } = await supabase.functions.invoke("woo-proxy", {
@@ -379,18 +385,25 @@ export default function PackageSlips() {
                 </TableHeader>
                 <TableBody>
                   {pickList.map((item) => {
-                    const picked = pickedKeys.has(item.key);
+                    const collectedQty = collectedByKey[item.key] ?? 0;
+                    const finished = collectedQty >= item.totalQty;
                     return (
                       <TableRow
                         key={item.key}
-                        className={picked ? "opacity-50" : ""}
-                        onClick={() => togglePicked(item.key)}
+                        className={finished ? "opacity-50" : ""}
+                        onClick={() => collectOne(item.key, item.totalQty)}
                       >
                         <TableCell className="px-2 py-1" onClick={(e) => e.stopPropagation()}>
                           <Checkbox
                             className="h-3.5 w-3.5"
-                            checked={picked}
-                            onCheckedChange={() => togglePicked(item.key)}
+                            checked={finished}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setCollectedByKey((prev) => ({ ...prev, [item.key]: item.totalQty }));
+                              } else {
+                                setCollectedByKey((prev) => ({ ...prev, [item.key]: 0 }));
+                              }
+                            }}
                           />
                         </TableCell>
                         <TableCell className="px-2 py-1">
@@ -403,12 +416,14 @@ export default function PackageSlips() {
                               />
                             )}
                             <div className="min-w-0">
-                              <p className={`text-xs font-medium break-words ${picked ? "line-through" : ""}`}>{item.name}</p>
+                              <p className={`text-xs font-medium break-words ${finished ? "line-through" : ""}`}>{item.name}</p>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell className="px-2 py-1 text-right">
-                          <span className="text-sm font-semibold">{item.totalQty}</span>
+                          <span className={`text-sm font-semibold ${finished ? "text-green-600" : ""}`}>
+                            {collectedQty} / {item.totalQty}
+                          </span>
                         </TableCell>
                       </TableRow>
                     );
