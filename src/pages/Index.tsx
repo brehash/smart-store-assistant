@@ -94,23 +94,41 @@ export default function Index() {
     })();
   }, [user]);
 
-  // Check if user has a WooCommerce connection + fetch cached data
+  // Check if user has a WooCommerce connection (or team owner does) + fetch cached data
   useEffect(() => {
     if (!user) return;
-    supabase
-      .from("woo_connections")
-      .select("id, order_statuses")
-      .eq("user_id", user.id)
-      .eq("is_active", true)
-      .maybeSingle()
-      .then(({ data }) => {
-        setHasConnection(!!data);
-        if (data) {
-          setCachedSelectedStatuses((data as any).order_statuses || []);
-          const dismissed = localStorage.getItem(`webhook-setup-dismissed-${user.id}`);
-          if (!dismissed) setShowWebhookSetup(true);
-        }
-      });
+    const checkConnection = async () => {
+      // First check own connection
+      const { data: ownConn } = await supabase
+        .from("woo_connections")
+        .select("id, order_statuses")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle();
+      
+      if (ownConn) {
+        setHasConnection(true);
+        setCachedSelectedStatuses((ownConn as any).order_statuses || []);
+        const dismissed = localStorage.getItem(`webhook-setup-dismissed-${user.id}`);
+        if (!dismissed) setShowWebhookSetup(true);
+        return;
+      }
+
+      // No own connection — check if user is in a team (team owner has the connection)
+      const { data: membership } = await supabase
+        .from("team_members")
+        .select("team_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      
+      if (membership) {
+        // User is in a team — assume team owner has a connection
+        setHasConnection(true);
+      } else {
+        setHasConnection(false);
+      }
+    };
+    checkConnection();
     // Fetch cached payment methods and order statuses
     supabase
       .from("woo_cache" as any)

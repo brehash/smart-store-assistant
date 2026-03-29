@@ -119,12 +119,37 @@ serve(async (req) => {
       }
     }
 
-    const { data: connData } = await supabase
+    // Resolve woo_connections: own connection first, then team owner's
+    let connData = (await serviceClient
       .from("woo_connections")
       .select("response_language, order_statuses")
       .eq("user_id", userId)
       .eq("is_active", true)
-      .maybeSingle();
+      .maybeSingle()).data;
+    
+    if (!connData) {
+      // Check if user is in a team and use team owner's connection
+      const { data: membership } = await serviceClient
+        .from("team_members")
+        .select("team_id")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (membership) {
+        const { data: team } = await serviceClient
+          .from("teams")
+          .select("owner_id")
+          .eq("id", membership.team_id)
+          .single();
+        if (team) {
+          connData = (await serviceClient
+            .from("woo_connections")
+            .select("response_language, order_statuses")
+            .eq("user_id", team.owner_id)
+            .eq("is_active", true)
+            .maybeSingle()).data;
+        }
+      }
+    }
     const responseLanguage = connData?.response_language || "English";
     const userOpenAIKey = Deno.env.get("OPENAI_API_KEY") || null;
     const defaultOrderStatuses: string[] = (connData as any)?.order_statuses || [];
@@ -248,12 +273,22 @@ serve(async (req) => {
             sendSSE({ type: "pipeline_plan", title: "Execution Plan", steps: ["Refreshing product cache"] });
             sendSSE({ type: "pipeline_step", stepIndex: 0, title: "Refreshing product cache", status: "running" });
 
-            const { data: conn } = await supabase
+            let conn = (await serviceClient
               .from("woo_connections")
-              .select("store_url, consumer_key, consumer_secret")
+              .select("store_url, consumer_key, consumer_secret, user_id")
               .eq("user_id", userId)
               .eq("is_active", true)
-              .maybeSingle();
+              .maybeSingle()).data;
+            if (!conn) {
+              // Fallback to team owner's connection
+              const { data: tm } = await serviceClient.from("team_members").select("team_id").eq("user_id", userId).maybeSingle();
+              if (tm) {
+                const { data: t } = await serviceClient.from("teams").select("owner_id").eq("id", tm.team_id).single();
+                if (t) {
+                  conn = (await serviceClient.from("woo_connections").select("store_url, consumer_key, consumer_secret, user_id").eq("user_id", t.owner_id).eq("is_active", true).maybeSingle()).data;
+                }
+              }
+            }
 
             if (conn) {
               try {
