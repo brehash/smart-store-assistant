@@ -1,23 +1,29 @@
 
 
-# Fix: Checkbox double-toggle in Pick List
+# Fix Pick List: Per-Unit Collection Tracking
 
 ## Problem
-The `TableRow` has `onClick={() => togglePicked(item.key)}` and the `Checkbox` inside it has `onCheckedChange={() => togglePicked(item.key)}`. Clicking the checkbox triggers both handlers, so the item toggles on then immediately off — appearing as if nothing happened.
+Currently picking uses a boolean Set (`pickedKeys`) — one click marks the entire line as done regardless of quantity. Need per-unit counting where each click increments collected count, and only mark finished when `collected >= total`.
 
-## Fix (`src/pages/PackageSlips.tsx`)
+## Changes — `src/pages/PackageSlips.tsx`
 
-**Line 390-394** — Add `e.stopPropagation()` on the checkbox's wrapping `TableCell` to prevent the row click from also firing:
+### 1. Replace state
+- Remove `pickedKeys` (Set\<string\>) state
+- Add `collectedByKey` (Record\<string, number\>) state initialized to `{}`
+- Reset it to `{}` in `loadOrders`
 
-```tsx
-<TableCell className="px-2 py-1" onClick={(e) => e.stopPropagation()}>
-  <Checkbox
-    className="h-3.5 w-3.5"
-    checked={picked}
-    onCheckedChange={() => togglePicked(item.key)}
-  />
-</TableCell>
-```
+### 2. Replace toggle function
+- Remove `togglePicked`
+- Add `collectOne(key, totalQty)` — increments count by 1, capped at totalQty
+- Add `uncollectOne(key)` — decrements count by 1, min 0
 
-One line change — add `onClick={(e) => e.stopPropagation()}` to the `TableCell` wrapping the checkbox. The row click still works for clicking anywhere else on the row.
+### 3. Update Pick List row rendering
+- Derive `collectedQty = collectedByKey[item.key] ?? 0` and `finished = collectedQty >= item.totalQty`
+- Checkbox `checked` = `finished`, `onCheckedChange` toggles: if checking → collectOne, if unchecking → uncollectOne
+- Row click → `collectOne` (single increment per click, not toggle)
+- Qty column shows `collectedQty / totalQty` instead of just totalQty
+- Row opacity based on `finished`, line-through on name based on `finished`
+
+### 4. Update Slips tab item display
+- Keep as-is (slips show order line items, not pick aggregation)
 
