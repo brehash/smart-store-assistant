@@ -230,8 +230,9 @@ serve(async (req) => {
             sendSSE({ type: "pipeline_complete" });
 
             const CREDIT_COST = 1;
-            const newBalance = (creditBalance?.balance || 1) - CREDIT_COST;
-            await serviceClient.from("credit_balances").update({ balance: newBalance }).eq("user_id", userId);
+            const deductRow = teamCreditRow || creditBalance;
+            const newBalance = Math.max(0, (deductRow?.balance || 1) - CREDIT_COST);
+            await serviceClient.from("credit_balances").update({ balance: newBalance }).eq("user_id", deductRow?.user_id || userId);
             await serviceClient.from("credit_transactions").insert({
               user_id: userId, amount: -CREDIT_COST, balance_after: newBalance, reason: "chat_message",
             });
