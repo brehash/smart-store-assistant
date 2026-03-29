@@ -54,9 +54,11 @@ export default function Auth() {
     }
   }, [inviteToken, user]);
 
-  // If user is logged in and has invite token, accept it
+  // If user is logged in and has invite token, accept it (with guard against double-fire)
+  const acceptingRef = useRef(false);
   useEffect(() => {
-    if (user && inviteToken) {
+    if (user && inviteToken && !acceptingRef.current) {
+      acceptingRef.current = true;
       const acceptInvite = async () => {
         try {
           const session = await supabase.auth.getSession();
@@ -74,7 +76,8 @@ export default function Auth() {
         } catch (e: any) {
           toast({ title: "Invitation error", description: e.message, variant: "destructive" });
         }
-        navigate("/");
+        // Clean invite_token from URL and navigate home
+        navigate("/", { replace: true });
       };
       acceptInvite();
     }
