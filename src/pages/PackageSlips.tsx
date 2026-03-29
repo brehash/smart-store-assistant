@@ -157,6 +157,16 @@ export default function PackageSlips() {
     load();
   }, [user]);
 
+  // Auto-load orders when preferences are loaded and statuses configured
+  useEffect(() => {
+    if (!prefsLoaded || autoLoadDone.current) return;
+    if (sourceStatuses.length > 0 && targetStatus) {
+      autoLoadDone.current = true;
+      // Small delay to let restored localStorage state settle
+      setTimeout(() => loadOrders(), 300);
+    }
+  }, [prefsLoaded, sourceStatuses, targetStatus]);
+
   // Save preferences (debounced)
   const savePrefs = useCallback(
     (src: string[], tgt: string) => {
