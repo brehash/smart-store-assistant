@@ -1,47 +1,55 @@
 
 
-# Fix: Disappearing messages + duplicate tables
+# Fix `get_product_sales_report` + add invoice breakdown table
 
-## Issue 1: Messages disappearing
+## Problems identified
 
-**Root cause**: In `handleSend`, the user message is added to React state (line 345) and saved to DB (line 350) without error handling. The assistant message is saved in `onDone` (line 510) also without error handling or `.select()`. If either insert fails silently, or if the stream errors without partial content, the in-memory state is lost on next conversation load.
+1. **Total revenue is wrong**: Line 341 computes `totalRevenue` by summing the already-sliced `products` array. If there are more products than `limit`, the grand total excludes them.
+2. **Sorting**: Currently sorted by `total_revenue` descending. User wants sorting by `total_quantity` (most sold units first).
+3. **Missing feature**: No invoiced vs non-invoiced quantity breakdown per product.
 
-More critically: `onError` (line 520-539) only persists the assistant message if `assistantContent || reasoningEntries.length || pipelineData` is truthy. If the error happens very early (e.g., rate limit after the user message was already added to state but the response comes back as a non-200 before any stream data), the user message IS saved to DB but the UI shows a toast and the conversation may appear broken. However, a reload should still show it.
+## Solution
 
-**Most likely cause**: The `handleSend` function captures `messages` from the closure at call time (line 352, 368). If two sends happen rapidly, or if React hasn't committed the state update yet, the second send could overwrite the first. But more importantly — if the DB insert for the user message on line 350 fails (no `.select()`, no error check), the message exists only in state and vanishes on reload.
+### Changes in `supabase/functions/chat/tool-executor.ts` — `get_product_sales_report` case (lines 276-362)
 
-**Fix**: Add error handling to the user message DB insert and show a toast if it fails. Also ensure the assistant message insert in `onDone` has error handling.
+1. **Fix total revenue**: Compute `totalRevenue` and `totalQuantity` from `productMap` values BEFORE slicing.
 
-### Changes in `src/pages/Index.tsx`
+2. **Sort by quantity**: Change `.sort((a, b) => b.total_revenue - a.total_revenue)` → `.sort((a, b) => b.total_quantity - a.total_quantity)`.
 
-1. **Line 350**: Add error handling to user message insert — if it fails, show a toast warning
-2. **Line 510-518**: Add error handling to assistant message insert in `onDone` — retry once or show warning
+3. **Add invoice detection per product**: While iterating orders, check each order's `meta_data` for invoice keys (reusing the same pattern from `get_orders_with_meta`: keys containing `invoice`, `factura`, `serie`, `numar`, `fiscal`, `oblio`, `wc_invoice`, `billing_invoice` — excluding `av_facturare`). Track per-product `invoiced_qty` and `not_invoiced_qty`.
 
----
+4. **Return enriched data**: Each product in the response gets `invoiced_qty` and `not_invoiced_qty` fields. Add a new `invoice_summary` to the result with `total_invoiced_qty` and `total_not_invoiced_qty`.
 
-## Issue 2: AI returns 4 duplicate tables for invoice queries
+### Pseudocode for invoice detection per order
 
-**Root cause**: The multi-iteration tool loop (up to 15 iterations) in `supabase/functions/chat/index.ts` can call `get_orders_with_meta` multiple times. Each call emits a `rich_content` SSE event with `type: "orders"` (tool-executor.ts line 523 + index.ts line 588). Then the AI's final text response also contains a `` `dashboard` `` code block which emits yet another dashboard SSE event. If the AI calls `get_orders_with_meta` 3 times across iterations, the user sees 3 order tables + 1 dashboard = 4 tables.
+```typescript
+const INVOICE_META_KEYS = ['invoice','factura','oblio','wc_invoice','billing_invoice','serie','numar','fiscal'];
 
-**Fix**: Deduplicate rich content emissions. Only emit `rich_content` for `orders` type once (keep the last/most complete one), or skip `rich_content` for tools that will also generate a dashboard in the final response.
+function orderHasInvoice(order: any): boolean {
+  const meta = order.meta_data || [];
+  return meta.some((m: any) => {
+    const k = (m.key || '').toLowerCase();
+    if (k === 'av_facturare') return false;
+    return INVOICE_META_KEYS.some(ik => k.includes(ik)) && m.value;
+  });
+}
+```
 
-### Changes in `supabase/functions/chat/index.ts`
+Then in the order loop, for each line item, increment either `invoiced_qty` or `not_invoiced_qty` based on the order's invoice status.
 
-1. Track which `rich_content` types have already been emitted during the current request
-2. For `orders` type specifically: skip re-emitting if already sent, OR only emit the last one by buffering
-3. **Simpler approach**: For `get_orders_with_meta` tool, don't emit `richContent` at all since the AI always follows up with a `dashboard` block that presents the data better. Remove the `richContent` return from `get_orders_with_meta` in `tool-executor.ts`.
+### Updated result shape
 
-### Changes in `supabase/functions/chat/tool-executor.ts`
+```typescript
+{
+  period, total_revenue, total_orders, product_count, 
+  total_quantity,
+  invoice_summary: { total_invoiced_qty, total_not_invoiced_qty },
+  products: [
+    { product_id, product_name, total_revenue, total_quantity, 
+      invoiced_qty, not_invoiced_qty, order_count, average_price }
+  ]  // sorted by total_quantity desc
+}
+```
 
-1. **Line 521-524**: Remove `richContent` from `get_orders_with_meta` return — the dashboard block from the AI's final response handles visualization. The raw order table is redundant and causes duplication.
-
----
-
-## Summary
-
-| File | Change |
-|---|---|
-| `src/pages/Index.tsx` | Add error handling to user/assistant message DB inserts |
-| `supabase/functions/chat/tool-executor.ts` | Remove `richContent` from `get_orders_with_meta` to prevent duplicate tables |
-| `supabase/functions/chat/index.ts` | Add dedup guard: track emitted `rich_content` types, skip duplicates within same request |
+Single file change: `supabase/functions/chat/tool-executor.ts`.
 
