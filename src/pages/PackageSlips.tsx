@@ -385,18 +385,25 @@ export default function PackageSlips() {
                 </TableHeader>
                 <TableBody>
                   {pickList.map((item) => {
-                    const picked = pickedKeys.has(item.key);
+                    const collectedQty = collectedByKey[item.key] ?? 0;
+                    const finished = collectedQty >= item.totalQty;
                     return (
                       <TableRow
                         key={item.key}
-                        className={picked ? "opacity-50" : ""}
-                        onClick={() => togglePicked(item.key)}
+                        className={finished ? "opacity-50" : ""}
+                        onClick={() => collectOne(item.key, item.totalQty)}
                       >
                         <TableCell className="px-2 py-1" onClick={(e) => e.stopPropagation()}>
                           <Checkbox
                             className="h-3.5 w-3.5"
-                            checked={picked}
-                            onCheckedChange={() => togglePicked(item.key)}
+                            checked={finished}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setCollectedByKey((prev) => ({ ...prev, [item.key]: item.totalQty }));
+                              } else {
+                                setCollectedByKey((prev) => ({ ...prev, [item.key]: 0 }));
+                              }
+                            }}
                           />
                         </TableCell>
                         <TableCell className="px-2 py-1">
@@ -409,12 +416,14 @@ export default function PackageSlips() {
                               />
                             )}
                             <div className="min-w-0">
-                              <p className={`text-xs font-medium break-words ${picked ? "line-through" : ""}`}>{item.name}</p>
+                              <p className={`text-xs font-medium break-words ${finished ? "line-through" : ""}`}>{item.name}</p>
                             </div>
                           </div>
                         </TableCell>
                         <TableCell className="px-2 py-1 text-right">
-                          <span className="text-sm font-semibold">{item.totalQty}</span>
+                          <span className={`text-sm font-semibold ${finished ? "text-green-600" : ""}`}>
+                            {collectedQty} / {item.totalQty}
+                          </span>
                         </TableCell>
                       </TableRow>
                     );
