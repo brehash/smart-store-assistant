@@ -1,54 +1,44 @@
 
 
-# Package Slips: Auto-load, Realtime Orders, Persist Collection State
+# Fix: Checkbox increments collected by 1, not jumping to full quantity
 
-## 1. Auto-load orders on page open when preferences exist
+## Problem
+Two bugs causing the checkbox to mark items as fully collected in one click:
 
-In the `useEffect` that loads preferences (lines 105-123), after setting `sourceStatuses` and `targetStatus`, trigger `loadOrders` automatically if both values are present.
+1. **Checkbox `onCheckedChange`** currently sets collected to `totalQty` (all at once) instead of incrementing by 1
+2. **Row `onClick`** also calls `collectOne`, so even with `stopPropagation` on the `TableCell`, clicking anywhere on the row adds +1 — but the checkbox handler overrides to full qty anyway
 
-- Add a `useRef` flag (`autoLoadDone`) to prevent repeated auto-loads
-- After `setPrefsLoaded(true)`, if `sourceStatuses` and `targetStatus` are set, call `loadOrders` via a separate `useEffect` that watches `prefsLoaded`
+## Fix — `src/pages/PackageSlips.tsx`
 
-## 2. Persist collected state across refresh (localStorage)
+### Row click (line 519)
+Remove the row `onClick` entirely. Clicking the row should NOT collect — only the checkbox should increment. This avoids accidental collections from tapping anywhere on the row.
 
-Use `localStorage` keyed by user ID to persist `collectedByKey`, `orders`, and `packedIds`:
+### Checkbox handler (lines 522-531)
+Change `onCheckedChange` to increment by 1 each click (using `collectOne`), and only allow unchecking (reset to 0) when fully collected:
 
-- On every change to `collectedByKey`, save to `localStorage` (`ps_collected_{userId}`)
-- On every change to `orders`, save to `localStorage` (`ps_orders_{userId}`)  
-- On every change to `packedIds`, save to `localStorage` (`ps_packed_{userId}`)
-- On mount, restore from `localStorage` before/instead of clearing state
-- In `loadOrders`, merge new orders with existing rather than replacing — keep `collectedByKey` intact for items that still exist, remove entries for items no longer present
-- Add a "Clear Session" button to manually reset everything
+```tsx
+<TableRow
+  key={item.key}
+  className={finished ? "opacity-50" : ""}
+>
+  <TableCell className="px-2 py-1">
+    <Checkbox
+      className="h-3.5 w-3.5"
+      checked={finished}
+      onCheckedChange={() => {
+        if (finished) {
+          uncollectOne(item.key);
+        } else {
+          collectOne(item.key, item.totalQty);
+        }
+      }}
+    />
+  </TableCell>
+```
 
-## 3. Realtime: auto-add new orders via webhook events
-
-Subscribe to the `webhook_events` table using Supabase Realtime (already enabled per memory). When a new `order.created` or `order.updated` event arrives with a matching status:
-
-- Extract the order data from the webhook payload
-- If the order ID already exists in `orders`, update it
-- If new, append it to `orders`
-- Recalculate the pick list (already derived from `orders`)
-- For pick items that already exist, keep `collectedByKey` values — only the `totalQty` changes via the derived `pickList`
-- Show a toast notification: "New order #X added"
-
-## Technical Details
-
-### File: `src/pages/PackageSlips.tsx`
-
-**New imports**: none needed (already has supabase, useEffect, useRef)
-
-**State changes**:
-- Remove the clearing of `collectedByKey` in `loadOrders` (line 181) — instead, prune keys that no longer exist in the new pick list
-- Initialize state from localStorage on mount
-
-**New effects**:
-1. **Restore from localStorage** — runs once on mount, restores `orders`, `collectedByKey`, `packedIds`
-2. **Auto-load** — watches `prefsLoaded` + `sourceStatuses.length > 0`, calls `loadOrders` once
-3. **Persist to localStorage** — watches `collectedByKey`, `orders`, `packedIds` and saves
-4. **Realtime subscription** — subscribes to `webhook_events` INSERT events, filters by `user_id`, checks if order status matches `sourceStatuses`, fetches full order via woo-proxy if needed and merges into state
-
-**loadOrders changes**:
-- Instead of `setOrders([])` and `setCollectedByKey({})`, merge: set new orders, then prune `collectedByKey` to only keep keys present in the new pick list (preserving collected counts for items that still exist)
-
-**Clear Session button**: Add next to "Load Orders" — clears localStorage and resets all state
+This way:
+- Each checkbox click adds +1 to collected count
+- Only shows as "checked" when `collectedQty >= totalQty`
+- Unchecking (when finished) decrements by 1
+- No row click interference
 
