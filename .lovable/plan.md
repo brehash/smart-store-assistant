@@ -1,36 +1,41 @@
 
 
-# Package Slips — Mobile-First Redesign + Images + Checkboxes + Confirmation
+# Package Slips Enhancements
 
-## Changes to `src/pages/PackageSlips.tsx`
+## 1. New order notification bubble on Package Slips icon
 
-### 1. Add product images
-- Extend `LineItem` interface to include `image?: { src: string }` 
-- Extend `PickItem` to include `image?: string`
-- Show thumbnail (32x32) next to product name in both Pick List and Order Slips
+**Sidebar (`ConversationSidebar.tsx`):**
+- Accept a new prop `newOrderCount?: number` (passed from `Index.tsx`)
+- In both collapsed and expanded views, show a red notification badge on the Package icon when `newOrderCount > 0`
 
-### 2. Add checkboxes to Pick List items
-- Track checked/picked items via `Set<string>` state (`pickedKeys`)
-- Each pick list row gets a checkbox; checked items show strikethrough on product name and reduced opacity (like the reference screenshot's `2/2` pattern)
-- Show picked count vs total: `{pickedCount} / {totalQty}` in the Qty column
+**Index.tsx:**
+- Add a `newOrderCount` state, increment it when a `order.created` webhook event arrives via the existing realtime channel
+- Reset it when user navigates to `/package-slips` (or pass a reset callback)
+- Pass `newOrderCount` to `ConversationSidebar`
+- Also show the badge on the mobile hamburger `Menu` button when `newOrderCount > 0`
 
-### 3. Mobile-first condensed layout
-- Remove Card wrapper from Pick List — render table directly for less padding
-- Reduce config bar spacing: stack vertically on mobile, smaller text
-- Make the tab bar + "Mark All" button stack vertically on small screens
-- Use compact table cells (`py-1`, `text-xs`/`text-sm`)
-- Order Slips: single column on mobile (already is), tighter padding
+Only active when webhooks exist (the realtime subscription already only fires for users who have webhook events).
 
-### 4. Confirmation dialog before marking as packed
-- Import `AlertDialog` from existing UI components
-- When user clicks "Mark as Packed" on an order, open a dialog showing:
-  - Order number and customer name
-  - List of line items with quantities
-  - "Confirm" and "Cancel" buttons
-- Store `confirmOrderId` in state; dialog opens when non-null
-- On confirm, call `markAsPacked(confirmOrderId)` and close dialog
-- Same for "Mark All as Packed" — show a summary dialog
+## 2. Prevent sidebar collapse on mobile
 
-### Files changed
-- `src/pages/PackageSlips.tsx` — all changes in this single file
+**Index.tsx:**
+- On mobile (`< lg` breakpoint), force `sidebarCollapsed` to `false` and skip the toggle. The sidebar is already an overlay on mobile — just prevent the collapse toggle from doing anything on small screens.
+- Hide the collapse/expand button in the sidebar on mobile, or make `onToggle` a no-op when mobile.
+
+## 3. Notification bubble on mobile hamburger icon
+
+**Index.tsx:**
+- On the `<Button>` that opens the mobile sidebar overlay, render a small red dot/badge when `newOrderCount > 0`
+
+## 4. Printable package slip
+
+**PackageSlips.tsx:**
+- Add a "Print" button on each order slip card
+- On click, open a new window/iframe with a print-friendly HTML layout for that single order: order number, customer details, line items with quantities, styled with `@media print` rules
+- Call `window.print()` automatically
+
+## Files to change
+- `src/pages/Index.tsx` — newOrderCount state, pass to sidebar, badge on hamburger, mobile collapse prevention
+- `src/components/chat/ConversationSidebar.tsx` — accept `newOrderCount` prop, render badge on Package icon
+- `src/pages/PackageSlips.tsx` — add print button + print-friendly slip generation
 
