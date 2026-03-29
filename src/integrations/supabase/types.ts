@@ -183,6 +183,36 @@ export type Database = {
         }
         Relationships: []
       }
+      cron_job_logs: {
+        Row: {
+          created_at: string
+          details: Json
+          duration_ms: number | null
+          id: string
+          job_name: string
+          status: string
+          summary: Json
+        }
+        Insert: {
+          created_at?: string
+          details?: Json
+          duration_ms?: number | null
+          id?: string
+          job_name?: string
+          status?: string
+          summary?: Json
+        }
+        Update: {
+          created_at?: string
+          details?: Json
+          duration_ms?: number | null
+          id?: string
+          job_name?: string
+          status?: string
+          summary?: Json
+        }
+        Relationships: []
+      }
       memory_embeddings: {
         Row: {
           content: string
