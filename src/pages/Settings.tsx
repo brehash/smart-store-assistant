@@ -448,7 +448,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2"><Label>Store URL</Label><Input value={storeUrl} onChange={(e) => setStoreUrl(e.target.value)} placeholder="https://yourstore.com" /></div>
-          <div className="space-y-2"><Label>Consumer Key</Label><Input value={consumerKey} onChange={(e) => setConsumerKey(e.target.value)} placeholder="ck_..." type="password" /></div>
+          <div className="space-y-2"><Label>Consumer Key</Label><div className="relative"><Input value={consumerKey} onChange={(e) => setConsumerKey(e.target.value)} placeholder="ck_..." type={showConsumerKey ? "text" : "password"} className="pr-10" /><button type="button" onClick={() => setShowConsumerKey(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">{showConsumerKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div></div>
           <div className="space-y-2"><Label>Consumer Secret</Label><Input value={consumerSecret} onChange={(e) => setConsumerSecret(e.target.value)} placeholder="cs_..." type="password" /></div>
           <div className="flex gap-2 pt-2">
             <Button onClick={handleTest} variant="outline" disabled={testing || !storeUrl || !consumerKey || !consumerSecret}>
