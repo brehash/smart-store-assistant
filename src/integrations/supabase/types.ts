@@ -84,6 +84,7 @@ export type Database = {
           last_refill_at: string
           monthly_allowance: number
           plan_id: string | null
+          team_id: string | null
           updated_at: string
           user_id: string
         }
@@ -94,6 +95,7 @@ export type Database = {
           last_refill_at?: string
           monthly_allowance?: number
           plan_id?: string | null
+          team_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -104,6 +106,7 @@ export type Database = {
           last_refill_at?: string
           monthly_allowance?: number
           plan_id?: string | null
+          team_id?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -113,6 +116,13 @@ export type Database = {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "credit_balances_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
             referencedColumns: ["id"]
           },
         ]
@@ -380,6 +390,100 @@ export type Database = {
         }
         Relationships: []
       }
+      team_invitations: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string
+          status: string
+          team_id: string
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          invited_by: string
+          status?: string
+          team_id: string
+          token: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          invited_by?: string
+          status?: string
+          team_id?: string
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_invitations_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_members: {
+        Row: {
+          id: string
+          joined_at: string
+          role: string
+          team_id: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          joined_at?: string
+          role?: string
+          team_id: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          joined_at?: string
+          role?: string
+          team_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          owner_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_id?: string
+        }
+        Relationships: []
+      }
       user_preferences: {
         Row: {
           created_at: string
@@ -583,6 +687,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_team_credit_balance: {
+        Args: { _user_id: string }
+        Returns: {
+          balance: number
+          last_refill_at: string
+          monthly_allowance: number
+          team_id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -614,6 +727,7 @@ export type Database = {
           last_refill_at: string
           monthly_allowance: number
           plan_id: string | null
+          team_id: string | null
           updated_at: string
           user_id: string
         }
