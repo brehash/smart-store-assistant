@@ -18,7 +18,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Package, RefreshCw, CheckCircle2, Loader2 } from "lucide-react";
+import { ArrowLeft, Package, RefreshCw, CheckCircle2, Loader2, Printer } from "lucide-react";
 
 interface LineItem {
   product_id: number;
