@@ -13,6 +13,10 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Package, RefreshCw, CheckCircle2, Loader2 } from "lucide-react";
 
@@ -21,6 +25,7 @@ interface LineItem {
   name: string;
   sku: string;
   quantity: number;
+  image?: { src: string };
 }
 
 interface Order {
@@ -38,6 +43,7 @@ interface PickItem {
   name: string;
   sku: string;
   totalQty: number;
+  image?: string;
 }
 
 export default function PackageSlips() {
@@ -54,6 +60,11 @@ export default function PackageSlips() {
   const [loading, setLoading] = useState(false);
   const [packedIds, setPackedIds] = useState<Set<number>>(new Set());
   const [updatingIds, setUpdatingIds] = useState<Set<number>>(new Set());
+  const [pickedKeys, setPickedKeys] = useState<Set<string>>(new Set());
+
+  // Confirmation dialog state
+  const [confirmOrderId, setConfirmOrderId] = useState<number | null>(null);
+  const [confirmAll, setConfirmAll] = useState(false);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -61,7 +72,6 @@ export default function PackageSlips() {
   useEffect(() => {
     if (!user) return;
     const load = async () => {
-      // Try own connection first
       let { data } = await supabase
         .from("woo_connections")
         .select("order_statuses")
@@ -70,7 +80,6 @@ export default function PackageSlips() {
         .limit(1)
         .maybeSingle();
 
-      // Fallback: team owner
       if (!data) {
         const { data: membership } = await supabase
           .from("team_members")
@@ -78,16 +87,8 @@ export default function PackageSlips() {
           .eq("user_id", user.id)
           .maybeSingle();
         if (membership) {
-          const { data: team } = await supabase
-            .from("teams")
-            .select("owner_id")
-            .eq("id", membership.team_id)
-            .single();
-          if (team) {
-            // We can't read owner's woo_connections due to RLS, so just use common statuses
-            setAllStatuses(["pending", "processing", "on-hold", "completed", "cancelled", "refunded", "failed"]);
-            return;
-          }
+          setAllStatuses(["pending", "processing", "on-hold", "completed", "cancelled", "refunded", "failed"]);
+          return;
         }
       }
 
@@ -154,6 +155,14 @@ export default function PackageSlips() {
     savePrefs(sourceStatuses, val);
   };
 
+  const togglePicked = (key: string) => {
+    setPickedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+
   // Load orders
   const loadOrders = async () => {
     if (sourceStatuses.length === 0) {
@@ -163,6 +172,7 @@ export default function PackageSlips() {
     setLoading(true);
     setOrders([]);
     setPackedIds(new Set());
+    setPickedKeys(new Set());
     try {
       const statusParam = sourceStatuses.join(",");
       const { data, error } = await supabase.functions.invoke("woo-proxy", {
@@ -193,7 +203,7 @@ export default function PackageSlips() {
         if (existing) {
           existing.totalQty += item.quantity;
         } else {
-          map.set(key, { key, name: item.name, sku: item.sku || "-", totalQty: item.quantity });
+          map.set(key, { key, name: item.name, sku: item.sku || "-", totalQty: item.quantity, image: item.image?.src });
         }
       }
     }
@@ -230,7 +240,6 @@ export default function PackageSlips() {
   // Mark all as packed
   const markAllAsPacked = async () => {
     const unpacked = orders.filter((o) => !packedIds.has(o.id));
-    if (unpacked.length === 0) return;
     for (const order of unpacked) {
       await markAsPacked(order.id);
     }
@@ -241,178 +250,198 @@ export default function PackageSlips() {
       .filter(Boolean)
       .join(", ");
 
+  // Get the order for confirmation dialog
+  const confirmOrder = confirmOrderId ? orders.find((o) => o.id === confirmOrderId) : null;
+  const unpackedOrders = orders.filter((o) => !packedIds.has(o.id));
+
   return (
     <div className="flex flex-col h-screen bg-background text-foreground">
       {/* Top bar */}
-      <div className="flex items-center gap-3 border-b border-border px-4 py-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
-          <ArrowLeft className="h-5 w-5" />
+      <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate("/")}>
+          <ArrowLeft className="h-4 w-4" />
         </Button>
-        <Package className="h-5 w-5 text-primary" />
-        <h1 className="text-lg font-semibold">Package Slips</h1>
+        <Package className="h-4 w-4 text-primary" />
+        <h1 className="text-sm font-semibold">Package Slips</h1>
       </div>
 
-      {/* Config bar */}
-      <div className="border-b border-border px-4 py-3 space-y-3">
-        <div className="flex flex-wrap items-start gap-6">
-          {/* Source statuses */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Fetch orders with status</label>
-            <div className="flex flex-wrap gap-2">
-              {allStatuses.map((s) => (
-                <label key={s} className="flex items-center gap-1.5 cursor-pointer">
-                  <Checkbox
-                    checked={sourceStatuses.includes(s)}
-                    onCheckedChange={() => toggleSourceStatus(s)}
-                  />
-                  <span className="text-sm capitalize">{s.replace(/-/g, " ")}</span>
-                </label>
-              ))}
-            </div>
+      {/* Config bar — stacked on mobile */}
+      <div className="border-b border-border px-3 py-2 space-y-2">
+        {/* Source statuses */}
+        <div className="space-y-1">
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Fetch orders with status</label>
+          <div className="flex flex-wrap gap-x-3 gap-y-1">
+            {allStatuses.map((s) => (
+              <label key={s} className="flex items-center gap-1 cursor-pointer">
+                <Checkbox
+                  className="h-3.5 w-3.5"
+                  checked={sourceStatuses.includes(s)}
+                  onCheckedChange={() => toggleSourceStatus(s)}
+                />
+                <span className="text-xs capitalize">{s.replace(/-/g, " ")}</span>
+              </label>
+            ))}
           </div>
+        </div>
 
+        <div className="flex flex-wrap items-end gap-2">
           {/* Target status */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Set status after packing</label>
+          <div className="space-y-1">
+            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">After packing</label>
             <Select value={targetStatus} onValueChange={handleTargetChange}>
-              <SelectTrigger className="w-44">
+              <SelectTrigger className="w-36 h-8 text-xs">
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
               <SelectContent>
                 {allStatuses.map((s) => (
                   <SelectItem key={s} value={s}>
-                    <span className="capitalize">{s.replace(/-/g, " ")}</span>
+                    <span className="capitalize text-xs">{s.replace(/-/g, " ")}</span>
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Actions */}
-          <div className="flex items-end gap-2 pt-4">
-            <Button onClick={loadOrders} disabled={loading || sourceStatuses.length === 0}>
-              {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-              Load Orders
-            </Button>
-          </div>
+          <Button size="sm" className="h-8 text-xs" onClick={loadOrders} disabled={loading || sourceStatuses.length === 0}>
+            {loading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
+            Load Orders
+          </Button>
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto p-4">
+      <div className="flex-1 overflow-auto">
         {orders.length === 0 && !loading && (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2">
-            <Package className="h-12 w-12" />
-            <p className="text-sm">Select order statuses and click Load Orders to begin</p>
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2 p-4">
+            <Package className="h-10 w-10" />
+            <p className="text-xs">Select statuses and load orders to begin</p>
           </div>
         )}
 
         {orders.length > 0 && (
-          <Tabs defaultValue="picklist" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <TabsList>
-                <TabsTrigger value="picklist">Pick List</TabsTrigger>
-                <TabsTrigger value="slips">Order Slips ({orders.length})</TabsTrigger>
+          <Tabs defaultValue="picklist" className="flex flex-col h-full">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-3 py-2 border-b border-border">
+              <TabsList className="h-8">
+                <TabsTrigger value="picklist" className="text-xs h-7 px-3">Pick List</TabsTrigger>
+                <TabsTrigger value="slips" className="text-xs h-7 px-3">Slips ({orders.length})</TabsTrigger>
               </TabsList>
               {targetStatus && (
                 <Button
                   variant="outline"
-                  onClick={markAllAsPacked}
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setConfirmAll(true)}
                   disabled={packedIds.size === orders.length}
                 >
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Mark All as Packed ({orders.length - packedIds.size})
+                  <CheckCircle2 className="h-3 w-3 mr-1" />
+                  Mark All ({unpackedOrders.length})
                 </Button>
               )}
             </div>
 
             {/* Pick List */}
-            <TabsContent value="picklist">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Products to Pick</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Product</TableHead>
-                        <TableHead>SKU</TableHead>
-                        <TableHead className="text-right">Total Qty</TableHead>
+            <TabsContent value="picklist" className="flex-1 overflow-auto m-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-8 px-2"></TableHead>
+                    <TableHead className="text-xs px-2">Product</TableHead>
+                    <TableHead className="text-xs px-2 text-right w-16">Qty</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pickList.map((item) => {
+                    const picked = pickedKeys.has(item.key);
+                    return (
+                      <TableRow
+                        key={item.key}
+                        className={picked ? "opacity-50" : ""}
+                        onClick={() => togglePicked(item.key)}
+                      >
+                        <TableCell className="px-2 py-1">
+                          <Checkbox
+                            className="h-3.5 w-3.5"
+                            checked={picked}
+                            onCheckedChange={() => togglePicked(item.key)}
+                          />
+                        </TableCell>
+                        <TableCell className="px-2 py-1">
+                          <div className="flex items-center gap-2">
+                            {item.image && (
+                              <img
+                                src={item.image}
+                                alt=""
+                                className="h-8 w-8 rounded object-cover flex-shrink-0"
+                              />
+                            )}
+                            <div className="min-w-0">
+                              <p className={`text-xs font-medium truncate ${picked ? "line-through" : ""}`}>{item.name}</p>
+                              {item.sku !== "-" && (
+                                <p className="text-[10px] text-muted-foreground">{item.sku}</p>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-2 py-1 text-right">
+                          <span className="text-sm font-semibold">{item.totalQty}</span>
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {pickList.map((item) => (
-                        <TableRow key={item.key}>
-                          <TableCell className="font-medium">{item.name}</TableCell>
-                          <TableCell className="text-muted-foreground">{item.sku}</TableCell>
-                          <TableCell className="text-right font-semibold">{item.totalQty}</TableCell>
-                        </TableRow>
-                      ))}
-                      {pickList.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={3} className="text-center text-muted-foreground">No items</TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
+                    );
+                  })}
+                  {pickList.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center text-xs text-muted-foreground py-4">No items</TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </TabsContent>
 
             {/* Order Slips */}
-            <TabsContent value="slips">
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <TabsContent value="slips" className="flex-1 overflow-auto m-0 p-2">
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                 {orders.map((order) => {
                   const isPacked = packedIds.has(order.id);
                   const isUpdating = updatingIds.has(order.id);
                   return (
-                    <Card key={order.id} className={isPacked ? "opacity-60 border-primary/30" : ""}>
-                      <CardHeader className="pb-2">
+                    <Card key={order.id} className={`${isPacked ? "opacity-50 border-primary/30" : ""}`}>
+                      <CardHeader className="px-3 py-2 pb-1">
                         <div className="flex items-center justify-between">
-                          <CardTitle className="text-sm font-semibold">
-                            Order #{order.number}
-                          </CardTitle>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary" className="capitalize text-xs">
+                          <CardTitle className="text-xs font-semibold">#{order.number}</CardTitle>
+                          <div className="flex items-center gap-1">
+                            <Badge variant="secondary" className="capitalize text-[10px] px-1.5 py-0">
                               {order.status.replace(/-/g, " ")}
                             </Badge>
-                            {isPacked && <CheckCircle2 className="h-4 w-4 text-primary" />}
+                            {isPacked && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
                           </div>
                         </div>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-[10px] text-muted-foreground leading-tight">
                           {order.shipping.first_name} {order.shipping.last_name}
                           {order.shipping.company ? ` · ${order.shipping.company}` : ""}
                         </p>
-                        <p className="text-xs text-muted-foreground">{formatAddress(order.shipping)}</p>
+                        <p className="text-[10px] text-muted-foreground leading-tight">{formatAddress(order.shipping)}</p>
                       </CardHeader>
-                      <CardContent className="space-y-2">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="text-xs">Item</TableHead>
-                              <TableHead className="text-xs text-right">Qty</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {order.line_items.map((item, idx) => (
-                              <TableRow key={idx}>
-                                <TableCell className="text-sm py-1">
-                                  {item.name}
-                                  {item.sku && <span className="text-muted-foreground text-xs ml-1">({item.sku})</span>}
-                                </TableCell>
-                                <TableCell className="text-sm py-1 text-right font-semibold">{item.quantity}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                      <CardContent className="px-3 py-1 space-y-1">
+                        {order.line_items.map((item, idx) => (
+                          <div key={idx} className="flex items-center gap-2 py-0.5">
+                            {item.image?.src && (
+                              <img
+                                src={item.image.src}
+                                alt=""
+                                className="h-7 w-7 rounded object-cover flex-shrink-0"
+                              />
+                            )}
+                            <span className="text-xs flex-1 min-w-0 truncate">{item.name}</span>
+                            <span className="text-xs font-semibold flex-shrink-0">×{item.quantity}</span>
+                          </div>
+                        ))}
                         {!isPacked && targetStatus && (
                           <Button
                             variant="outline"
                             size="sm"
-                            className="w-full"
+                            className="w-full h-7 text-xs mt-1"
                             disabled={isUpdating}
-                            onClick={() => markAsPacked(order.id)}
+                            onClick={() => setConfirmOrderId(order.id)}
                           >
                             {isUpdating ? (
                               <Loader2 className="h-3 w-3 animate-spin mr-1" />
@@ -431,6 +460,84 @@ export default function PackageSlips() {
           </Tabs>
         )}
       </div>
+
+      {/* Confirmation dialog — single order */}
+      <AlertDialog open={!!confirmOrder} onOpenChange={(open) => { if (!open) setConfirmOrderId(null); }}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-sm">Confirm packing — #{confirmOrder?.number}</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  {confirmOrder?.shipping.first_name} {confirmOrder?.shipping.last_name}
+                </p>
+                <div className="space-y-1">
+                  {confirmOrder?.line_items.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-xs">
+                      {item.image?.src && (
+                        <img src={item.image.src} alt="" className="h-6 w-6 rounded object-cover" />
+                      )}
+                      <span className="flex-1 truncate">{item.name}</span>
+                      <span className="font-semibold">×{item.quantity}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Status will change to <span className="font-medium capitalize">{targetStatus.replace(/-/g, " ")}</span>
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="h-8 text-xs">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="h-8 text-xs"
+              onClick={() => {
+                if (confirmOrderId) markAsPacked(confirmOrderId);
+                setConfirmOrderId(null);
+              }}
+            >
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirmation dialog — mark all */}
+      <AlertDialog open={confirmAll} onOpenChange={setConfirmAll}>
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-sm">Mark all as packed?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">
+                  {unpackedOrders.length} order{unpackedOrders.length !== 1 ? "s" : ""} will be updated to{" "}
+                  <span className="font-medium capitalize">{targetStatus.replace(/-/g, " ")}</span>.
+                </p>
+                <div className="max-h-32 overflow-auto space-y-0.5">
+                  {unpackedOrders.map((o) => (
+                    <p key={o.id} className="text-xs">
+                      #{o.number} — {o.shipping.first_name} {o.shipping.last_name} ({o.line_items.length} items)
+                    </p>
+                  ))}
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="h-8 text-xs">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="h-8 text-xs"
+              onClick={() => {
+                markAllAsPacked();
+                setConfirmAll(false);
+              }}
+            >
+              Confirm All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
