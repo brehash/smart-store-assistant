@@ -403,10 +403,7 @@ export default function PackageSlips() {
                               />
                             )}
                             <div className="min-w-0">
-                              <p className={`text-xs font-medium truncate ${picked ? "line-through" : ""}`}>{item.name}</p>
-                              {item.sku !== "-" && (
-                                <p className="text-[10px] text-muted-foreground">{item.sku}</p>
-                              )}
+                              <p className={`text-xs font-medium break-words ${picked ? "line-through" : ""}`}>{item.name}</p>
                             </div>
                           </div>
                         </TableCell>
