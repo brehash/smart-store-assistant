@@ -292,6 +292,16 @@ export async function executeTool(
         if (orders.length < 100) break;
       }
 
+      const INVOICE_META_KEYS = ['invoice','factura','oblio','wc_invoice','billing_invoice','serie','numar','fiscal'];
+      const orderHasInvoice = (order: any): boolean => {
+        const meta = order.meta_data || [];
+        return meta.some((m: any) => {
+          const k = (m.key || '').toLowerCase();
+          if (k === 'av_facturare') return false;
+          return INVOICE_META_KEYS.some(ik => k.includes(ik)) && m.value;
+        });
+      };
+
       const productMap: Record<
         number,
         {
@@ -299,12 +309,15 @@ export async function executeTool(
           product_name: string;
           total_revenue: number;
           total_quantity: number;
+          invoiced_qty: number;
+          not_invoiced_qty: number;
           order_count: number;
           order_ids: Set<number>;
         }
       > = {};
 
       for (const order of allOrders) {
+        const hasInvoice = orderHasInvoice(order);
         for (const li of order.line_items || []) {
           const pid = li.product_id;
           if (!productMap[pid]) {
@@ -313,12 +326,20 @@ export async function executeTool(
               product_name: li.name || `Product #${pid}`,
               total_revenue: 0,
               total_quantity: 0,
+              invoiced_qty: 0,
+              not_invoiced_qty: 0,
               order_count: 0,
               order_ids: new Set(),
             };
           }
+          const qty = li.quantity || 0;
           productMap[pid].total_revenue += parseFloat(li.total || "0");
-          productMap[pid].total_quantity += li.quantity || 0;
+          productMap[pid].total_quantity += qty;
+          if (hasInvoice) {
+            productMap[pid].invoiced_qty += qty;
+          } else {
+            productMap[pid].not_invoiced_qty += qty;
+          }
           if (!productMap[pid].order_ids.has(order.id)) {
             productMap[pid].order_ids.add(order.id);
             productMap[pid].order_count++;
@@ -326,26 +347,35 @@ export async function executeTool(
         }
       }
 
-      const products = Object.values(productMap)
+      // Compute totals from ALL products before slicing
+      const allProducts = Object.values(productMap);
+      const totalRevenue = allProducts.reduce((s, p) => s + p.total_revenue, 0);
+      const totalQuantity = allProducts.reduce((s, p) => s + p.total_quantity, 0);
+      const totalInvoicedQty = allProducts.reduce((s, p) => s + p.invoiced_qty, 0);
+      const totalNotInvoicedQty = allProducts.reduce((s, p) => s + p.not_invoiced_qty, 0);
+
+      const products = allProducts
         .map((p) => ({
           product_id: p.product_id,
           product_name: p.product_name,
           total_revenue: Math.round(p.total_revenue * 100) / 100,
           total_quantity: p.total_quantity,
+          invoiced_qty: p.invoiced_qty,
+          not_invoiced_qty: p.not_invoiced_qty,
           order_count: p.order_count,
           average_price: p.total_quantity > 0 ? Math.round((p.total_revenue / p.total_quantity) * 100) / 100 : 0,
         }))
-        .sort((a, b) => b.total_revenue - a.total_revenue)
+        .sort((a, b) => b.total_quantity - a.total_quantity)
         .slice(0, limit);
-
-      const totalRevenue = products.reduce((s, p) => s + p.total_revenue, 0);
 
       return {
         result: {
           period: `${startDate} → ${endDate}`,
           total_revenue: Math.round(totalRevenue * 100) / 100,
           total_orders: allOrders.length,
-          product_count: products.length,
+          product_count: allProducts.length,
+          total_quantity: totalQuantity,
+          invoice_summary: { total_invoiced_qty: totalInvoicedQty, total_not_invoiced_qty: totalNotInvoicedQty },
           products,
         },
         richContent: {
@@ -353,7 +383,7 @@ export async function executeTool(
           data: {
             type: "bar",
             title: `Product Sales (${startDate} → ${endDate})`,
-            data: products.slice(0, 15).map((p) => ({ name: p.product_name.slice(0, 25), value: p.total_revenue })),
+            data: products.slice(0, 15).map((p) => ({ name: p.product_name.slice(0, 25), value: p.total_quantity })),
             dataKey: "value",
             nameKey: "name",
           },
