@@ -9,6 +9,7 @@ import { AdminRoute } from "@/components/AdminRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
+import PackageSlips from "./pages/PackageSlips";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
