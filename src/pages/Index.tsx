@@ -56,6 +56,8 @@ interface Message {
 export default function Index() {
   const { user, session } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
+  const location = useLocation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [viewId, setViewId] = useState<string | null>(null);
@@ -81,6 +83,7 @@ export default function Index() {
   const [cachedAllStatuses, setCachedAllStatuses] = useState<{ slug: string; name: string }[]>([]);
   const [cachedSelectedStatuses, setCachedSelectedStatuses] = useState<string[]>([]);
   const [cachedProducts, setCachedProducts] = useState<any[]>([]);
+  const [newOrderCount, setNewOrderCount] = useState(0);
 
   // Fetch credit balance and app settings on mount
   useEffect(() => {
