@@ -486,9 +486,17 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
       <div className="px-3 pb-1">
         <button
           onClick={() => navigate("/package-slips")}
-          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors"
+          className="relative flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors"
         >
-          <Package className="h-4 w-4" /> Package Slips
+          <div className="relative">
+            <Package className="h-4 w-4" />
+            {newOrderCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive text-[8px] font-bold text-destructive-foreground">
+                {newOrderCount > 9 ? "9+" : newOrderCount}
+              </span>
+            )}
+          </div>
+          Package Slips
         </button>
       </div>
 
