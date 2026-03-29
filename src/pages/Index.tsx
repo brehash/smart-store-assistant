@@ -191,7 +191,15 @@ export default function Index() {
     return () => { supabase.removeChannel(channel); };
   }, [user, toast]);
 
+  // Reset new order count when navigating to package slips
+  useEffect(() => {
+    if (location.pathname === "/package-slips") {
+      setNewOrderCount(0);
+    }
+  }, [location.pathname]);
+
   const handleToggleSidebar = () => {
+    if (isMobile) return; // Prevent collapse on mobile
     setSidebarCollapsed((prev) => {
       const next = !prev;
       localStorage.setItem("sidebar-collapsed", String(next));
