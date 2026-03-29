@@ -273,7 +273,16 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
               <div key={li.product_id} className="flex items-center gap-2 rounded-lg border bg-card p-2">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium truncate">{li.name}</p>
-                  <p className="text-xs text-muted-foreground">{li.price} lei × {li.quantity}</p>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Input
+                      type="number"
+                      value={li.price}
+                      onChange={(e) => setLineItems((prev) => prev.map((item) => item.product_id === li.product_id ? { ...item, price: e.target.value } : item))}
+                      className="h-6 w-20 text-xs px-1.5"
+                      disabled={isDisabled}
+                    />
+                    <span>lei × {li.quantity}</span>
+                  </div>
                 </div>
                 <div className="flex items-center gap-1">
                   <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateQuantity(li.product_id, -1)} disabled={isDisabled}>
