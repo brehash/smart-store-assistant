@@ -476,6 +476,16 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
         </div>
       </ScrollArea>
 
+      {/* Package Slips link */}
+      <div className="px-3 pb-1">
+        <button
+          onClick={() => navigate("/package-slips")}
+          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors"
+        >
+          <Package className="h-4 w-4" /> Package Slips
+        </button>
+      </div>
+
       {/* Footer: User avatar dropup */}
       <div className="border-t border-sidebar-border p-3">
         <DropdownMenu>
