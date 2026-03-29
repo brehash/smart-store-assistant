@@ -714,7 +714,7 @@ export default function Index() {
   return (
     <div className="flex h-screen bg-background">
       {sidebarOpen && (
-        <div className="fixed inset-0 z-40 bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
+        <div className="fixed inset-0 z-[55] bg-black/50 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
       <div className={`fixed inset-y-0 left-0 z-50 transform transition-transform lg:relative lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
