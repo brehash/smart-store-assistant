@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Textarea } from "@/components/ui/textarea";
 
+import { Checkbox } from "@/components/ui/checkbox";
 import { Search, Plus, Minus, X, ChevronDown, ShoppingCart, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -66,6 +67,12 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
   const [billingOpen, setBillingOpen] = useState(false);
   const [billing, setBilling] = useState({
     first_name: "", last_name: "", email: "", phone: "",
+    address_1: "", city: "", state: "", postcode: "", country: "",
+    company: "",
+  });
+  const [shippingDiffers, setShippingDiffers] = useState(false);
+  const [shipping, setShipping] = useState({
+    first_name: "", last_name: "", phone: "",
     address_1: "", city: "", state: "", postcode: "", country: "",
     company: "",
   });
@@ -158,7 +165,7 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
     try {
       const orderBody: any = {
         status,
-        line_items: lineItems.map((li) => ({ product_id: li.product_id, quantity: li.quantity })),
+        line_items: lineItems.map((li) => ({ product_id: li.product_id, quantity: li.quantity, price: li.price })),
       };
       if (note) orderBody.customer_note = note;
       if (couponCode.trim()) orderBody.coupon_lines = [{ code: couponCode.trim() }];
@@ -168,7 +175,15 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
         if (pm) orderBody.payment_method_title = pm.title;
       }
       const hasBilling = Object.values(billing).some((v) => v.trim());
-      if (hasBilling) orderBody.billing = billing;
+      if (hasBilling) {
+        orderBody.billing = billing;
+        if (shippingDiffers) {
+          orderBody.shipping = shipping;
+        } else {
+          const { email, ...billingAsShipping } = billing;
+          orderBody.shipping = billingAsShipping;
+        }
+      }
 
       const { data: result, error: invokeError } = await supabase.functions.invoke("woo-proxy", {
         body: { endpoint: "orders", method: "POST", body: orderBody },
@@ -258,7 +273,16 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
               <div key={li.product_id} className="flex items-center gap-2 rounded-lg border bg-card p-2">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium truncate">{li.name}</p>
-                  <p className="text-xs text-muted-foreground">{li.price} lei × {li.quantity}</p>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Input
+                      type="number"
+                      value={li.price}
+                      onChange={(e) => setLineItems((prev) => prev.map((item) => item.product_id === li.product_id ? { ...item, price: e.target.value } : item))}
+                      className="h-6 w-20 text-xs px-1.5"
+                      disabled={isDisabled}
+                    />
+                    <span>lei × {li.quantity}</span>
+                  </div>
                 </div>
                 <div className="flex items-center gap-1">
                   <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateQuantity(li.product_id, -1)} disabled={isDisabled}>
@@ -401,6 +425,58 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
                 <Input className="h-8 text-sm" value={billing.country} onChange={(e) => setBilling((b) => ({ ...b, country: e.target.value }))} disabled={isDisabled} />
               </div>
             </div>
+            <div className="flex items-center gap-2 pt-2">
+              <Checkbox
+                id="shipping-differs"
+                checked={shippingDiffers}
+                onCheckedChange={(v) => setShippingDiffers(!!v)}
+                disabled={isDisabled}
+              />
+              <Label htmlFor="shipping-differs" className="text-xs cursor-pointer">Shipping address differs from billing</Label>
+            </div>
+            {shippingDiffers && (
+              <div className="space-y-2 pt-2 border-t mt-2">
+                <p className="text-xs font-medium text-muted-foreground">Shipping Address</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">First Name</Label>
+                    <Input className="h-8 text-sm" value={shipping.first_name} onChange={(e) => setShipping((s) => ({ ...s, first_name: e.target.value }))} disabled={isDisabled} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Last Name</Label>
+                    <Input className="h-8 text-sm" value={shipping.last_name} onChange={(e) => setShipping((s) => ({ ...s, last_name: e.target.value }))} disabled={isDisabled} />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs">Phone</Label>
+                  <Input className="h-8 text-sm" value={shipping.phone} onChange={(e) => setShipping((s) => ({ ...s, phone: e.target.value }))} disabled={isDisabled} />
+                </div>
+                <div>
+                  <Label className="text-xs">Address</Label>
+                  <Input className="h-8 text-sm" value={shipping.address_1} onChange={(e) => setShipping((s) => ({ ...s, address_1: e.target.value }))} disabled={isDisabled} />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">City</Label>
+                    <Input className="h-8 text-sm" value={shipping.city} onChange={(e) => setShipping((s) => ({ ...s, city: e.target.value }))} disabled={isDisabled} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">State / County</Label>
+                    <Input className="h-8 text-sm" value={shipping.state} onChange={(e) => setShipping((s) => ({ ...s, state: e.target.value }))} disabled={isDisabled} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">Postcode</Label>
+                    <Input className="h-8 text-sm" value={shipping.postcode} onChange={(e) => setShipping((s) => ({ ...s, postcode: e.target.value }))} disabled={isDisabled} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Country</Label>
+                    <Input className="h-8 text-sm" value={shipping.country} onChange={(e) => setShipping((s) => ({ ...s, country: e.target.value }))} disabled={isDisabled} />
+                  </div>
+                </div>
+              </div>
+            )}
           </CollapsibleContent>
         </Collapsible>
 
