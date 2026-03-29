@@ -8,7 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate } from "react-router-dom";
-import { Store, Sparkles, BarChart3, Brain } from "lucide-react";
+import { Store, Sparkles, BarChart3, Brain, Users } from "lucide-react";
+
+interface InviteInfo {
+  email: string;
+  team_name: string;
+  inviter_name: string;
+}
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -16,11 +22,37 @@ export default function Auth() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [inviteInfo, setInviteInfo] = useState<InviteInfo | null>(null);
+  const [inviteLoading, setInviteLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const inviteToken = searchParams.get("invite_token");
+
+  // Fetch invite info for logged-out users
+  useEffect(() => {
+    if (inviteToken && !user) {
+      setInviteLoading(true);
+      fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/team?invite_info=${inviteToken}`,
+        {
+          headers: {
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+        }
+      )
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.email) {
+            setInviteInfo(data);
+            setEmail(data.email);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setInviteLoading(false));
+    }
+  }, [inviteToken, user]);
 
   // If user is logged in and has invite token, accept it
   useEffect(() => {
@@ -112,64 +144,86 @@ export default function Auth() {
       <div className="flex w-full lg:w-1/2 items-center justify-center p-6">
         <Card className="w-full max-w-md border-0 shadow-xl">
           <CardHeader className="text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-              <Store className="h-6 w-6" />
-            </div>
-            <CardTitle className="text-2xl">{isLogin ? "Welcome back" : "Create account"}</CardTitle>
-            <CardDescription>
-              {isLogin ? "Sign in to your WooCommerce assistant" : "Get started with your AI assistant"}
-            </CardDescription>
+            {inviteToken && inviteInfo ? (
+              <>
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                  <Users className="h-6 w-6" />
+                </div>
+                <CardTitle className="text-2xl">You're invited!</CardTitle>
+                <CardDescription>
+                  <strong>{inviteInfo.inviter_name}</strong> invited you to join{" "}
+                  <strong>{inviteInfo.team_name}</strong>. Sign in or create an account to accept.
+                </CardDescription>
+              </>
+            ) : (
+              <>
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                  <Store className="h-6 w-6" />
+                </div>
+                <CardTitle className="text-2xl">{isLogin ? "Welcome back" : "Create account"}</CardTitle>
+                <CardDescription>
+                  {isLogin ? "Sign in to your WooCommerce assistant" : "Get started with your AI assistant"}
+                </CardDescription>
+              </>
+            )}
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {!isLogin && (
-                <div className="space-y-2">
-                  <Label htmlFor="fullName">Full name</Label>
-                  <Input
-                    id="fullName"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Your name"
-                    required={!isLogin}
-                  />
+            {inviteLoading ? (
+              <div className="text-center py-4 text-muted-foreground">Loading invitation details...</div>
+            ) : (
+              <>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  {!isLogin && (
+                    <div className="space-y-2">
+                      <Label htmlFor="fullName">Full name</Label>
+                      <Input
+                        id="fullName"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        placeholder="Your name"
+                        required={!isLogin}
+                      />
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      required
+                      readOnly={!!inviteInfo}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      required
+                      minLength={6}
+                    />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? "Loading..." : isLogin ? "Sign in" : "Create account"}
+                  </Button>
+                </form>
+                <div className="mt-6 text-center text-sm text-muted-foreground">
+                  {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
+                  <button
+                    onClick={() => setIsLogin(!isLogin)}
+                    className="font-medium text-primary hover:underline"
+                  >
+                    {isLogin ? "Sign up" : "Sign in"}
+                  </button>
                 </div>
-              )}
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  minLength={6}
-                />
-              </div>
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Loading..." : isLogin ? "Sign in" : "Create account"}
-              </Button>
-            </form>
-            <div className="mt-6 text-center text-sm text-muted-foreground">
-              {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
-              <button
-                onClick={() => setIsLogin(!isLogin)}
-                className="font-medium text-primary hover:underline"
-              >
-                {isLogin ? "Sign up" : "Sign in"}
-              </button>
-            </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
