@@ -43,13 +43,42 @@ serve(async (req) => {
       }
 
       const userId = claims.claims.sub;
-      const { data: conn } = await supabase
+      let conn = (await supabase
         .from("woo_connections")
         .select("*")
         .eq("user_id", userId)
         .eq("is_active", true)
         .limit(1)
-        .single();
+        .maybeSingle()).data;
+
+      // Fallback: resolve through team membership using service client
+      if (!conn) {
+        const svcClient = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+        );
+        const { data: membership } = await svcClient
+          .from("team_members")
+          .select("team_id")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (membership) {
+          const { data: team } = await svcClient
+            .from("teams")
+            .select("owner_id")
+            .eq("id", membership.team_id)
+            .single();
+          if (team) {
+            conn = (await svcClient
+              .from("woo_connections")
+              .select("*")
+              .eq("user_id", team.owner_id)
+              .eq("is_active", true)
+              .limit(1)
+              .maybeSingle()).data;
+          }
+        }
+      }
 
       if (!conn) {
         return new Response(JSON.stringify({ error: "No WooCommerce connection configured. Go to Settings to add your store." }), {
