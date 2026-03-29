@@ -513,7 +513,7 @@ export default function PackageSlips() {
                       {item.image?.src && (
                         <img src={item.image.src} alt="" className="h-6 w-6 rounded object-cover" />
                       )}
-                      <span className="flex-1 truncate">{item.name}</span>
+                      <span className="flex-1 break-words">{item.name}</span>
                       <span className="font-semibold">×{item.quantity}</span>
                     </div>
                   ))}
