@@ -425,6 +425,58 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
                 <Input className="h-8 text-sm" value={billing.country} onChange={(e) => setBilling((b) => ({ ...b, country: e.target.value }))} disabled={isDisabled} />
               </div>
             </div>
+            <div className="flex items-center gap-2 pt-2">
+              <Checkbox
+                id="shipping-differs"
+                checked={shippingDiffers}
+                onCheckedChange={(v) => setShippingDiffers(!!v)}
+                disabled={isDisabled}
+              />
+              <Label htmlFor="shipping-differs" className="text-xs cursor-pointer">Shipping address differs from billing</Label>
+            </div>
+            {shippingDiffers && (
+              <div className="space-y-2 pt-2 border-t mt-2">
+                <p className="text-xs font-medium text-muted-foreground">Shipping Address</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">First Name</Label>
+                    <Input className="h-8 text-sm" value={shipping.first_name} onChange={(e) => setShipping((s) => ({ ...s, first_name: e.target.value }))} disabled={isDisabled} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Last Name</Label>
+                    <Input className="h-8 text-sm" value={shipping.last_name} onChange={(e) => setShipping((s) => ({ ...s, last_name: e.target.value }))} disabled={isDisabled} />
+                  </div>
+                </div>
+                <div>
+                  <Label className="text-xs">Phone</Label>
+                  <Input className="h-8 text-sm" value={shipping.phone} onChange={(e) => setShipping((s) => ({ ...s, phone: e.target.value }))} disabled={isDisabled} />
+                </div>
+                <div>
+                  <Label className="text-xs">Address</Label>
+                  <Input className="h-8 text-sm" value={shipping.address_1} onChange={(e) => setShipping((s) => ({ ...s, address_1: e.target.value }))} disabled={isDisabled} />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">City</Label>
+                    <Input className="h-8 text-sm" value={shipping.city} onChange={(e) => setShipping((s) => ({ ...s, city: e.target.value }))} disabled={isDisabled} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">State / County</Label>
+                    <Input className="h-8 text-sm" value={shipping.state} onChange={(e) => setShipping((s) => ({ ...s, state: e.target.value }))} disabled={isDisabled} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="text-xs">Postcode</Label>
+                    <Input className="h-8 text-sm" value={shipping.postcode} onChange={(e) => setShipping((s) => ({ ...s, postcode: e.target.value }))} disabled={isDisabled} />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Country</Label>
+                    <Input className="h-8 text-sm" value={shipping.country} onChange={(e) => setShipping((s) => ({ ...s, country: e.target.value }))} disabled={isDisabled} />
+                  </div>
+                </div>
+              </div>
+            )}
           </CollapsibleContent>
         </Collapsible>
 
