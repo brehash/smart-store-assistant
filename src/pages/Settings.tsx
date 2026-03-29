@@ -28,7 +28,7 @@ import { TeamSettings } from "@/components/settings/TeamSettings";
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-export type SettingsTab = "general" | "appearance" | "connection" | "integrations" | "credits" | "account";
+export type SettingsTab = "general" | "appearance" | "connection" | "integrations" | "team" | "credits" | "account";
 
 interface OrderStatus { slug: string; name: string; total: number; }
 
@@ -37,6 +37,7 @@ const TABS: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "connection", label: "Connection", icon: Store },
   { id: "integrations", label: "Integrations", icon: Plug },
+  { id: "team", label: "Team", icon: Users },
   { id: "credits", label: "Credits", icon: Coins },
   { id: "account", label: "Account", icon: User },
 ];
