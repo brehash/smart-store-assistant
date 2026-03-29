@@ -106,9 +106,17 @@ export async function executeTool(
       }
       if (startDate) params.set("after", `${startDate}T00:00:00`);
       if (endDate) params.set("before", `${endDate}T23:59:59`);
-      const endpoint = `orders?${params.toString()}`;
-      const orders = await callWooProxy(supabaseUrl, authHeader, { endpoint });
-      if (!Array.isArray(orders)) return { result: orders, requestUri: `GET /wp-json/wc/v3/${endpoint}` };
+
+      // Paginate through all orders (up to 1000)
+      let orders: any[] = [];
+      for (let page = 1; page <= 10; page++) {
+        params.set("page", String(page));
+        const endpoint = `orders?${params.toString()}`;
+        const pageOrders = await callWooProxy(supabaseUrl, authHeader, { endpoint });
+        if (!Array.isArray(pageOrders)) break;
+        orders = orders.concat(pageOrders);
+        if (pageOrders.length < 100) break;
+      }
       const totalRevenue = orders.reduce((s: number, o: any) => s + parseFloat(o.total || "0"), 0);
       const byDate: Record<string, number> = {};
       orders.forEach((o: any) => {
@@ -153,10 +161,16 @@ export async function executeTool(
         if (defaultOrderStatuses.length) params.set("status", defaultOrderStatuses.join(","));
         params.set("after", `${start}T00:00:00`);
         params.set("before", `${end}T23:59:59`);
-        const orders = await callWooProxy(supabaseUrl, authHeader, { endpoint: `orders?${params.toString()}` });
-        if (!Array.isArray(orders)) return { revenue: 0, count: 0 };
-        const revenue = orders.reduce((s: number, o: any) => s + parseFloat(o.total || "0"), 0);
-        return { revenue: Math.round(revenue * 100) / 100, count: orders.length };
+        let allOrders: any[] = [];
+        for (let page = 1; page <= 10; page++) {
+          params.set("page", String(page));
+          const pageOrders = await callWooProxy(supabaseUrl, authHeader, { endpoint: `orders?${params.toString()}` });
+          if (!Array.isArray(pageOrders)) break;
+          allOrders = allOrders.concat(pageOrders);
+          if (pageOrders.length < 100) break;
+        }
+        const revenue = allOrders.reduce((s: number, o: any) => s + parseFloat(o.total || "0"), 0);
+        return { revenue: Math.round(revenue * 100) / 100, count: allOrders.length };
       };
       const a = await fetchPeriod(args.period_a_start, args.period_a_end);
       const b = await fetchPeriod(args.period_b_start, args.period_b_end);
