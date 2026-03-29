@@ -214,16 +214,13 @@ export default function PackageSlips() {
     }));
   };
 
-  // Load orders
+  // Load orders (merge mode — preserves collected state)
   const loadOrders = async () => {
     if (sourceStatuses.length === 0) {
       toast({ title: "Select at least one source status", variant: "destructive" });
       return;
     }
     setLoading(true);
-    setOrders([]);
-    setPackedIds(new Set());
-    setCollectedByKey({});
     try {
       const statusParam = sourceStatuses.join(",");
       const { data, error } = await supabase.functions.invoke("woo-proxy", {
@@ -232,6 +229,29 @@ export default function PackageSlips() {
       if (error) throw error;
       if (Array.isArray(data)) {
         setOrders(data);
+        // Prune collectedByKey: keep only keys that exist in new pick list
+        const newKeys = new Set<string>();
+        for (const order of data as Order[]) {
+          for (const item of order.line_items) {
+            newKeys.add(item.sku || String(item.product_id));
+          }
+        }
+        setCollectedByKey((prev) => {
+          const pruned: Record<string, number> = {};
+          for (const [k, v] of Object.entries(prev)) {
+            if (newKeys.has(k)) pruned[k] = v;
+          }
+          return pruned;
+        });
+        // Prune packedIds: keep only ids still in the new orders
+        const newOrderIds = new Set((data as Order[]).map((o) => o.id));
+        setPackedIds((prev) => {
+          const pruned = new Set<number>();
+          for (const id of prev) {
+            if (newOrderIds.has(id)) pruned.add(id);
+          }
+          return pruned;
+        });
       } else if (data?.message || data?.code) {
         throw new Error(data.message || "Failed to fetch orders");
       } else {
@@ -243,6 +263,60 @@ export default function PackageSlips() {
       setLoading(false);
     }
   };
+
+  // Clear session
+  const clearSession = () => {
+    setOrders([]);
+    setCollectedByKey({});
+    setPackedIds(new Set());
+    if (user) {
+      try {
+        localStorage.removeItem(lsOrders);
+        localStorage.removeItem(lsCollected);
+        localStorage.removeItem(lsPacked);
+      } catch {}
+    }
+    toast({ title: "Session cleared" });
+  };
+
+  // Realtime: auto-add new orders from webhook events
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel("ps_webhook_orders")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "webhook_events", filter: `user_id=eq.${user.id}` },
+        async (payload) => {
+          const event = payload.new as any;
+          if (!event.topic?.startsWith("order.")) return;
+          const orderData = event.payload as any;
+          if (!orderData?.id) return;
+
+          // Check if status matches our source statuses
+          const orderStatus = orderData.status;
+          if (!sourceStatuses.includes(orderStatus)) return;
+
+          // Merge into orders
+          setOrders((prev) => {
+            const exists = prev.findIndex((o) => o.id === orderData.id);
+            if (exists >= 0) {
+              const updated = [...prev];
+              updated[exists] = orderData;
+              return updated;
+            }
+            return [...prev, orderData];
+          });
+
+          toast({ title: `New order #${orderData.number || orderData.id} added` });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, sourceStatuses]);
 
   // Build pick list
   const pickList: PickItem[] = (() => {
