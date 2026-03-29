@@ -723,9 +723,10 @@ export default function Index() {
           onNew={handleNewChat}
           onNewInView={handleNewInView}
           onViewIdChange={setViewId}
-          collapsed={sidebarCollapsed}
+          collapsed={isMobile ? false : sidebarCollapsed}
           onToggle={handleToggleSidebar}
           onOpenSettings={handleOpenSettings}
+          newOrderCount={newOrderCount}
         />
       </div>
 
