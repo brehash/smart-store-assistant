@@ -491,28 +491,62 @@ export default function Index() {
     });
   };
 
+  // Helper: persist resolved state of approvals/questions/orderForms to DB
+  const persistMessageMetadata = async (messageId: string | undefined, updatedMsg: Message) => {
+    if (!messageId) return;
+    const metadata: any = {};
+    if (updatedMsg.approvals?.length) metadata.approvals = updatedMsg.approvals;
+    if (updatedMsg.questions?.length) metadata.questions = updatedMsg.questions;
+    if (updatedMsg.orderForms?.length) metadata.orderForms = updatedMsg.orderForms;
+    if (updatedMsg.pipeline) metadata.pipeline = updatedMsg.pipeline;
+    if (updatedMsg.debugLogs?.length) metadata.debugLogs = updatedMsg.debugLogs;
+    if (updatedMsg.reasoningLogs?.length) metadata.reasoningLogs = updatedMsg.reasoningLogs;
+    await supabase.from("messages").update({ metadata }).eq("id", messageId);
+  };
+
+  // Helper: update a specific message by finder function (works for both persisted and streaming messages)
+  const updateMessage = (finder: (m: Message) => boolean, updater: (m: Message) => Message): Message | undefined => {
+    let updated: Message | undefined;
+    setMessages((prev) => prev.map((m) => {
+      if (finder(m)) { updated = updater(m); return updated; }
+      return m;
+    }));
+    return updated;
+  };
+
   const handleApproval = async (approval: ApprovalRequest, action: "approve" | "skip" | "edit", editedText?: string) => {
     if (!session || !conversationId) return;
 
-    // Mark the approval as resolved
-    updateLastAssistant((m) => ({
-      ...m,
-      approvals: m.approvals?.map((a) =>
-        a.toolCallId === approval.toolCallId
-          ? { ...a, resolved: action === "edit" ? "edited" as const : action === "approve" ? "approved" as const : "skipped" as const }
-          : a
-      ),
+    const resolvedValue = action === "edit" ? "edited" as const : action === "approve" ? "approved" as const : "skipped" as const;
+
+    // Find and update the message containing this approval
+    let targetMsg: Message | undefined;
+    setMessages((prev) => prev.map((m) => {
+      if (m.approvals?.some((a) => a.toolCallId === approval.toolCallId)) {
+        const updated = {
+          ...m,
+          approvals: m.approvals?.map((a) =>
+            a.toolCallId === approval.toolCallId ? { ...a, resolved: resolvedValue } : a
+          ),
+        };
+        if (action === "skip" && m.pipeline) {
+          const steps = m.pipeline.steps.map((s, i) =>
+            i === approval.stepIndex ? { ...s, status: "skipped" as const } : s
+          );
+          updated.pipeline = { ...m.pipeline, steps };
+        }
+        targetMsg = updated;
+        return updated;
+      }
+      return m;
     }));
 
+    // Persist to DB
+    if (targetMsg) {
+      persistMessageMetadata(targetMsg.id, targetMsg);
+    }
+
     if (action === "skip") {
-      // Update pipeline step to skipped
-      updateLastAssistant((m) => {
-        if (!m.pipeline) return m;
-        const steps = m.pipeline.steps.map((s, i) =>
-          i === approval.stepIndex ? { ...s, status: "skipped" as const } : s
-        );
-        return { ...m, pipeline: { ...m.pipeline, steps } };
-      });
       return;
     }
 
