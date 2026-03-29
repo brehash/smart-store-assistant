@@ -516,17 +516,16 @@ export default function PackageSlips() {
                       <TableRow
                         key={item.key}
                         className={finished ? "opacity-50" : ""}
-                        onClick={() => collectOne(item.key, item.totalQty)}
                       >
-                        <TableCell className="px-2 py-1" onClick={(e) => e.stopPropagation()}>
+                        <TableCell className="px-2 py-1">
                           <Checkbox
                             className="h-3.5 w-3.5"
                             checked={finished}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setCollectedByKey((prev) => ({ ...prev, [item.key]: item.totalQty }));
+                            onCheckedChange={() => {
+                              if (finished) {
+                                uncollectOne(item.key);
                               } else {
-                                setCollectedByKey((prev) => ({ ...prev, [item.key]: 0 }));
+                                collectOne(item.key, item.totalQty);
                               }
                             }}
                           />
