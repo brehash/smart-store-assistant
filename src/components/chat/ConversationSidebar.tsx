@@ -46,6 +46,7 @@ interface ConversationSidebarProps {
 
 export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, onViewIdChange, collapsed, onToggle, onOpenSettings }: ConversationSidebarProps) {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [views, setViews] = useState<View[]>([]);
