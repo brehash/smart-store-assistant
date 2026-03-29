@@ -45,7 +45,7 @@ interface ConversationSidebarProps {
   newOrderCount?: number;
 }
 
-export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, onViewIdChange, collapsed, onToggle, onOpenSettings }: ConversationSidebarProps) {
+export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, onViewIdChange, collapsed, onToggle, onOpenSettings, newOrderCount = 0 }: ConversationSidebarProps) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
