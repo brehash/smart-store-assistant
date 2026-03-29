@@ -93,21 +93,53 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    // Verify user
+    const url = new URL(req.url);
+    const path = url.pathname.replace(/^\/team\/?/, "").replace(/\/$/, "");
+
+    // ── PUBLIC: Get invite info by token (no auth required) ──
+    if (req.method === "GET" && url.searchParams.has("invite_info")) {
+      const token = url.searchParams.get("invite_info");
+      if (!token) return json({ error: "Token required" }, 400);
+
+      const { data: invitation } = await serviceClient
+        .from("team_invitations")
+        .select("email, team_id, invited_by, status, expires_at")
+        .eq("token", token)
+        .eq("status", "pending")
+        .maybeSingle();
+
+      if (!invitation) return json({ error: "Invalid or expired invitation" }, 404);
+      if (new Date(invitation.expires_at) < new Date()) return json({ error: "Invitation has expired" }, 410);
+
+      const { data: team } = await serviceClient
+        .from("teams")
+        .select("name")
+        .eq("id", invitation.team_id)
+        .single();
+
+      const { data: { user: inviter } } = await serviceClient.auth.admin.getUserById(invitation.invited_by);
+      const inviterName = inviter?.user_metadata?.full_name || inviter?.email?.split("@")[0] || "Someone";
+
+      return json({
+        email: invitation.email,
+        team_name: team?.name || "Unknown team",
+        inviter_name: inviterName,
+      });
+    }
+
+    // ── All other endpoints require auth ──
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
+
     const { data: { user }, error: authErr } = await serviceClient.auth.getUser(
       authHeader.replace("Bearer ", "")
     );
     if (authErr || !user) return json({ error: "Unauthorized" }, 401);
     const userId = user.id;
 
-    const url = new URL(req.url);
-    const path = url.pathname.replace(/^\/team\/?/, "").replace(/\/$/, "");
     const body = req.method === "POST" || req.method === "DELETE"
       ? await req.json().catch(() => ({}))
       : {};
