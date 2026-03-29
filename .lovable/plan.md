@@ -1,39 +1,53 @@
 
 
-# Enhance Cron Job Logs with per-order details and Colete Online statuses
+# Fix: `get_sales_report` missing first days of month
 
-## Problem
-Currently the tracker only logs `completedOrders` (orders that were marked completed). Orders that have AWBs but are still in transit are counted but not individually listed — you can't see which orders were checked or what their shipping status was.
+## Root cause
 
-## Solution
+The tool fetches orders with `per_page=100` and makes a **single API call** (line 92, 110). WooCommerce returns orders sorted by date descending by default. So for a month with more than 100 orders, only the **most recent 100** are returned — the earliest days of the month are cut off.
 
-### 1. Edge function: log all checked orders with their status (`supabase/functions/colete-online-tracker/index.ts`)
+Your screenshot confirms this: 100 orders total, chart starts around March 4 with gaps at the beginning, and a spike of ~14,000 on March 1 showing `value: 0` on hover — that date was backfilled by the gap-filling loop (lines 118-126) but has no actual order data.
 
-Add a new `checkedOrders` array to `userLog` that captures every order with an AWB, including:
-- `orderId`, `awb`, `uniqueId`
-- `wooStatus` (current WooCommerce status, e.g. "processing")
-- `shippingStatus` — the latest Colete Online status description from the history
-- `shippingCode` — the latest status code (e.g. 20800 = delivered)
-- `action` — what happened: `"completed"`, `"in_transit"`, `"no_history"`, or `"error"`
+## Fix
 
-This replaces the limited `completedOrders` array with a full picture. Around line 184, after confirming an AWB exists, push an entry for every order regardless of delivery status.
+Paginate through all orders in `get_sales_report` — loop with `page=1,2,3...` fetching 100 per page until a page returns fewer than 100 results (or a safety cap of 10 pages = 1000 orders).
 
-### 2. Frontend: display order-level details (`src/components/admin/CronJobLogs.tsx`)
+### Changes in `supabase/functions/chat/tool-executor.ts` (lines 90-147)
 
-In the expanded detail section for each user/store, replace the simple "Completed Orders" list with a full table showing:
+Replace the single `callWooProxy` call with a pagination loop:
 
-| Order # | AWB | Shipping Status | Action |
-|---------|-----|----------------|--------|
-| #1234 | RO123... | Delivered (20800) | ✅ Completed |
-| #1235 | RO456... | In delivery (20400) | ⏳ In Transit |
-| #1236 | RO789... | — | ❌ Error |
+```typescript
+case "get_sales_report": {
+  const baseParams = new URLSearchParams();
+  baseParams.set("per_page", "100");
+  if (defaultOrderStatuses.length) baseParams.set("status", defaultOrderStatuses.join(","));
+  
+  // ... existing date logic (lines 94-108) ...
+  
+  if (startDate) baseParams.set("after", `${startDate}T00:00:00`);
+  if (endDate) baseParams.set("before", `${endDate}T23:59:59`);
 
-Color-code the action column: green for completed, yellow/muted for in transit, red for errors.
+  // Paginate through all orders
+  let allOrders: any[] = [];
+  for (let page = 1; page <= 10; page++) {
+    baseParams.set("page", String(page));
+    const endpoint = `orders?${baseParams.toString()}`;
+    const pageOrders = await callWooProxy(supabaseUrl, authHeader, { endpoint });
+    if (!Array.isArray(pageOrders)) break;
+    allOrders = allOrders.concat(pageOrders);
+    if (pageOrders.length < 100) break; // last page
+  }
+  
+  // Use allOrders instead of orders for all calculations
+  // ... rest of existing logic unchanged ...
+}
+```
 
-### Files changed
+Also apply the same pagination fix to `compare_sales` `fetchPeriod` helper (lines 150-160), which has the same `per_page=100` single-call problem.
+
+### Summary
 
 | File | Change |
 |------|--------|
-| `supabase/functions/colete-online-tracker/index.ts` | Add `checkedOrders` array with per-order shipping status and action |
-| `src/components/admin/CronJobLogs.tsx` | Update interface + render a detailed orders table in the expanded section |
+| `supabase/functions/chat/tool-executor.ts` | Add pagination loop to `get_sales_report` and `compare_sales` to fetch all orders, not just first 100 |
 
