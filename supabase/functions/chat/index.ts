@@ -37,10 +37,29 @@ serve(async (req) => {
 
     const { messages, conversationId, approvalResponse, viewId } = await req.json();
 
-    // ── Credit check ──
+    // ── Credit check (resolve through team if applicable) ──
     const serviceClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {});
     const { data: creditBalance } = await serviceClient.rpc("refill_credits_if_due", { _user_id: userId });
-    if (!creditBalance || creditBalance.balance <= 0) {
+    
+    // Check if user is in a team and use team balance instead
+    let effectiveBalance = creditBalance?.balance || 0;
+    let teamCreditRow: any = null;
+    if (creditBalance?.team_id) {
+      const { data: teamBal } = await serviceClient
+        .from("credit_balances")
+        .select("*")
+        .eq("team_id", creditBalance.team_id)
+        .gt("balance", 0)
+        .order("balance", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (teamBal) {
+        effectiveBalance = teamBal.balance;
+        teamCreditRow = teamBal;
+      }
+    }
+    
+    if (effectiveBalance <= 0) {
       return new Response(JSON.stringify({ error: "You've run out of credits. Contact your administrator for more." }), {
         status: 402,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
