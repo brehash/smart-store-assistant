@@ -619,25 +619,48 @@ export default function Index() {
   const handleQuestionAnswer = async (question: QuestionRequest, answer: string) => {
     if (!session || !conversationId) return;
 
-    updateLastAssistant((m) => ({
-      ...m,
-      questions: m.questions?.map((q) =>
-        q.question === question.question ? { ...q, resolved: answer } : q
-      ),
+    let targetMsg: Message | undefined;
+    setMessages((prev) => prev.map((m) => {
+      if (m.questions?.some((q) => q.question === question.question)) {
+        const updated = {
+          ...m,
+          questions: m.questions?.map((q) =>
+            q.question === question.question ? { ...q, resolved: answer } : q
+          ),
+        };
+        targetMsg = updated;
+        return updated;
+      }
+      return m;
     }));
+
+    if (targetMsg) {
+      persistMessageMetadata(targetMsg.id, targetMsg);
+    }
 
     // Send the answer as a new user message
     await handleSend(answer);
   };
 
   const handleOrderCreated = (formData: OrderFormData, result: { orderNumber: string; orderId: number; total: string }) => {
-    updateLastAssistant((m) => ({
-      ...m,
-      orderForms: m.orderForms?.map((of) =>
-        of.toolCallId === formData.toolCallId ? { ...of, resolved: result } : of
-      ),
+    let targetMsg: Message | undefined;
+    setMessages((prev) => prev.map((m) => {
+      if (m.orderForms?.some((of) => of.toolCallId === formData.toolCallId)) {
+        const updated = {
+          ...m,
+          orderForms: m.orderForms?.map((of) =>
+            of.toolCallId === formData.toolCallId ? { ...of, resolved: result } : of
+          ),
+        };
+        targetMsg = updated;
+        return updated;
+      }
+      return m;
     }));
-    // No follow-up message to AI — the success card is sufficient feedback
+
+    if (targetMsg) {
+      persistMessageMetadata(targetMsg.id, targetMsg);
+    }
   };
 
   const handleNewChat = () => { setConversationId(null); setMessages([]); setViewId(null); setSidebarOpen(false); };
