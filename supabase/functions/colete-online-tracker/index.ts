@@ -92,7 +92,7 @@ serve(async (req) => {
         ordersScanned: 0,
         ordersWithAwb: 0,
         ordersCompleted: 0,
-        completedOrders: [],
+        checkedOrders: [],
         errors: [],
       };
 
@@ -190,15 +190,22 @@ serve(async (req) => {
 
           if (!statusResp.ok) {
             userLog.errors.push({ step: "check_status", orderId: order.id, awb, error: `HTTP ${statusResp.status}` });
+            userLog.checkedOrders.push({ orderId: order.id, awb, uniqueId, wooStatus: order.status, shippingStatus: null, shippingCode: null, action: "error" });
             totalErrors++;
             continue;
           }
 
           const statusData = await statusResp.json();
           const history = statusData.history;
-          if (!Array.isArray(history) || history.length === 0) continue;
+          if (!Array.isArray(history) || history.length === 0) {
+            userLog.checkedOrders.push({ orderId: order.id, awb, uniqueId, wooStatus: order.status, shippingStatus: null, shippingCode: null, action: "no_history" });
+            continue;
+          }
 
-          const isDelivered = history.some((h: any) => h.code === 20800);
+          const latest = history[history.length - 1];
+          const latestStatus = latest?.status || latest?.description || null;
+          const latestCode = latest?.code ?? latest?.status_id ?? null;
+          const isDelivered = history.some((h: any) => h.code === 20800 || h.code === 30500);
 
           if (isDelivered) {
             // 7. Update order status to completed
@@ -213,13 +220,16 @@ serve(async (req) => {
               processedCount++;
               userLog.ordersCompleted++;
               totalOrdersCompleted++;
-              userLog.completedOrders.push({ orderId: order.id, awb, uniqueId });
+              userLog.checkedOrders.push({ orderId: order.id, awb, uniqueId, wooStatus: order.status, shippingStatus: latestStatus, shippingCode: latestCode, action: "completed" });
               console.log(`Order #${order.id} (AWB: ${awb}) marked as completed`);
             } else {
               const errMsg = `HTTP ${updateResp.status}`;
               userLog.errors.push({ step: "update_order", orderId: order.id, awb, error: errMsg });
+              userLog.checkedOrders.push({ orderId: order.id, awb, uniqueId, wooStatus: order.status, shippingStatus: latestStatus, shippingCode: latestCode, action: "error" });
               totalErrors++;
             }
+          } else {
+            userLog.checkedOrders.push({ orderId: order.id, awb, uniqueId, wooStatus: order.status, shippingStatus: latestStatus, shippingCode: latestCode, action: "in_transit" });
           }
         }
 

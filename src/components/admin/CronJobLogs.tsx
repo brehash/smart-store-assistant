@@ -8,8 +8,18 @@ import {
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { RefreshCw, Play, ChevronDown, ChevronRight, Clock, CheckCircle2, XCircle, MinusCircle } from "lucide-react";
+import { RefreshCw, Play, ChevronDown, ChevronRight, Clock, CheckCircle2, XCircle, MinusCircle, Truck, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
+
+interface CheckedOrder {
+  orderId: number;
+  awb: string;
+  uniqueId: string;
+  wooStatus: string;
+  shippingStatus: string | null;
+  shippingCode: number | null;
+  action: "completed" | "in_transit" | "no_history" | "error";
+}
 
 interface CronLog {
   id: string;
@@ -29,7 +39,8 @@ interface CronLog {
     ordersScanned: number;
     ordersWithAwb: number;
     ordersCompleted: number;
-    completedOrders: Array<{ orderId: number; awb: string; uniqueId: string }>;
+    checkedOrders?: CheckedOrder[];
+    completedOrders?: Array<{ orderId: number; awb: string; uniqueId: string }>;
     errors: Array<{ step: string; orderId?: number; awb?: string; error: string }>;
   }>;
   duration_ms: number | null;
@@ -201,7 +212,66 @@ export function CronJobLogs({ accessToken }: { accessToken: string }) {
                                         <div><span className="text-muted-foreground">With AWB:</span> {detail.ordersWithAwb}</div>
                                         <div><span className="text-muted-foreground">Completed:</span> {detail.ordersCompleted}</div>
                                       </div>
-                                      {detail.completedOrders.length > 0 && (
+                                      {detail.checkedOrders && detail.checkedOrders.length > 0 && (
+                                        <div>
+                                          <p className="text-xs font-medium text-muted-foreground mb-1">Checked Orders ({detail.checkedOrders.length}):</p>
+                                          <div className="rounded-md border bg-background overflow-hidden">
+                                            <Table>
+                                              <TableHeader>
+                                                <TableRow>
+                                                  <TableHead className="text-xs h-8 px-2">Order #</TableHead>
+                                                  <TableHead className="text-xs h-8 px-2">AWB</TableHead>
+                                                  <TableHead className="text-xs h-8 px-2">WooCommerce</TableHead>
+                                                  <TableHead className="text-xs h-8 px-2">Shipping Status</TableHead>
+                                                  <TableHead className="text-xs h-8 px-2">Action</TableHead>
+                                                </TableRow>
+                                              </TableHeader>
+                                              <TableBody>
+                                                {detail.checkedOrders.map((o, j) => (
+                                                  <TableRow key={j}>
+                                                    <TableCell className="text-xs px-2 py-1.5 font-medium">#{o.orderId}</TableCell>
+                                                    <TableCell className="text-xs px-2 py-1.5 font-mono">{o.awb || "—"}</TableCell>
+                                                    <TableCell className="text-xs px-2 py-1.5">
+                                                      <Badge variant="outline" className="text-[10px] px-1.5 py-0">{o.wooStatus}</Badge>
+                                                    </TableCell>
+                                                    <TableCell className="text-xs px-2 py-1.5">
+                                                      {o.shippingStatus ? (
+                                                        <span>{o.shippingStatus}{o.shippingCode ? ` (${o.shippingCode})` : ""}</span>
+                                                      ) : (
+                                                        <span className="text-muted-foreground">—</span>
+                                                      )}
+                                                    </TableCell>
+                                                    <TableCell className="text-xs px-2 py-1.5">
+                                                      {o.action === "completed" && (
+                                                        <span className="inline-flex items-center gap-1 text-green-600">
+                                                          <CheckCircle2 className="h-3 w-3" /> Completed
+                                                        </span>
+                                                      )}
+                                                      {o.action === "in_transit" && (
+                                                        <span className="inline-flex items-center gap-1 text-amber-500">
+                                                          <Truck className="h-3 w-3" /> In Transit
+                                                        </span>
+                                                      )}
+                                                      {o.action === "no_history" && (
+                                                        <span className="inline-flex items-center gap-1 text-muted-foreground">
+                                                          <MinusCircle className="h-3 w-3" /> No History
+                                                        </span>
+                                                      )}
+                                                      {o.action === "error" && (
+                                                        <span className="inline-flex items-center gap-1 text-destructive">
+                                                          <AlertTriangle className="h-3 w-3" /> Error
+                                                        </span>
+                                                      )}
+                                                    </TableCell>
+                                                  </TableRow>
+                                                ))}
+                                              </TableBody>
+                                            </Table>
+                                          </div>
+                                        </div>
+                                      )}
+                                      {/* Backward compat: show old completedOrders if checkedOrders missing */}
+                                      {(!detail.checkedOrders || detail.checkedOrders.length === 0) && detail.completedOrders && detail.completedOrders.length > 0 && (
                                         <div>
                                           <p className="text-xs font-medium text-muted-foreground mb-1">Completed Orders:</p>
                                           <div className="space-y-1">
