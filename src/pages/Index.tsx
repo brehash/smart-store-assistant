@@ -347,7 +347,11 @@ export default function Index() {
     streamAliveRef.current = true;
     scrollToBottom();
 
-    await supabase.from("messages").insert({ conversation_id: convId, user_id: user.id, role: "user", content: input });
+    const { error: userMsgError } = await supabase.from("messages").insert({ conversation_id: convId, user_id: user.id, role: "user", content: input });
+    if (userMsgError) {
+      console.error("Failed to save user message:", userMsgError);
+      toast({ title: "Warning", description: "Your message may not be saved. Please check your connection.", variant: "destructive" });
+    }
 
     if (messages.length === 0) {
       const title = input.slice(0, 60) + (input.length > 60 ? "..." : "");
