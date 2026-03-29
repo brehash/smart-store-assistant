@@ -8,7 +8,7 @@ import {
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { RefreshCw, Play, ChevronDown, ChevronRight, Clock, CheckCircle2, XCircle, MinusCircle } from "lucide-react";
+import { RefreshCw, Play, ChevronDown, ChevronRight, Clock, CheckCircle2, XCircle, MinusCircle, Truck, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 interface CheckedOrder {
