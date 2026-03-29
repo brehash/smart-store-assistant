@@ -208,6 +208,7 @@ export default function Index() {
   };
 
   const handleOpenSettings = () => {
+    setSidebarOpen(false);
     setSettingsOpen(true);
     setSettingsTab("general");
     setSearchParams({ settings: "general" }, { replace: true });
