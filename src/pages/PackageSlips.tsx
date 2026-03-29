@@ -178,7 +178,7 @@ export default function PackageSlips() {
     setLoading(true);
     setOrders([]);
     setPackedIds(new Set());
-    setPickedKeys(new Set());
+    setCollectedByKey({});
     try {
       const statusParam = sourceStatuses.join(",");
       const { data, error } = await supabase.functions.invoke("woo-proxy", {
