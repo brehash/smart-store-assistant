@@ -1,47 +1,28 @@
 
 
-# Splitting `chat/index.ts` Into Manageable Modules
+# Create `supabase/seed.sql` from Current Database Data
 
-## The Problem
-The file is 3,118 lines. Every time you ask to change anything in it, Lovable reads and processes the entire file, consuming more credits.
+## What It Does
 
-## Approach
-Deno edge functions support relative imports, so we can split the file into focused modules within the same `supabase/functions/chat/` directory. Each module handles one concern. When you need a change, only the relevant file gets edited.
+Generates a seed file containing INSERT statements for all reference/config data so you can run `supabase db reset` or `psql -f supabase/seed.sql` on your Ubuntu server to populate tables after a fresh migration.
 
-## Proposed File Structure
+## Tables to Seed
 
-```text
-supabase/functions/chat/
-├── index.ts          (~200 lines) — Entry point, request handling, SSE stream orchestration
-├── tools.ts          (~500 lines) — TOOLS array definitions (all 22+ tool schemas)
-├── tool-executor.ts  (~600 lines) — executeTool() function + callWooProxy()
-├── intent.ts         (~100 lines) — Intent regex groups, selectToolsForIntent(), isShippingIntent()
-├── reasoning.ts      (~200 lines) — generateReasoningBefore/After, generateSemanticPlan, TOOL_LABELS
-├── prompts.ts        (~200 lines) — System prompt builder, shipping prompt, date rules
-├── utils.ts          (~100 lines) — formatDate, clampDay, normalizeSalesReportDates, normalizeCompareSalesDates, coerceMessageContent, sanitizeAiHistory, truncateForAI
-├── types.ts          (~30 lines)  — Shared types (SemanticStep, WRITE_TOOLS set, etc.)
-```
+Only reference/config tables (not user-generated data):
 
-## What Each File Contains
+1. **`subscription_plans`** — 4 rows (Starter, Growth, Pro, Enterprise)
+2. **`credit_topup_packs`** — 4 rows (Starter, Basic, Plus, Max)
+3. **`app_settings`** — 1 row (enable_topup_modal)
 
-1. **`types.ts`** — `SemanticStep` interface, `WRITE_TOOLS` set, shared type definitions
-2. **`tools.ts`** — The massive `TOOLS` array (all function schemas for OpenAI tool calling)
-3. **`intent.ts`** — `INTENT_GROUPS`, regex patterns, `selectToolsForIntent()`, `isShippingIntent()`
-4. **`reasoning.ts`** — `TOOL_LABELS`, `generateReasoningBefore()`, `generateReasoningAfter()`, `generateSemanticPlan()`
-5. **`utils.ts`** — Date helpers, `coerceMessageContent()`, `sanitizeAiHistory()`, `truncateForAI()`
-6. **`tool-executor.ts`** — `callWooProxy()`, the giant `executeTool()` switch statement
-7. **`prompts.ts`** — `buildSystemPrompt()` and `buildShippingPrompt()` functions (extracts the huge prompt strings)
-8. **`index.ts`** — Imports from above, handles the HTTP request, auth, credit checks, SSE stream loop, approval flow, memory storage
+User-specific tables (profiles, messages, conversations, etc.) are excluded since they depend on auth users.
 
-## Impact on Credits
-- Editing tool definitions? Only `tools.ts` gets touched (~500 lines vs 3,118)
-- Changing a prompt rule? Only `prompts.ts` (~200 lines)
-- Adding a new tool executor? Only `tool-executor.ts` (~600 lines)
-- Fixing intent detection? Only `intent.ts` (~100 lines)
+## File: `supabase/seed.sql`
 
-Estimated ~60-70% reduction in tokens processed per typical edit.
+Will contain:
+- `INSERT ... ON CONFLICT DO NOTHING` statements for idempotent seeding
+- Exact IDs, values, and sort orders from the current database
+- Comments grouping each table's inserts
 
-## Files Modified
-- `supabase/functions/chat/index.ts` — Stripped down to imports + orchestration
-- 7 new files created in `supabase/functions/chat/`
+## Scope
+One new file, no code changes needed.
 
