@@ -74,12 +74,6 @@ export function TeamSettings() {
     if (!inviteEmail.trim()) return;
     setInviting(true);
     try {
-      const { data, error } = await supabase.functions.invoke("team", {
-        method: "POST",
-        body: { email: inviteEmail.trim() },
-        headers: { "x-action": "invite" },
-      });
-      // The edge function uses URL path routing, so we need to invoke differently
       const session = await supabase.auth.getSession();
       const token = session.data.session?.access_token;
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
