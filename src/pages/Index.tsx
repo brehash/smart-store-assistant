@@ -113,8 +113,23 @@ export default function Index() {
       if (ownConn) {
         setHasConnection(true);
         setCachedSelectedStatuses((ownConn as any).order_statuses || []);
-        const dismissed = localStorage.getItem(`webhook-setup-dismissed-${user.id}`);
-        if (!dismissed) setShowWebhookSetup(true);
+        // Check if webhooks already exist on the store before showing setup card
+        try {
+          const { data: whData } = await supabase.functions.invoke("woo-proxy", {
+            body: { endpoint: "webhooks", method: "GET" },
+          });
+          const hasWebhooks = Array.isArray(whData) && whData.some(
+            (w: any) => w.name?.startsWith("Lovable") && w.status === "active"
+          );
+          if (!hasWebhooks) {
+            const dismissed = localStorage.getItem(`webhook-setup-dismissed-${user.id}`);
+            if (!dismissed) setShowWebhookSetup(true);
+          }
+        } catch {
+          // If webhook check fails, fall back to localStorage
+          const dismissed = localStorage.getItem(`webhook-setup-dismissed-${user.id}`);
+          if (!dismissed) setShowWebhookSetup(true);
+        }
         return;
       }
 
