@@ -459,6 +459,12 @@ export default function PackageSlips() {
             {loading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
             Load Orders
           </Button>
+          {orders.length > 0 && (
+            <Button size="sm" variant="ghost" className="h-8 text-xs text-destructive" onClick={clearSession}>
+              <Trash2 className="h-3 w-3 mr-1" />
+              Clear Session
+            </Button>
+          )}
         </div>
       </div>
 
