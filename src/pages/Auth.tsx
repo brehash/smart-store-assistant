@@ -19,8 +19,36 @@ export default function Auth() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const inviteToken = searchParams.get("invite_token");
 
-  if (user) return <Navigate to="/" replace />;
+  // If user is logged in and has invite token, accept it
+  useEffect(() => {
+    if (user && inviteToken) {
+      const acceptInvite = async () => {
+        try {
+          const session = await supabase.auth.getSession();
+          const token = session.data.session?.access_token;
+          const resp = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/team?accept_token=${inviteToken}`,
+            {
+              method: "GET",
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+          const result = await resp.json();
+          if (!resp.ok) throw new Error(result.error);
+          toast({ title: "Welcome to the team!", description: "You've successfully joined the team." });
+        } catch (e: any) {
+          toast({ title: "Invitation error", description: e.message, variant: "destructive" });
+        }
+        navigate("/");
+      };
+      acceptInvite();
+    }
+  }, [user, inviteToken]);
+
+  if (user && !inviteToken) return <Navigate to="/" replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
