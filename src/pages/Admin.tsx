@@ -8,6 +8,7 @@ import { UsersTable } from "@/components/admin/UsersTable";
 import { UserDetail } from "@/components/admin/UserDetail";
 import { UsageStats } from "@/components/admin/UsageStats";
 import { PlansManager } from "@/components/admin/PlansManager";
+import { CronJobLogs } from "@/components/admin/CronJobLogs";
 
 export interface AdminUser {
   id: string;
@@ -76,6 +77,7 @@ export default function Admin() {
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="plans">Plans</TabsTrigger>
             <TabsTrigger value="stats">Usage Stats</TabsTrigger>
+            <TabsTrigger value="cron">Cron Jobs</TabsTrigger>
           </TabsList>
 
           <TabsContent value="users" className="mt-4">
@@ -94,6 +96,10 @@ export default function Admin() {
 
           <TabsContent value="stats" className="mt-4">
             <UsageStats accessToken={session?.access_token || ""} />
+          </TabsContent>
+
+          <TabsContent value="cron" className="mt-4">
+            <CronJobLogs accessToken={session?.access_token || ""} />
           </TabsContent>
         </Tabs>
       </div>

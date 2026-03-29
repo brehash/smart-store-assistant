@@ -430,6 +430,26 @@ serve(async (req) => {
       });
     }
 
+    // Route: GET /cron-logs
+    if (req.method === "GET" && path === "cron-logs") {
+      const jobName = url.searchParams.get("job_name");
+      let query = serviceClient
+        .from("cron_job_logs")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (jobName) query = query.eq("job_name", jobName);
+      const { data, error } = await query;
+      if (error) {
+        return new Response(JSON.stringify({ error: error.message }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify(data || []), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ error: "Not found" }), {
       status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
