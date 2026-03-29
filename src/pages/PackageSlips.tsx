@@ -332,7 +332,7 @@ export default function PackageSlips() {
         }
       }
     }
-    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+    return Array.from(map.values()).sort((a, b) => b.totalQty - a.totalQty);
   })();
 
   // Mark single order as packed
