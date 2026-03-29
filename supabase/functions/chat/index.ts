@@ -273,12 +273,22 @@ serve(async (req) => {
             sendSSE({ type: "pipeline_plan", title: "Execution Plan", steps: ["Refreshing product cache"] });
             sendSSE({ type: "pipeline_step", stepIndex: 0, title: "Refreshing product cache", status: "running" });
 
-            const { data: conn } = await supabase
+            let conn = (await serviceClient
               .from("woo_connections")
-              .select("store_url, consumer_key, consumer_secret")
+              .select("store_url, consumer_key, consumer_secret, user_id")
               .eq("user_id", userId)
               .eq("is_active", true)
-              .maybeSingle();
+              .maybeSingle()).data;
+            if (!conn) {
+              // Fallback to team owner's connection
+              const { data: tm } = await serviceClient.from("team_members").select("team_id").eq("user_id", userId).maybeSingle();
+              if (tm) {
+                const { data: t } = await serviceClient.from("teams").select("owner_id").eq("id", tm.team_id).single();
+                if (t) {
+                  conn = (await serviceClient.from("woo_connections").select("store_url, consumer_key, consumer_secret, user_id").eq("user_id", t.owner_id).eq("is_active", true).maybeSingle()).data;
+                }
+              }
+            }
 
             if (conn) {
               try {

@@ -476,15 +476,33 @@ async function handleAcceptInvitation(
   user: any,
   token: string
 ) {
-  // Find invitation
+  // Find invitation (any status)
   const { data: invitation } = await serviceClient
     .from("team_invitations")
     .select("*")
     .eq("token", token)
-    .eq("status", "pending")
     .maybeSingle();
 
   if (!invitation) return json({ error: "Invalid or expired invitation" }, 400);
+
+  // If already accepted, check if user is already a member (idempotent)
+  if (invitation.status === "accepted") {
+    const { data: alreadyMember } = await serviceClient
+      .from("team_members")
+      .select("id")
+      .eq("team_id", invitation.team_id)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (alreadyMember) {
+      return json({ success: true, already_accepted: true, teamId: invitation.team_id });
+    }
+    // If accepted but user not a member (edge case), treat as invalid
+    return json({ error: "This invitation has already been used" }, 400);
+  }
+
+  if (invitation.status !== "pending") {
+    return json({ error: "Invalid or expired invitation" }, 400);
+  }
 
   // Check expiry
   if (new Date(invitation.expires_at) < new Date()) {
