@@ -463,22 +463,33 @@ export default function PackageSlips() {
                             <span className="text-xs font-semibold flex-shrink-0">×{item.quantity}</span>
                           </div>
                         ))}
-                        {!isPacked && targetStatus && (
+                        <div className="flex gap-1 mt-1">
                           <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
-                            className="w-full h-7 text-xs mt-1"
-                            disabled={isUpdating}
-                            onClick={() => setConfirmOrderId(order.id)}
+                            className="h-7 text-xs px-2"
+                            onClick={() => printSlip(order)}
                           >
-                            {isUpdating ? (
-                              <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                            ) : (
-                              <CheckCircle2 className="h-3 w-3 mr-1" />
-                            )}
-                            Mark as Packed
+                            <Printer className="h-3 w-3 mr-1" />
+                            Print
                           </Button>
-                        )}
+                          {!isPacked && targetStatus && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 h-7 text-xs"
+                              disabled={isUpdating}
+                              onClick={() => setConfirmOrderId(order.id)}
+                            >
+                              {isUpdating ? (
+                                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                              ) : (
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                              )}
+                              Mark as Packed
+                            </Button>
+                          )}
+                        </div>
                       </CardContent>
                     </Card>
                   );
