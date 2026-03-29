@@ -181,6 +181,10 @@ export default function Index() {
             description = `Order #${num} status: ${eventData.status || "unknown"}`;
           }
           toast({ title, description });
+          // Increment new order count for package slips badge
+          if (topic === "order.created") {
+            setNewOrderCount((prev) => prev + 1);
+          }
         }
       )
       .subscribe();
