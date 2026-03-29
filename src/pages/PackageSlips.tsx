@@ -258,7 +258,7 @@ export default function PackageSlips() {
         (li) =>
           `<tr>
             <td style="padding:4px 8px;border-bottom:1px solid #eee;font-size:13px;">${li.quantity}×</td>
-            <td style="padding:4px 8px;border-bottom:1px solid #eee;font-size:13px;">${li.name}${li.sku ? ` <span style="color:#888;font-size:11px;">(${li.sku})</span>` : ""}</td>
+            <td style="padding:4px 8px;border-bottom:1px solid #eee;font-size:13px;word-break:break-word;">${li.name}</td>
           </tr>`
       )
       .join("");
