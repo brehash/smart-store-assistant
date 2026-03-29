@@ -456,7 +456,7 @@ export default function PackageSlips() {
                                 className="h-7 w-7 rounded object-cover flex-shrink-0"
                               />
                             )}
-                            <span className="text-xs flex-1 min-w-0 truncate">{item.name}</span>
+                            <span className="text-xs flex-1 min-w-0 break-words">{item.name}</span>
                             <span className="text-xs font-semibold flex-shrink-0">×{item.quantity}</span>
                           </div>
                         ))}
