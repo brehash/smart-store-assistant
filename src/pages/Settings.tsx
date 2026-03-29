@@ -729,7 +729,8 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
           </div>
           <div className="space-y-2">
             <Label>Client Secret</Label>
-            <Input type="password" value={coleteClientSecret} onChange={(e) => setColeteClientSecret(e.target.value)} placeholder="Your Colete Online Client Secret" />
+            <Input type={showColeteSecret ? "text" : "password"} value={coleteClientSecret} onChange={(e) => setColeteClientSecret(e.target.value)} placeholder="Your Colete Online Client Secret" className="pr-10" />
+            <button type="button" onClick={() => setShowColeteSecret(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">{showColeteSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
           </div>
           <div className="flex gap-2 justify-end pt-2">
             <Button onClick={handleTestColeteOnline} variant="outline" disabled={testingColete || !coleteClientId || !coleteClientSecret}>
