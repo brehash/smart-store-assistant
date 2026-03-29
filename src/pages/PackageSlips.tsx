@@ -387,6 +387,7 @@ export default function PackageSlips() {
                         onClick={() => togglePicked(item.key)}
                       >
                         <TableCell className="px-2 py-1" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
                             className="h-3.5 w-3.5"
                             checked={picked}
                             onCheckedChange={() => togglePicked(item.key)}
