@@ -42,9 +42,10 @@ interface ConversationSidebarProps {
   collapsed: boolean;
   onToggle: () => void;
   onOpenSettings: () => void;
+  newOrderCount?: number;
 }
 
-export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, onViewIdChange, collapsed, onToggle, onOpenSettings }: ConversationSidebarProps) {
+export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, onViewIdChange, collapsed, onToggle, onOpenSettings, newOrderCount = 0 }: ConversationSidebarProps) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -288,8 +289,13 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
         {/* Package Slips */}
         <Tooltip>
           <TooltipTrigger asChild>
-            <button onClick={() => navigate("/package-slips")} className="p-2 rounded-lg hover:bg-sidebar-accent/50 transition-colors text-sidebar-foreground/70">
+            <button onClick={() => navigate("/package-slips")} className="relative p-2 rounded-lg hover:bg-sidebar-accent/50 transition-colors text-sidebar-foreground/70">
               <Package className="h-5 w-5" />
+              {newOrderCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground">
+                  {newOrderCount > 9 ? "9+" : newOrderCount}
+                </span>
+              )}
             </button>
           </TooltipTrigger>
           <TooltipContent side="right">Package Slips</TooltipContent>
@@ -480,9 +486,17 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
       <div className="px-3 pb-1">
         <button
           onClick={() => navigate("/package-slips")}
-          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors"
+          className="relative flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors"
         >
-          <Package className="h-4 w-4" /> Package Slips
+          <div className="relative">
+            <Package className="h-4 w-4" />
+            {newOrderCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-destructive text-[8px] font-bold text-destructive-foreground">
+                {newOrderCount > 9 ? "9+" : newOrderCount}
+              </span>
+            )}
+          </div>
+          Package Slips
         </button>
       </div>
 

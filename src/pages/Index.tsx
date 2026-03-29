@@ -14,7 +14,8 @@ import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useLocation } from "react-router-dom";
+import { useIsMobile } from "@/hooks/use-mobile";
 import type { PipelinePlanData } from "@/components/chat/PipelinePlan";
 import type { PipelineStepData } from "@/components/chat/PipelineStep";
 import type { DebugEntry } from "@/components/chat/DebugPanel";
@@ -50,6 +51,8 @@ interface Message {
 export default function Index() {
   const { user, session } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
+  const location = useLocation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [viewId, setViewId] = useState<string | null>(null);
@@ -75,6 +78,7 @@ export default function Index() {
   const [cachedAllStatuses, setCachedAllStatuses] = useState<{ slug: string; name: string }[]>([]);
   const [cachedSelectedStatuses, setCachedSelectedStatuses] = useState<string[]>([]);
   const [cachedProducts, setCachedProducts] = useState<any[]>([]);
+  const [newOrderCount, setNewOrderCount] = useState(0);
 
   // Fetch credit balance and app settings on mount
   useEffect(() => {
@@ -177,13 +181,25 @@ export default function Index() {
             description = `Order #${num} status: ${eventData.status || "unknown"}`;
           }
           toast({ title, description });
+          // Increment new order count for package slips badge
+          if (topic === "order.created") {
+            setNewOrderCount((prev) => prev + 1);
+          }
         }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [user, toast]);
 
+  // Reset new order count when navigating to package slips
+  useEffect(() => {
+    if (location.pathname === "/package-slips") {
+      setNewOrderCount(0);
+    }
+  }, [location.pathname]);
+
   const handleToggleSidebar = () => {
+    if (isMobile) return; // Prevent collapse on mobile
     setSidebarCollapsed((prev) => {
       const next = !prev;
       localStorage.setItem("sidebar-collapsed", String(next));
@@ -707,16 +723,22 @@ export default function Index() {
           onNew={handleNewChat}
           onNewInView={handleNewInView}
           onViewIdChange={setViewId}
-          collapsed={sidebarCollapsed}
+          collapsed={isMobile ? false : sidebarCollapsed}
           onToggle={handleToggleSidebar}
           onOpenSettings={handleOpenSettings}
+          newOrderCount={newOrderCount}
         />
       </div>
 
       <div className="flex flex-1 flex-col min-w-0">
         <div className="flex items-center gap-3 border-b px-4 py-3 bg-card">
-          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
+          <Button variant="ghost" size="icon" className="relative lg:hidden" onClick={() => setSidebarOpen(true)}>
             <Menu className="h-5 w-5" />
+            {newOrderCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground">
+                {newOrderCount > 9 ? "9+" : newOrderCount}
+              </span>
+            )}
           </Button>
           <h1 className="text-lg font-semibold truncate">WooCommerce AI Assistant</h1>
           {creditBalance !== null && (
