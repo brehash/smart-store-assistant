@@ -93,6 +93,9 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
   const [testingColete, setTestingColete] = useState(false);
   const [coleteTestResult, setColeteTestResult] = useState<"success" | "error" | null>(null);
   const [integrationLoaded, setIntegrationLoaded] = useState(false);
+  const [showConsumerKey, setShowConsumerKey] = useState(false);
+  const [showConsumerSecret, setShowConsumerSecret] = useState(false);
+  const [showColeteSecret, setShowColeteSecret] = useState(false);
 
   // Appearance
   const [theme, setTheme] = useState<"system" | "dark" | "light">(() => {
