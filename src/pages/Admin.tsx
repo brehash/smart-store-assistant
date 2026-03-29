@@ -8,6 +8,7 @@ import { UsersTable } from "@/components/admin/UsersTable";
 import { UserDetail } from "@/components/admin/UserDetail";
 import { UsageStats } from "@/components/admin/UsageStats";
 import { PlansManager } from "@/components/admin/PlansManager";
+import { CronJobLogs } from "@/components/admin/CronJobLogs";
 
 export interface AdminUser {
   id: string;
