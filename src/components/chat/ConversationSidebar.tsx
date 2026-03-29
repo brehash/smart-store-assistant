@@ -285,6 +285,16 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
           <TooltipContent side="right">Search</TooltipContent>
         </Tooltip>
 
+        {/* Package Slips */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button onClick={() => navigate("/package-slips")} className="p-2 rounded-lg hover:bg-sidebar-accent/50 transition-colors text-sidebar-foreground/70">
+              <Package className="h-5 w-5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">Package Slips</TooltipContent>
+        </Tooltip>
+
         <div className="flex-1" />
 
         {/* User avatar dropup */}
