@@ -347,7 +347,11 @@ export default function Index() {
     streamAliveRef.current = true;
     scrollToBottom();
 
-    await supabase.from("messages").insert({ conversation_id: convId, user_id: user.id, role: "user", content: input });
+    const { error: userMsgError } = await supabase.from("messages").insert({ conversation_id: convId, user_id: user.id, role: "user", content: input });
+    if (userMsgError) {
+      console.error("Failed to save user message:", userMsgError);
+      toast({ title: "Warning", description: "Your message may not be saved. Please check your connection.", variant: "destructive" });
+    }
 
     if (messages.length === 0) {
       const title = input.slice(0, 60) + (input.length > 60 ? "..." : "");
@@ -507,7 +511,7 @@ export default function Index() {
         if (questionsList.length) metadata.questions = questionsList;
         if (orderFormsList.length) metadata.orderForms = orderFormsList;
         if (reasoningEntries.length) metadata.reasoningLogs = reasoningEntries;
-        await supabase.from("messages").insert({
+        const { error: assistantMsgError } = await supabase.from("messages").insert({
           conversation_id: convId!,
           user_id: user.id,
           role: "assistant",
@@ -516,6 +520,10 @@ export default function Index() {
           metadata: Object.keys(metadata).length ? metadata : null,
           token_usage: tokenUsage,
         } as any);
+        if (assistantMsgError) {
+          console.error("Failed to save assistant message:", assistantMsgError);
+          toast({ title: "Warning", description: "AI response may not be saved. Please check your connection.", variant: "destructive" });
+        }
       },
       onError: async (error) => {
         setIsStreaming(false);
