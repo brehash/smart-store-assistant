@@ -1,44 +1,26 @@
 
 
-# Fix: Checkbox increments collected by 1, not jumping to full quantity
+# Fix: Dialog overlay overlapping sidebar on mobile
 
 ## Problem
-Two bugs causing the checkbox to mark items as fully collected in one click:
+The sidebar container uses `z-50` (line 719 in `Index.tsx`), while Dialog/AlertDialog overlays also use `z-50` (from `dialog.tsx` and `alert-dialog.tsx`). On mobile, when a dialog opens while the sidebar is visible (or vice versa), they overlap at the same z-level.
 
-1. **Checkbox `onCheckedChange`** currently sets collected to `totalQty` (all at once) instead of incrementing by 1
-2. **Row `onClick`** also calls `collectOne`, so even with `stopPropagation` on the `TableCell`, clicking anywhere on the row adds +1 — but the checkbox handler overrides to full qty anyway
+## Solution
+Bump the sidebar z-index above dialog overlays so it always sits on top, or close the sidebar when a dialog opens.
 
-## Fix — `src/pages/PackageSlips.tsx`
+**Approach: Close sidebar when dialog opens + raise sidebar z-index**
 
-### Row click (line 519)
-Remove the row `onClick` entirely. Clicking the row should NOT collect — only the checkbox should increment. This avoids accidental collections from tapping anywhere on the row.
+### Changes in `src/pages/Index.tsx`
 
-### Checkbox handler (lines 522-531)
-Change `onCheckedChange` to increment by 1 each click (using `collectOne`), and only allow unchecking (reset to 0) when fully collected:
+1. **Raise sidebar z-index**: Change sidebar container from `z-50` to `z-[60]` and backdrop from `z-40` to `z-[55]` so the sidebar always renders above any Radix dialog overlay (z-50).
 
-```tsx
-<TableRow
-  key={item.key}
-  className={finished ? "opacity-50" : ""}
->
-  <TableCell className="px-2 py-1">
-    <Checkbox
-      className="h-3.5 w-3.5"
-      checked={finished}
-      onCheckedChange={() => {
-        if (finished) {
-          uncollectOne(item.key);
-        } else {
-          collectOne(item.key, item.totalQty);
-        }
-      }}
-    />
-  </TableCell>
-```
+2. **Auto-close sidebar when settings dialog opens**: In `handleOpenSettings`, call `setSidebarOpen(false)` so the sidebar dismisses on mobile when settings opens.
 
-This way:
-- Each checkbox click adds +1 to collected count
-- Only shows as "checked" when `collectedQty >= totalQty`
-- Unchecking (when finished) decrements by 1
-- No row click interference
+### Summary of line changes
+
+| Location | Current | New |
+|---|---|---|
+| Line 716 (backdrop) | `z-40` | `z-[55]` |
+| Line 719 (sidebar) | `z-50` | `z-[60]` |
+| `handleOpenSettings` | (no sidebar close) | Add `setSidebarOpen(false)` |
 
