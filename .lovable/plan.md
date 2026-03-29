@@ -1,39 +1,47 @@
 
 
-# Fix: Approval/Question/Order State Not Persisting Across Reloads
+# Splitting `chat/index.ts` Into Manageable Modules
 
-## Problem
+## The Problem
+The file is 3,118 lines. Every time you ask to change anything in it, Lovable reads and processes the entire file, consuming more credits.
 
-When you approve/skip an action (like deleting order #3626), the resolved state is only stored in React memory. It's never written back to the database. So when you switch tabs or reload, the conversation loads from DB and the approval card appears unresolved again — asking for approval on an action that already completed.
+## Approach
+Deno edge functions support relative imports, so we can split the file into focused modules within the same `supabase/functions/chat/` directory. Each module handles one concern. When you need a change, only the relevant file gets edited.
 
-Same issue affects question cards and order form cards.
+## Proposed File Structure
 
-## Root Cause
-
-- `handleApproval` (line 498) calls `updateLastAssistant()` which only updates React state
-- The original assistant message in the DB still has `approvals: [{ ..., resolved: undefined }]`
-- On reload, line 232 fetches messages from DB → approvals come back without `resolved`
-
-## Fix
-
-### `src/pages/Index.tsx`
-
-After updating the local state in each handler, also update the message's `metadata` column in the database:
-
-1. **`handleApproval`** — After setting `resolved` on the approval in React state, update the DB message's `metadata.approvals` to include the resolved status. The message has an `id` field (loaded from DB at line 245), so we can target it directly.
-
-2. **`handleQuestionAnswer`** — Same pattern: persist `resolved` to the question in metadata.
-
-3. **`handleOrderCreated`** — Same pattern: persist `resolved` to the order form in metadata.
-
-The update logic:
 ```text
-1. Get the current message from state (it has an `id` from the DB)
-2. Build updated metadata with the resolved approval/question/orderForm
-3. Call supabase.from("messages").update({ metadata }).eq("id", messageId)
+supabase/functions/chat/
+├── index.ts          (~200 lines) — Entry point, request handling, SSE stream orchestration
+├── tools.ts          (~500 lines) — TOOLS array definitions (all 22+ tool schemas)
+├── tool-executor.ts  (~600 lines) — executeTool() function + callWooProxy()
+├── intent.ts         (~100 lines) — Intent regex groups, selectToolsForIntent(), isShippingIntent()
+├── reasoning.ts      (~200 lines) — generateReasoningBefore/After, generateSemanticPlan, TOOL_LABELS
+├── prompts.ts        (~200 lines) — System prompt builder, shipping prompt, date rules
+├── utils.ts          (~100 lines) — formatDate, clampDay, normalizeSalesReportDates, normalizeCompareSalesDates, coerceMessageContent, sanitizeAiHistory, truncateForAI
+├── types.ts          (~30 lines)  — Shared types (SemanticStep, WRITE_TOOLS set, etc.)
 ```
 
-This ensures that when the conversation reloads, all cards show their resolved state correctly.
+## What Each File Contains
 
-~15 lines added across the three handlers. No new files, no schema changes.
+1. **`types.ts`** — `SemanticStep` interface, `WRITE_TOOLS` set, shared type definitions
+2. **`tools.ts`** — The massive `TOOLS` array (all function schemas for OpenAI tool calling)
+3. **`intent.ts`** — `INTENT_GROUPS`, regex patterns, `selectToolsForIntent()`, `isShippingIntent()`
+4. **`reasoning.ts`** — `TOOL_LABELS`, `generateReasoningBefore()`, `generateReasoningAfter()`, `generateSemanticPlan()`
+5. **`utils.ts`** — Date helpers, `coerceMessageContent()`, `sanitizeAiHistory()`, `truncateForAI()`
+6. **`tool-executor.ts`** — `callWooProxy()`, the giant `executeTool()` switch statement
+7. **`prompts.ts`** — `buildSystemPrompt()` and `buildShippingPrompt()` functions (extracts the huge prompt strings)
+8. **`index.ts`** — Imports from above, handles the HTTP request, auth, credit checks, SSE stream loop, approval flow, memory storage
+
+## Impact on Credits
+- Editing tool definitions? Only `tools.ts` gets touched (~500 lines vs 3,118)
+- Changing a prompt rule? Only `prompts.ts` (~200 lines)
+- Adding a new tool executor? Only `tool-executor.ts` (~600 lines)
+- Fixing intent detection? Only `intent.ts` (~100 lines)
+
+Estimated ~60-70% reduction in tokens processed per typical edit.
+
+## Files Modified
+- `supabase/functions/chat/index.ts` — Stripped down to imports + orchestration
+- 7 new files created in `supabase/functions/chat/`
 
