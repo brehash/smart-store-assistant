@@ -92,7 +92,7 @@ serve(async (req) => {
         ordersScanned: 0,
         ordersWithAwb: 0,
         ordersCompleted: 0,
-        completedOrders: [],
+        checkedOrders: [],
         errors: [],
       };
 
