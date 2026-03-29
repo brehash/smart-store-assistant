@@ -15,8 +15,9 @@ import {
   Plus, MessageSquare, Settings, LogOut, Trash2,
   FolderOpen, ChevronDown, ChevronRight, FolderPlus,
   Pencil, X, Check, Search, MoreHorizontal, Pin,
-  ArrowRight, PanelLeftClose, PanelLeft,
+  ArrowRight, PanelLeftClose, PanelLeft, Package,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface Conversation {
   id: string;
@@ -45,6 +46,7 @@ interface ConversationSidebarProps {
 
 export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, onViewIdChange, collapsed, onToggle, onOpenSettings }: ConversationSidebarProps) {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [views, setViews] = useState<View[]>([]);
@@ -283,6 +285,16 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
           <TooltipContent side="right">Search</TooltipContent>
         </Tooltip>
 
+        {/* Package Slips */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button onClick={() => navigate("/package-slips")} className="p-2 rounded-lg hover:bg-sidebar-accent/50 transition-colors text-sidebar-foreground/70">
+              <Package className="h-5 w-5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="right">Package Slips</TooltipContent>
+        </Tooltip>
+
         <div className="flex-1" />
 
         {/* User avatar dropup */}
@@ -463,6 +475,16 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
           </div>
         </div>
       </ScrollArea>
+
+      {/* Package Slips link */}
+      <div className="px-3 pb-1">
+        <button
+          onClick={() => navigate("/package-slips")}
+          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors"
+        >
+          <Package className="h-4 w-4" /> Package Slips
+        </button>
+      </div>
 
       {/* Footer: User avatar dropup */}
       <div className="border-t border-sidebar-border p-3">

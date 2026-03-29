@@ -1,0 +1,2 @@
+ALTER TABLE public.user_preferences DROP CONSTRAINT IF EXISTS user_preferences_preference_type_check;
+ALTER TABLE public.user_preferences ADD CONSTRAINT user_preferences_preference_type_check CHECK (preference_type IN ('product_alias','shortcut','pattern','meta_definition','package_slip_config'));

@@ -9,6 +9,7 @@ import { AdminRoute } from "@/components/AdminRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
+import PackageSlips from "./pages/PackageSlips";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
             <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
+            <Route path="/package-slips" element={<ProtectedRoute><PackageSlips /></ProtectedRoute>} />
             <Route path="/settings" element={<Navigate to="/?settings=general" replace />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
