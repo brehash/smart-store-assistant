@@ -1,66 +1,111 @@
 
 
-# Implement Brevo API for Auth Emails
+# Implement Team System with Shared Credits and Email Notifications
 
 ## Overview
-Create an edge function that acts as a Supabase Auth email hook, intercepting auth emails (signup confirmation, password reset, magic link, etc.) and sending them via Brevo's transactional email API.
+Add a team/invitation system where users can invite team members by email. All team members share the same credit pool (both monthly and top-up credits). Invitation and acceptance notification emails are sent via the existing Brevo integration.
 
-## Changes
+## Database Changes (Migration)
 
-### 1. Store Brevo API Key as a secret
-- Use the `add_secret` tool to request `BREVO_API_KEY` from the user
+### New table: `teams`
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid PK | |
+| name | text | Team name |
+| owner_id | uuid | References auth.users, the team creator |
+| created_at | timestamptz | |
 
-### 2. Create `supabase/functions/brevo-email-hook/index.ts`
-Edge function that:
-- Receives Supabase Auth webhook payloads (signup, recovery, magic_link, email_change, reauthentication)
-- Renders appropriate HTML email content per email type with branded templates
-- Calls Brevo's `https://api.brevo.com/v3/smtp/email` API to send the email
-- Uses the `BREVO_API_KEY` secret for authentication
-- Includes CORS headers and proper error handling
-- Handles all auth email types: `signup`, `recovery`, `magiclink`, `invite`, `email_change`, `reauthentication`
+### New table: `team_members`
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid PK | |
+| team_id | uuid FK → teams | |
+| user_id | uuid | The member's auth user id |
+| role | text | 'owner' / 'member' |
+| joined_at | timestamptz | |
 
-Each email type will have:
-- A subject line
-- HTML body with the confirmation/action URL and branded styling matching the app's primary colors
-- Sender configured as `noreply@yourdomain.com` (configurable)
+### New table: `team_invitations`
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid PK | |
+| team_id | uuid FK → teams | |
+| invited_by | uuid | Who sent it |
+| email | text | Invitee email |
+| token | text UNIQUE | Random invite token |
+| status | text | 'pending' / 'accepted' / 'expired' |
+| created_at | timestamptz | |
+| expires_at | timestamptz | Default now() + 7 days |
 
-### 3. Database migration — register the Auth email hook
-Register the edge function as the Supabase Auth `send_email` hook so auth emails are routed through Brevo instead of the default mailer:
+### Modify `credit_balances`
+- Add `team_id uuid` column (nullable FK → teams)
+- Credits become team-level: when a user belongs to a team, their credit operations reference the team's shared balance row
 
-```sql
--- No migration needed; we'll configure this via the edge function approach
-```
+### RLS Policies
+- Team members can SELECT their own team and team members
+- Only team owner can INSERT invitations and manage members
+- Invitations: owner can CRUD, invited user can view by email match
 
-Actually, the Auth hook registration requires using `supabase/config.toml` or the Auth hook API. Since this is Lovable Cloud, we'll set up the edge function and the user will need the hook to be wired. We'll handle this by creating a self-contained edge function that Supabase Auth calls.
+### Trigger
+- On `team_members` INSERT → auto-link the user's `credit_balances` to the team's shared balance (or merge into team balance)
 
-### 4. Configure sender email
-The user will need to specify:
-- Sender email address (must be verified in Brevo)
-- Sender name
+## Edge Function Changes
 
-We'll ask the user for these details or use sensible defaults.
+### New: `supabase/functions/team/index.ts`
+Handles all team operations (authenticated, JWT-verified):
+
+- **POST /team** — Create team (auto-add creator as owner, create shared credit balance)
+- **POST /team/invite** — Send invitation: insert into `team_invitations`, call Brevo API to send branded invitation email with accept link
+- **GET /team/accept?token=xxx** — Accept invitation: validate token, create auth user if needed, add to `team_members`, merge credits into team balance, call Brevo to notify the inviter
+- **GET /team** — Get current user's team, members, and pending invitations
+- **DELETE /team/members/:userId** — Remove team member (owner only)
+- **DELETE /team/invitations/:id** — Cancel pending invitation (owner only)
+
+### Email templates (inline HTML, same branded style as brevo-email-hook)
+
+**Invitation email:**
+- Subject: "You've been invited to join [Team Name]"
+- Body: Branded template with accept button linking to `/auth?invite_token=xxx`
+- Sent via Brevo API using existing `BREVO_API_KEY`
+
+**Acceptance notification email:**
+- Subject: "[Member Name] has joined your team"
+- Body: Branded template notifying the team owner
+- Sent via Brevo API
+
+## Frontend Changes
+
+### New Settings tab: "Team" (between Integrations and Credits)
+- Icon: `Users` from lucide-react
+- Add to `TABS` array in `Settings.tsx`
+
+### Team tab content:
+- **No team state**: "Create a Team" card with name input and create button
+- **Team exists (owner view)**:
+  - Team name display
+  - Members list (avatar, name, email, role, remove button)
+  - Pending invitations list (email, status, cancel button)
+  - "Invite Member" form: email input + send button
+- **Team exists (member view)**:
+  - Team info (read-only)
+  - Members list (no management actions)
+  - "Leave Team" button
+
+### Auth page update (`src/pages/Auth.tsx`)
+- Check URL for `invite_token` query param
+- If present, show acceptance flow: auto-accept after login/signup, call team accept endpoint
+
+### Credit display update
+- When user is in a team, credit balance queries reference the team's shared balance
+- All team members see the same balance
+
+## Route Addition
+- Add `/auth` route handling for `invite_token` query parameter (no new route needed, just query param handling in Auth.tsx)
 
 ## Technical Details
 
-**Brevo API call pattern:**
-```typescript
-await fetch("https://api.brevo.com/v3/smtp/email", {
-  method: "POST",
-  headers: {
-    "api-key": BREVO_API_KEY,
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({
-    sender: { name: "Your App", email: "noreply@yourdomain.com" },
-    to: [{ email: recipientEmail }],
-    subject: subject,
-    htmlContent: htmlBody,
-  }),
-});
-```
-
-**Email templates** will be inline HTML with the app's brand colors (extracted from CSS variables) for: confirmation, password reset, magic link, email change, and reauthentication.
-
-## Questions to Clarify
-- Sender email and name to use in Brevo (must be verified in their Brevo account)
+- Invitation tokens: `crypto.randomUUID()` stored in `team_invitations`
+- Accept link format: `{SITE_URL}/auth?invite_token={token}`
+- Brevo emails reuse the same branded HTML wrapper from `brevo-email-hook`
+- Credit sharing: when a team is created, the owner's balance row gets `team_id` set; when members join, their individual balance is merged into the team balance and their row points to the same team
+- The `chat` edge function's credit check should resolve through team membership to find the shared balance
 
