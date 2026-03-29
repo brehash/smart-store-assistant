@@ -520,7 +520,6 @@ export async function executeTool(
       });
       return {
         result: cleaned,
-        richContent: { type: "orders", data: allOrders },
         requestUri: `GET /wp-json/wc/v3/orders (with meta_data, ${allOrders.length} orders)`,
       };
     }

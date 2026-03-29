@@ -584,8 +584,9 @@ serve(async (req) => {
                 const reasoningAfter = generateReasoningAfter(toolName, result);
                 if (reasoningAfter) sendSSE({ type: "reasoning", text: reasoningAfter });
 
-                if (richContent) {
+                if (richContent && !emittedRichTypes.has(richContent.type)) {
                   sendSSE({ type: "rich_content", contentType: richContent.type, data: richContent.data });
+                  emittedRichTypes.add(richContent.type);
                 }
 
                 sendSSE({
