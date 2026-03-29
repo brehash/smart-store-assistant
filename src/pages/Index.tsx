@@ -65,6 +65,7 @@ export default function Index() {
   const [settingsTab, setSettingsTab] = useState<SettingsTab>(() => (settingsParam as SettingsTab) || "general");
   const scrollRef = useRef<HTMLDivElement>(null);
   const streamAliveRef = useRef(false);
+  const skipLoadRef = useRef(false);
   const [creditsModalOpen, setCreditsModalOpen] = useState(false);
   const [topupModalEnabled, setTopupModalEnabled] = useState(true);
   const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);
@@ -221,6 +222,7 @@ export default function Index() {
 
   useEffect(() => {
     if (!conversationId || !user) return;
+    if (skipLoadRef.current) { skipLoadRef.current = false; return; }
     const load = async () => {
       const { data } = await supabase
         .from("messages")
@@ -266,7 +268,7 @@ export default function Index() {
       .insert({ user_id: user.id, title: "New Conversation" })
       .select()
       .single();
-    if (data) { setConversationId(data.id); setMessages([]); return data.id; }
+    if (data) { skipLoadRef.current = true; setConversationId(data.id); setMessages([]); return data.id; }
     return null;
   };
 
