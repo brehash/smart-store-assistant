@@ -70,6 +70,12 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
     address_1: "", city: "", state: "", postcode: "", country: "",
     company: "",
   });
+  const [shippingDiffers, setShippingDiffers] = useState(false);
+  const [shipping, setShipping] = useState({
+    first_name: "", last_name: "", phone: "",
+    address_1: "", city: "", state: "", postcode: "", country: "",
+    company: "",
+  });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
