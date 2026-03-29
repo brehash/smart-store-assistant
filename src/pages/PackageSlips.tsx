@@ -258,7 +258,7 @@ export default function PackageSlips() {
         (li) =>
           `<tr>
             <td style="padding:4px 8px;border-bottom:1px solid #eee;font-size:13px;">${li.quantity}×</td>
-            <td style="padding:4px 8px;border-bottom:1px solid #eee;font-size:13px;">${li.name}${li.sku ? ` <span style="color:#888;font-size:11px;">(${li.sku})</span>` : ""}</td>
+            <td style="padding:4px 8px;border-bottom:1px solid #eee;font-size:13px;word-break:break-word;">${li.name}</td>
           </tr>`
       )
       .join("");
@@ -403,10 +403,7 @@ export default function PackageSlips() {
                               />
                             )}
                             <div className="min-w-0">
-                              <p className={`text-xs font-medium truncate ${picked ? "line-through" : ""}`}>{item.name}</p>
-                              {item.sku !== "-" && (
-                                <p className="text-[10px] text-muted-foreground">{item.sku}</p>
-                              )}
+                              <p className={`text-xs font-medium break-words ${picked ? "line-through" : ""}`}>{item.name}</p>
                             </div>
                           </div>
                         </TableCell>
@@ -459,7 +456,7 @@ export default function PackageSlips() {
                                 className="h-7 w-7 rounded object-cover flex-shrink-0"
                               />
                             )}
-                            <span className="text-xs flex-1 min-w-0 truncate">{item.name}</span>
+                            <span className="text-xs flex-1 min-w-0 break-words">{item.name}</span>
                             <span className="text-xs font-semibold flex-shrink-0">×{item.quantity}</span>
                           </div>
                         ))}
@@ -516,7 +513,7 @@ export default function PackageSlips() {
                       {item.image?.src && (
                         <img src={item.image.src} alt="" className="h-6 w-6 rounded object-cover" />
                       )}
-                      <span className="flex-1 truncate">{item.name}</span>
+                      <span className="flex-1 break-words">{item.name}</span>
                       <span className="font-semibold">×{item.quantity}</span>
                     </div>
                   ))}
