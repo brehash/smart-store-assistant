@@ -671,16 +671,18 @@ serve(async (req) => {
             creditCost = 2;
           }
           try {
+            const deductRow3 = teamCreditRow || null;
+            const creditUserId = deductRow3?.user_id || userId;
             const { data: bal } = await serviceClient
               .from("credit_balances")
               .select("balance")
-              .eq("user_id", userId)
+              .eq("user_id", creditUserId)
               .single();
             const newBalance = Math.max(0, (bal?.balance || 0) - creditCost);
             await serviceClient
               .from("credit_balances")
               .update({ balance: newBalance })
-              .eq("user_id", userId);
+              .eq("user_id", creditUserId);
             await serviceClient.from("credit_transactions").insert({
               user_id: userId,
               amount: -creditCost,
