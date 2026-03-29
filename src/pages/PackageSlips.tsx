@@ -250,6 +250,34 @@ export default function PackageSlips() {
       .filter(Boolean)
       .join(", ");
 
+  const printSlip = (order: Order) => {
+    const w = window.open("", "_blank", "width=400,height=600");
+    if (!w) return;
+    const items = order.line_items
+      .map(
+        (li) =>
+          `<tr>
+            <td style="padding:4px 8px;border-bottom:1px solid #eee;font-size:13px;">${li.quantity}×</td>
+            <td style="padding:4px 8px;border-bottom:1px solid #eee;font-size:13px;">${li.name}${li.sku ? ` <span style="color:#888;font-size:11px;">(${li.sku})</span>` : ""}</td>
+          </tr>`
+      )
+      .join("");
+    w.document.write(`<!DOCTYPE html><html><head><title>Slip #${order.number}</title>
+      <style>body{font-family:sans-serif;margin:20px;color:#111}h2{margin:0 0 4px}table{width:100%;border-collapse:collapse}@media print{button{display:none}}</style>
+      </head><body>
+      <h2>Order #${order.number}</h2>
+      <p style="font-size:12px;color:#666;margin:0 0 12px">${new Date(order.date_created).toLocaleDateString()}</p>
+      <p style="font-size:13px;margin:0 0 4px"><strong>${order.shipping.first_name} ${order.shipping.last_name}</strong>${order.shipping.company ? ` — ${order.shipping.company}` : ""}</p>
+      <p style="font-size:12px;color:#444;margin:0 0 16px">${formatAddress(order.shipping)}</p>
+      ${order.billing.phone ? `<p style="font-size:12px;margin:0 0 16px">📞 ${order.billing.phone}</p>` : ""}
+      <table>${items}</table>
+      <br/><button onclick="window.print()" style="padding:8px 16px;cursor:pointer">Print</button>
+      </body></html>`);
+    w.document.close();
+    w.focus();
+    w.print();
+  };
+
   // Get the order for confirmation dialog
   const confirmOrder = confirmOrderId ? orders.find((o) => o.id === confirmOrderId) : null;
   const unpackedOrders = orders.filter((o) => !packedIds.has(o.id));
