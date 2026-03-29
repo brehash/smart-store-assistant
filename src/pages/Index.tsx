@@ -65,6 +65,7 @@ export default function Index() {
   const [settingsTab, setSettingsTab] = useState<SettingsTab>(() => (settingsParam as SettingsTab) || "general");
   const scrollRef = useRef<HTMLDivElement>(null);
   const streamAliveRef = useRef(false);
+  const skipLoadRef = useRef(false);
   const [creditsModalOpen, setCreditsModalOpen] = useState(false);
   const [topupModalEnabled, setTopupModalEnabled] = useState(true);
   const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);
