@@ -2674,9 +2674,7 @@ Be conversational. Currency is RON (lei).${defaultStatusStr}`;
 
             // Select tools based on intent — shipping queries get minimal tool set
             const hasToolResult = aiMessages.some((m: any) => m.role === "tool");
-            const iterationTools = shippingQuery
-              ? selectToolsForIntent(lastUserMsg, hasToolResult, activeTools)
-              : activeTools;
+            const iterationTools = selectToolsForIntent(lastUserMsg, hasToolResult, activeTools);
 
             // For follow-up iterations in shipping queries, trim history aggressively
             if (shippingQuery && hasToolResult) {
