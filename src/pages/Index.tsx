@@ -21,11 +21,6 @@ import type { PipelineStepData } from "@/components/chat/PipelineStep";
 import type { DebugEntry } from "@/components/chat/DebugPanel";
 import type { ReasoningEntry } from "@/components/chat/ReasoningBubbles";
 import { CreditsModal } from "@/components/chat/CreditsModal";
-import type { PipelinePlanData } from "@/components/chat/PipelinePlan";
-import type { PipelineStepData } from "@/components/chat/PipelineStep";
-import type { DebugEntry } from "@/components/chat/DebugPanel";
-import type { ReasoningEntry } from "@/components/chat/ReasoningBubbles";
-import { CreditsModal } from "@/components/chat/CreditsModal";
 
 interface TokenUsage {
   prompt_tokens: number;
