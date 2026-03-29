@@ -17,17 +17,18 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
 import {
-  Settings, Globe, Palette, Store, User, Coins, Plug,
+  Settings, Globe, Palette, Store, User, Coins, Plug, Users,
   Save, Trash2, CheckCircle2, XCircle, ListChecks, Loader2,
   Sun, Moon, Monitor, X, RefreshCw, Package, Eye, EyeOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TeamSettings } from "@/components/settings/TeamSettings";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
 
-export type SettingsTab = "general" | "appearance" | "connection" | "integrations" | "credits" | "account";
+export type SettingsTab = "general" | "appearance" | "connection" | "integrations" | "team" | "credits" | "account";
 
 interface OrderStatus { slug: string; name: string; total: number; }
 
@@ -36,6 +37,7 @@ const TABS: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "connection", label: "Connection", icon: Store },
   { id: "integrations", label: "Integrations", icon: Plug },
+  { id: "team", label: "Team", icon: Users },
   { id: "credits", label: "Credits", icon: Coins },
   { id: "account", label: "Account", icon: User },
 ];
@@ -755,6 +757,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
       case "appearance": return renderAppearance();
       case "connection": return renderConnection();
       case "integrations": return renderIntegrations();
+      case "team": return <TeamSettings />;
       case "credits": return renderCredits();
       case "account": return renderAccount();
       default: return renderGeneral();

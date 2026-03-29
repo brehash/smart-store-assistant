@@ -37,10 +37,29 @@ serve(async (req) => {
 
     const { messages, conversationId, approvalResponse, viewId } = await req.json();
 
-    // ── Credit check ──
+    // ── Credit check (resolve through team if applicable) ──
     const serviceClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {});
     const { data: creditBalance } = await serviceClient.rpc("refill_credits_if_due", { _user_id: userId });
-    if (!creditBalance || creditBalance.balance <= 0) {
+    
+    // Check if user is in a team and use team balance instead
+    let effectiveBalance = creditBalance?.balance || 0;
+    let teamCreditRow: any = null;
+    if (creditBalance?.team_id) {
+      const { data: teamBal } = await serviceClient
+        .from("credit_balances")
+        .select("*")
+        .eq("team_id", creditBalance.team_id)
+        .gt("balance", 0)
+        .order("balance", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (teamBal) {
+        effectiveBalance = teamBal.balance;
+        teamCreditRow = teamBal;
+      }
+    }
+    
+    if (effectiveBalance <= 0) {
       return new Response(JSON.stringify({ error: "You've run out of credits. Contact your administrator for more." }), {
         status: 402,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -211,8 +230,9 @@ serve(async (req) => {
             sendSSE({ type: "pipeline_complete" });
 
             const CREDIT_COST = 1;
-            const newBalance = (creditBalance?.balance || 1) - CREDIT_COST;
-            await serviceClient.from("credit_balances").update({ balance: newBalance }).eq("user_id", userId);
+            const deductRow = teamCreditRow || creditBalance;
+            const newBalance = Math.max(0, (deductRow?.balance || 1) - CREDIT_COST);
+            await serviceClient.from("credit_balances").update({ balance: newBalance }).eq("user_id", deductRow?.user_id || userId);
             await serviceClient.from("credit_transactions").insert({
               user_id: userId, amount: -CREDIT_COST, balance_after: newBalance, reason: "chat_message",
             });
@@ -286,8 +306,9 @@ serve(async (req) => {
 
             sendSSE({ type: "pipeline_complete" });
             const CREDIT_COST = 1;
-            const newBalance = (creditBalance?.balance || 1) - CREDIT_COST;
-            await serviceClient.from("credit_balances").update({ balance: newBalance }).eq("user_id", userId);
+            const deductRow2 = teamCreditRow || creditBalance;
+            const newBalance = Math.max(0, (deductRow2?.balance || 1) - CREDIT_COST);
+            await serviceClient.from("credit_balances").update({ balance: newBalance }).eq("user_id", deductRow2?.user_id || userId);
             await serviceClient.from("credit_transactions").insert({
               user_id: userId, amount: -CREDIT_COST, balance_after: newBalance, reason: "chat_message",
             });
@@ -650,16 +671,18 @@ serve(async (req) => {
             creditCost = 2;
           }
           try {
+            const deductRow3 = teamCreditRow || null;
+            const creditUserId = deductRow3?.user_id || userId;
             const { data: bal } = await serviceClient
               .from("credit_balances")
               .select("balance")
-              .eq("user_id", userId)
+              .eq("user_id", creditUserId)
               .single();
             const newBalance = Math.max(0, (bal?.balance || 0) - creditCost);
             await serviceClient
               .from("credit_balances")
               .update({ balance: newBalance })
-              .eq("user_id", userId);
+              .eq("user_id", creditUserId);
             await serviceClient.from("credit_transactions").insert({
               user_id: userId,
               amount: -creditCost,
