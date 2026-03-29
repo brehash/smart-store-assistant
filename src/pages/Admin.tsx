@@ -97,6 +97,10 @@ export default function Admin() {
           <TabsContent value="stats" className="mt-4">
             <UsageStats accessToken={session?.access_token || ""} />
           </TabsContent>
+
+          <TabsContent value="cron" className="mt-4">
+            <CronJobLogs accessToken={session?.access_token || ""} />
+          </TabsContent>
         </Tabs>
       </div>
     </div>
