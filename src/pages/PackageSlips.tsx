@@ -60,7 +60,7 @@ export default function PackageSlips() {
   const [loading, setLoading] = useState(false);
   const [packedIds, setPackedIds] = useState<Set<number>>(new Set());
   const [updatingIds, setUpdatingIds] = useState<Set<number>>(new Set());
-  const [pickedKeys, setPickedKeys] = useState<Set<string>>(new Set());
+  const [collectedByKey, setCollectedByKey] = useState<Record<string, number>>({});
 
   // Confirmation dialog state
   const [confirmOrderId, setConfirmOrderId] = useState<number | null>(null);
