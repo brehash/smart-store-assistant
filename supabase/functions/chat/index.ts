@@ -119,12 +119,37 @@ serve(async (req) => {
       }
     }
 
-    const { data: connData } = await supabase
+    // Resolve woo_connections: own connection first, then team owner's
+    let connData = (await serviceClient
       .from("woo_connections")
       .select("response_language, order_statuses")
       .eq("user_id", userId)
       .eq("is_active", true)
-      .maybeSingle();
+      .maybeSingle()).data;
+    
+    if (!connData) {
+      // Check if user is in a team and use team owner's connection
+      const { data: membership } = await serviceClient
+        .from("team_members")
+        .select("team_id")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (membership) {
+        const { data: team } = await serviceClient
+          .from("teams")
+          .select("owner_id")
+          .eq("id", membership.team_id)
+          .single();
+        if (team) {
+          connData = (await serviceClient
+            .from("woo_connections")
+            .select("response_language, order_statuses")
+            .eq("user_id", team.owner_id)
+            .eq("is_active", true)
+            .maybeSingle()).data;
+        }
+      }
+    }
     const responseLanguage = connData?.response_language || "English";
     const userOpenAIKey = Deno.env.get("OPENAI_API_KEY") || null;
     const defaultOrderStatuses: string[] = (connData as any)?.order_statuses || [];
