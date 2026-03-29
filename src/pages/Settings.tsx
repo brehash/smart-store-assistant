@@ -22,6 +22,7 @@ import {
   Sun, Moon, Monitor, X, RefreshCw, Package, Eye, EyeOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { TeamSettings } from "@/components/settings/TeamSettings";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
