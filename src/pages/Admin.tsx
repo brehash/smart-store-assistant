@@ -77,6 +77,7 @@ export default function Admin() {
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="plans">Plans</TabsTrigger>
             <TabsTrigger value="stats">Usage Stats</TabsTrigger>
+            <TabsTrigger value="cron">Cron Jobs</TabsTrigger>
           </TabsList>
 
           <TabsContent value="users" className="mt-4">
