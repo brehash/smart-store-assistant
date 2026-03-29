@@ -240,6 +240,7 @@ serve(async (req) => {
           let finalAssistantContent = "";
           let semanticSteps: SemanticStep[] = [];
           let semanticIdx = 0;
+          const emittedRichTypes = new Set<string>();
           const totalUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
 
           // ── Order-creation intent detection ──
