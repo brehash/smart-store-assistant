@@ -155,12 +155,18 @@ export default function PackageSlips() {
     savePrefs(sourceStatuses, val);
   };
 
-  const togglePicked = (key: string) => {
-    setPickedKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      return next;
-    });
+  const collectOne = (key: string, totalQty: number) => {
+    setCollectedByKey((prev) => ({
+      ...prev,
+      [key]: Math.min((prev[key] || 0) + 1, totalQty),
+    }));
+  };
+
+  const uncollectOne = (key: string) => {
+    setCollectedByKey((prev) => ({
+      ...prev,
+      [key]: Math.max((prev[key] || 0) - 1, 0),
+    }));
   };
 
   // Load orders
