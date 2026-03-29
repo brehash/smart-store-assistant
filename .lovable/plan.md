@@ -1,55 +1,39 @@
 
 
-# Fix `get_product_sales_report` + add invoice breakdown table
+# Enhance Cron Job Logs with per-order details and Colete Online statuses
 
-## Problems identified
-
-1. **Total revenue is wrong**: Line 341 computes `totalRevenue` by summing the already-sliced `products` array. If there are more products than `limit`, the grand total excludes them.
-2. **Sorting**: Currently sorted by `total_revenue` descending. User wants sorting by `total_quantity` (most sold units first).
-3. **Missing feature**: No invoiced vs non-invoiced quantity breakdown per product.
+## Problem
+Currently the tracker only logs `completedOrders` (orders that were marked completed). Orders that have AWBs but are still in transit are counted but not individually listed — you can't see which orders were checked or what their shipping status was.
 
 ## Solution
 
-### Changes in `supabase/functions/chat/tool-executor.ts` — `get_product_sales_report` case (lines 276-362)
+### 1. Edge function: log all checked orders with their status (`supabase/functions/colete-online-tracker/index.ts`)
 
-1. **Fix total revenue**: Compute `totalRevenue` and `totalQuantity` from `productMap` values BEFORE slicing.
+Add a new `checkedOrders` array to `userLog` that captures every order with an AWB, including:
+- `orderId`, `awb`, `uniqueId`
+- `wooStatus` (current WooCommerce status, e.g. "processing")
+- `shippingStatus` — the latest Colete Online status description from the history
+- `shippingCode` — the latest status code (e.g. 20800 = delivered)
+- `action` — what happened: `"completed"`, `"in_transit"`, `"no_history"`, or `"error"`
 
-2. **Sort by quantity**: Change `.sort((a, b) => b.total_revenue - a.total_revenue)` → `.sort((a, b) => b.total_quantity - a.total_quantity)`.
+This replaces the limited `completedOrders` array with a full picture. Around line 184, after confirming an AWB exists, push an entry for every order regardless of delivery status.
 
-3. **Add invoice detection per product**: While iterating orders, check each order's `meta_data` for invoice keys (reusing the same pattern from `get_orders_with_meta`: keys containing `invoice`, `factura`, `serie`, `numar`, `fiscal`, `oblio`, `wc_invoice`, `billing_invoice` — excluding `av_facturare`). Track per-product `invoiced_qty` and `not_invoiced_qty`.
+### 2. Frontend: display order-level details (`src/components/admin/CronJobLogs.tsx`)
 
-4. **Return enriched data**: Each product in the response gets `invoiced_qty` and `not_invoiced_qty` fields. Add a new `invoice_summary` to the result with `total_invoiced_qty` and `total_not_invoiced_qty`.
+In the expanded detail section for each user/store, replace the simple "Completed Orders" list with a full table showing:
 
-### Pseudocode for invoice detection per order
+| Order # | AWB | Shipping Status | Action |
+|---------|-----|----------------|--------|
+| #1234 | RO123... | Delivered (20800) | ✅ Completed |
+| #1235 | RO456... | In delivery (20400) | ⏳ In Transit |
+| #1236 | RO789... | — | ❌ Error |
 
-```typescript
-const INVOICE_META_KEYS = ['invoice','factura','oblio','wc_invoice','billing_invoice','serie','numar','fiscal'];
+Color-code the action column: green for completed, yellow/muted for in transit, red for errors.
 
-function orderHasInvoice(order: any): boolean {
-  const meta = order.meta_data || [];
-  return meta.some((m: any) => {
-    const k = (m.key || '').toLowerCase();
-    if (k === 'av_facturare') return false;
-    return INVOICE_META_KEYS.some(ik => k.includes(ik)) && m.value;
-  });
-}
-```
+### Files changed
 
-Then in the order loop, for each line item, increment either `invoiced_qty` or `not_invoiced_qty` based on the order's invoice status.
-
-### Updated result shape
-
-```typescript
-{
-  period, total_revenue, total_orders, product_count, 
-  total_quantity,
-  invoice_summary: { total_invoiced_qty, total_not_invoiced_qty },
-  products: [
-    { product_id, product_name, total_revenue, total_quantity, 
-      invoiced_qty, not_invoiced_qty, order_count, average_price }
-  ]  // sorted by total_quantity desc
-}
-```
-
-Single file change: `supabase/functions/chat/tool-executor.ts`.
+| File | Change |
+|------|--------|
+| `supabase/functions/colete-online-tracker/index.ts` | Add `checkedOrders` array with per-order shipping status and action |
+| `src/components/admin/CronJobLogs.tsx` | Update interface + render a detailed orders table in the expanded section |
 
