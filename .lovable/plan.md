@@ -1,38 +1,31 @@
 
 
-# Custom Meta Key Definitions — Per-User Memory
+# Fix: Preferences Not Saving — CHECK Constraint Missing `meta_definition`
 
-## Problem
-The `get_orders_with_meta` tool has a hardcoded `RELEVANT_META_KEYS` list. Users with custom WooCommerce plugins have meta keys the AI doesn't know about and can't search for or interpret.
+## Root Cause
 
-## Solution
-Extend the existing `save_preference` system with a new preference type `"meta_definition"` that lets users teach the AI about custom meta keys through conversation (e.g., "when I ask about delivery notes, look for the meta key `_custom_delivery_note`").
+The `user_preferences` table has a CHECK constraint that only allows three values:
 
-## Changes
+```sql
+CHECK (preference_type IN ('product_alias', 'shortcut', 'pattern'))
+```
 
-### 1. `supabase/functions/chat/tools.ts`
-- Add `"meta_definition"` to the `save_preference` tool's `preference_type` enum
-- Update the description to mention meta key definitions
+The `meta_definition` type was added to the tool definition and prompts but never added to this database constraint. Any insert with `preference_type = 'meta_definition'` fails silently at the database level.
 
-### 2. `supabase/functions/chat/tool-executor.ts`
-- In the `get_orders_with_meta` case: load user preferences of type `meta_definition` and merge their keys into `RELEVANT_META_KEYS` before filtering
-- This way custom keys are included in the meta filtering automatically
+## Fix
 
-### 3. `supabase/functions/chat/prompts.ts`
-- Add a section to the system prompt explaining that the AI can learn custom meta key definitions from users
-- Instruct the AI to call `save_preference` with `preference_type: "meta_definition"`, `key` as the meta key pattern, and `value` containing `{ description, category }` (e.g., `{ description: "Custom delivery note from courier", category: "shipping" }`)
-- Instruct the AI to use saved meta definitions when interpreting `get_orders_with_meta` results
+### Database Migration
 
-### 4. `supabase/functions/chat/index.ts`
-- When building `prefsContext`, format `meta_definition` preferences distinctly so the AI knows which meta keys to look for and what they mean
+Run a single migration to drop the old CHECK constraint and replace it with one that includes `meta_definition`:
 
-## How It Works
+```sql
+ALTER TABLE public.user_preferences
+  DROP CONSTRAINT IF EXISTS user_preferences_preference_type_check;
 
-1. User says: *"When I ask about delivery notes, the meta key is `_custom_note_field` and it contains the courier's note"*
-2. AI calls `save_preference({ preference_type: "meta_definition", key: "_custom_note_field", value: { description: "Courier delivery note", category: "shipping" } })`
-3. Next time `get_orders_with_meta` runs, it loads meta definitions and includes `_custom_note_field` in the filter
-4. The system prompt tells the AI what each custom key means for correct interpretation
+ALTER TABLE public.user_preferences
+  ADD CONSTRAINT user_preferences_preference_type_check
+  CHECK (preference_type IN ('product_alias', 'shortcut', 'pattern', 'meta_definition'));
+```
 
-## No Database Changes
-Uses the existing `user_preferences` table and `save_preference` tool — just a new `preference_type` value.
+No code changes needed — the edge function code is already correct.
 
