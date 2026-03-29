@@ -175,7 +175,15 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
         if (pm) orderBody.payment_method_title = pm.title;
       }
       const hasBilling = Object.values(billing).some((v) => v.trim());
-      if (hasBilling) orderBody.billing = billing;
+      if (hasBilling) {
+        orderBody.billing = billing;
+        if (shippingDiffers) {
+          orderBody.shipping = shipping;
+        } else {
+          const { email, ...billingAsShipping } = billing;
+          orderBody.shipping = billingAsShipping;
+        }
+      }
 
       const { data: result, error: invokeError } = await supabase.functions.invoke("woo-proxy", {
         body: { endpoint: "orders", method: "POST", body: orderBody },
