@@ -42,6 +42,7 @@ interface ConversationSidebarProps {
   collapsed: boolean;
   onToggle: () => void;
   onOpenSettings: () => void;
+  newOrderCount?: number;
 }
 
 export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, onViewIdChange, collapsed, onToggle, onOpenSettings }: ConversationSidebarProps) {
