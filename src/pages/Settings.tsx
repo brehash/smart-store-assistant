@@ -19,7 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   Settings, Globe, Palette, Store, User, Coins, Plug,
   Save, Trash2, CheckCircle2, XCircle, ListChecks, Loader2,
-  Sun, Moon, Monitor, X, RefreshCw, Package,
+  Sun, Moon, Monitor, X, RefreshCw, Package, Eye, EyeOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
