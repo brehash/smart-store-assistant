@@ -267,7 +267,7 @@ export default function Index() {
       .insert({ user_id: user.id, title: "New Conversation" })
       .select()
       .single();
-    if (data) { setConversationId(data.id); setMessages([]); return data.id; }
+    if (data) { skipLoadRef.current = true; setConversationId(data.id); setMessages([]); return data.id; }
     return null;
   };
 
