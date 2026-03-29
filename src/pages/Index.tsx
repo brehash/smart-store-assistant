@@ -504,15 +504,7 @@ export default function Index() {
     await supabase.from("messages").update({ metadata }).eq("id", messageId);
   };
 
-  // Helper: update a specific message by finder function (works for both persisted and streaming messages)
-  const updateMessage = (finder: (m: Message) => boolean, updater: (m: Message) => Message): Message | undefined => {
-    let updated: Message | undefined;
-    setMessages((prev) => prev.map((m) => {
-      if (finder(m)) { updated = updater(m); return updated; }
-      return m;
-    }));
-    return updated;
-  };
+
 
   const handleApproval = async (approval: ApprovalRequest, action: "approve" | "skip" | "edit", editedText?: string) => {
     if (!session || !conversationId) return;
