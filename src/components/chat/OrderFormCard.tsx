@@ -165,7 +165,7 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
     try {
       const orderBody: any = {
         status,
-        line_items: lineItems.map((li) => ({ product_id: li.product_id, quantity: li.quantity })),
+        line_items: lineItems.map((li) => ({ product_id: li.product_id, quantity: li.quantity, price: li.price })),
       };
       if (note) orderBody.customer_note = note;
       if (couponCode.trim()) orderBody.coupon_lines = [{ code: couponCode.trim() }];
