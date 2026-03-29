@@ -1,111 +1,51 @@
 
 
-# Implement Team System with Shared Credits and Email Notifications
+# Fix: Team Invitation Acceptance for Users Without Passwords
 
-## Overview
-Add a team/invitation system where users can invite team members by email. All team members share the same credit pool (both monthly and top-up credits). Invitation and acceptance notification emails are sent via the existing Brevo integration.
+## Problem
+The invitation link goes to `/auth?invite_token=xxx`, which shows a login form requiring email + password. If the invited user doesn't have an account or doesn't know their password, they're stuck.
 
-## Database Changes (Migration)
+## Solution
+Modify the invitation flow so that:
+1. The **team edge function** creates the invited user's account automatically (using Supabase admin `createUser`) when they don't exist, with a magic-link style flow
+2. The **invitation email** includes a one-click accept link that uses a **Supabase magic link** or a direct token-based acceptance
+3. The **Auth page** handles `invite_token` for both logged-in and logged-out users
 
-### New table: `teams`
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid PK | |
-| name | text | Team name |
-| owner_id | uuid | References auth.users, the team creator |
-| created_at | timestamptz | |
+### Approach: Auto-create user + sign-in link
 
-### New table: `team_members`
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid PK | |
-| team_id | uuid FK → teams | |
-| user_id | uuid | The member's auth user id |
-| role | text | 'owner' / 'member' |
-| joined_at | timestamptz | |
+**Edge function (`team/index.ts`) — invite endpoint changes:**
+- When sending an invitation, check if the invited email already has an account
+- If not, create one via `serviceClient.auth.admin.createUser({ email, email_confirm: true })`
+- Generate a magic link via `serviceClient.auth.admin.generateLink({ type: 'magiclink', email, options: { redirectTo: siteUrl + '/auth?invite_token=' + token } })`
+- Include the magic link in the Brevo invitation email so the invitee can click once to sign in AND accept
 
-### New table: `team_invitations`
-| Column | Type | Notes |
-|--------|------|-------|
-| id | uuid PK | |
-| team_id | uuid FK → teams | |
-| invited_by | uuid | Who sent it |
-| email | text | Invitee email |
-| token | text UNIQUE | Random invite token |
-| status | text | 'pending' / 'accepted' / 'expired' |
-| created_at | timestamptz | |
-| expires_at | timestamptz | Default now() + 7 days |
+**Edge function — accept endpoint changes:**
+- Keep existing accept logic (works for already-logged-in users)
 
-### Modify `credit_balances`
-- Add `team_id uuid` column (nullable FK → teams)
-- Credits become team-level: when a user belongs to a team, their credit operations reference the team's shared balance row
+**Auth page changes:**
+- When `invite_token` is present and user is NOT logged in, show a simplified UI: "You've been invited! Enter your email to sign in" with option to set a password (sign up) or use existing credentials
+- Pre-fill the email from the invitation record if possible (add an unauthenticated endpoint to look up invite email by token)
 
-### RLS Policies
-- Team members can SELECT their own team and team members
-- Only team owner can INSERT invitations and manage members
-- Invitations: owner can CRUD, invited user can view by email match
+### Detailed Steps
 
-### Trigger
-- On `team_members` INSERT → auto-link the user's `credit_balances` to the team's shared balance (or merge into team balance)
+1. **Add public invite-info endpoint** in `team/index.ts`:
+   - `GET /team?invite_info=<token>` (no auth required)
+   - Returns `{ email, team_name, inviter_name }` so the Auth page can pre-fill the email and show context
 
-## Edge Function Changes
+2. **Update invite sending** in `team/index.ts`:
+   - After creating the invitation, generate a magic link via `admin.generateLink({ type: 'magiclink', email, options: { redirectTo: origin + '/auth?invite_token=' + token } })`
+   - Use the generated `action_link` as the button URL in the Brevo email instead of the plain `/auth?invite_token=...` URL
+   - This way, clicking the email link auto-signs in the user AND redirects to `/auth?invite_token=...`
 
-### New: `supabase/functions/team/index.ts`
-Handles all team operations (authenticated, JWT-verified):
+3. **Update Auth page** (`Auth.tsx`):
+   - When `invite_token` is present and user is not logged in, fetch invite info from the public endpoint
+   - Show invitation context: "You've been invited to join [Team Name] by [Inviter]"
+   - Show sign-up form (pre-filled email) so new users can set a password
+   - The magic link from the email will auto-sign them in, so the `useEffect` that calls accept will fire
 
-- **POST /team** — Create team (auto-add creator as owner, create shared credit balance)
-- **POST /team/invite** — Send invitation: insert into `team_invitations`, call Brevo API to send branded invitation email with accept link
-- **GET /team/accept?token=xxx** — Accept invitation: validate token, create auth user if needed, add to `team_members`, merge credits into team balance, call Brevo to notify the inviter
-- **GET /team** — Get current user's team, members, and pending invitations
-- **DELETE /team/members/:userId** — Remove team member (owner only)
-- **DELETE /team/invitations/:id** — Cancel pending invitation (owner only)
+4. **Handle edge case**: If user clicks magic link and gets signed in automatically, the existing `useEffect` in Auth.tsx already handles acceptance — no change needed there.
 
-### Email templates (inline HTML, same branded style as brevo-email-hook)
-
-**Invitation email:**
-- Subject: "You've been invited to join [Team Name]"
-- Body: Branded template with accept button linking to `/auth?invite_token=xxx`
-- Sent via Brevo API using existing `BREVO_API_KEY`
-
-**Acceptance notification email:**
-- Subject: "[Member Name] has joined your team"
-- Body: Branded template notifying the team owner
-- Sent via Brevo API
-
-## Frontend Changes
-
-### New Settings tab: "Team" (between Integrations and Credits)
-- Icon: `Users` from lucide-react
-- Add to `TABS` array in `Settings.tsx`
-
-### Team tab content:
-- **No team state**: "Create a Team" card with name input and create button
-- **Team exists (owner view)**:
-  - Team name display
-  - Members list (avatar, name, email, role, remove button)
-  - Pending invitations list (email, status, cancel button)
-  - "Invite Member" form: email input + send button
-- **Team exists (member view)**:
-  - Team info (read-only)
-  - Members list (no management actions)
-  - "Leave Team" button
-
-### Auth page update (`src/pages/Auth.tsx`)
-- Check URL for `invite_token` query param
-- If present, show acceptance flow: auto-accept after login/signup, call team accept endpoint
-
-### Credit display update
-- When user is in a team, credit balance queries reference the team's shared balance
-- All team members see the same balance
-
-## Route Addition
-- Add `/auth` route handling for `invite_token` query parameter (no new route needed, just query param handling in Auth.tsx)
-
-## Technical Details
-
-- Invitation tokens: `crypto.randomUUID()` stored in `team_invitations`
-- Accept link format: `{SITE_URL}/auth?invite_token={token}`
-- Brevo emails reuse the same branded HTML wrapper from `brevo-email-hook`
-- Credit sharing: when a team is created, the owner's balance row gets `team_id` set; when members join, their individual balance is merged into the team balance and their row points to the same team
-- The `chat` edge function's credit check should resolve through team membership to find the shared balance
+### Files to Change
+- `supabase/functions/team/index.ts` — add invite-info public endpoint, generate magic link on invite
+- `src/pages/Auth.tsx` — show invitation context, pre-fill email, handle invite UX for logged-out users
 
