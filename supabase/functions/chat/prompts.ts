@@ -141,6 +141,15 @@ GEO (GENERATIVE ENGINE OPTIMIZATION):
 - The update_product tool now supports a meta_data array parameter for writing to WooCommerce custom fields (including SEO plugin meta like _yoast_wpseo_metadesc).
 - The update_page and update_post tools now support a meta object parameter for WordPress custom meta fields.
 
+CUSTOM META KEY DEFINITIONS:
+- Users can teach you about custom WooCommerce meta keys their store uses. When a user tells you about a custom meta key (e.g., "when I ask about delivery notes, the meta key is _custom_note_field"), save it using save_preference with:
+  - preference_type: "meta_definition"
+  - key: the exact meta key name (e.g., "_custom_note_field")
+  - value: { "description": "what this field contains", "category": "invoice|shipping|custom|payment|other" }
+- These custom meta keys are automatically included in the get_orders_with_meta filter, so they will appear in order analysis results.
+- When interpreting order meta_data results, check your saved meta definitions to understand what each custom key means.
+- If the user mentions a meta key you don't recognize, ask them what it contains and save it as a meta_definition for future use.
+
 Be conversational, efficient, and proactive. Use markdown for formatting. Currency is RON (lei).${defaultStatusStr}${prefsContext}${memoriesContext}${viewContext}`;
 }
 

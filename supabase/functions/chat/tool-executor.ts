@@ -471,12 +471,20 @@ export async function executeTool(
       return { result: { success: true, message: `Saved preference: "${args.key}"` } };
     }
     case "get_orders_with_meta": {
-      const RELEVANT_META_KEYS = [
+      const BASE_META_KEYS = [
         'invoice', 'factura', 'facturi', 'oblio', 'awb', 'tracking', 'colet',
         'curier', 'fan_courier', 'sameday', 'cargus', 'dpd', 'gls',
         'wc_invoice', 'billing_invoice', 'serie', 'numar', 'fiscal',
         'link', 'url', 'pdf', 'download',
       ];
+      // Load user-defined custom meta keys
+      const { data: metaDefs } = await supabase
+        .from("user_preferences")
+        .select("key")
+        .eq("user_id", userId)
+        .eq("preference_type", "meta_definition");
+      const customMetaKeys = (metaDefs || []).map((p: any) => p.key.toLowerCase());
+      const RELEVANT_META_KEYS = [...BASE_META_KEYS, ...customMetaKeys];
       const isRelevantMetaKey = (key: string) => {
         const k = key.toLowerCase();
         return RELEVANT_META_KEYS.some(prefix => k.includes(prefix));
