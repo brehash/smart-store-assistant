@@ -11,6 +11,16 @@ import {
 import { RefreshCw, Play, ChevronDown, ChevronRight, Clock, CheckCircle2, XCircle, MinusCircle } from "lucide-react";
 import { toast } from "sonner";
 
+interface CheckedOrder {
+  orderId: number;
+  awb: string;
+  uniqueId: string;
+  wooStatus: string;
+  shippingStatus: string | null;
+  shippingCode: number | null;
+  action: "completed" | "in_transit" | "no_history" | "error";
+}
+
 interface CronLog {
   id: string;
   job_name: string;
@@ -29,7 +39,8 @@ interface CronLog {
     ordersScanned: number;
     ordersWithAwb: number;
     ordersCompleted: number;
-    completedOrders: Array<{ orderId: number; awb: string; uniqueId: string }>;
+    checkedOrders?: CheckedOrder[];
+    completedOrders?: Array<{ orderId: number; awb: string; uniqueId: string }>;
     errors: Array<{ step: string; orderId?: number; awb?: string; error: string }>;
   }>;
   duration_ms: number | null;
