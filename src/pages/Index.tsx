@@ -732,8 +732,13 @@ export default function Index() {
 
       <div className="flex flex-1 flex-col min-w-0">
         <div className="flex items-center gap-3 border-b px-4 py-3 bg-card">
-          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setSidebarOpen(true)}>
+          <Button variant="ghost" size="icon" className="relative lg:hidden" onClick={() => setSidebarOpen(true)}>
             <Menu className="h-5 w-5" />
+            {newOrderCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground">
+                {newOrderCount > 9 ? "9+" : newOrderCount}
+              </span>
+            )}
           </Button>
           <h1 className="text-lg font-semibold truncate">WooCommerce AI Assistant</h1>
           {creditBalance !== null && (
