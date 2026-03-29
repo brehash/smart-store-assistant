@@ -1,44 +1,46 @@
 
 
-# Fix Team Invitation Acceptance + Team Member Store Access
+# Package Slip Tool with Saved Preferences
 
-## Problem Analysis
+## Overview
+Create a dedicated Package Slips page accessible from the sidebar. Users select source order statuses and a target "after packing" status; these choices are persisted to `user_preferences` so the tool remembers them on next use.
 
-**Issue 1 — "Invalid or expired invitation" toast error:**
-The invitation in the database is already `status: 'accepted'`. The `useEffect` in `Auth.tsx` fires the accept endpoint, but since it already ran successfully once (the invitation was accepted), the second firing finds no `pending` invitation and returns "Invalid or expired invitation". This happens because:
-- The magic link signs the user in → `user` state updates → `useEffect` fires → accepts invitation
-- React strict mode or re-renders cause the effect to fire again
-- The invite_token stays in the URL, so any navigation back triggers it again
+## Files to Create
 
-**Issue 2 — "Connect Your Store" shown to team members:**
-`Index.tsx` checks `woo_connections` filtered by `user_id = user.id`. Team members don't have their own `woo_connections` row — only the team owner does. So team members always see the onboarding wizard.
+### `src/pages/PackageSlips.tsx`
+Main page with three sections:
+1. **Configuration bar** — multi-select for source statuses, single-select for target status, "Load Orders" button. On mount, load saved preferences from `user_preferences` (type `package_slip_config`, key `default`). On change, upsert back to `user_preferences`.
+2. **Pick List tab** — aggregated table: product name, SKU, total quantity across all orders. Sorted by name.
+3. **Order Slips tab** — per-order cards: order #, customer name/address, line items + quantities, checkbox to mark as packed. "Mark Selected as Packed" button calls `woo-proxy` to PUT each order to the target status.
 
-## Plan
+Data fetched via `supabase.functions.invoke("woo-proxy", { body: { endpoint: "orders", method: "GET", ... } })` with `status=processing,on-hold` (from selected statuses) and `per_page=100`.
 
-### 1. Fix invitation acceptance (edge function + frontend)
+### Preference persistence
+- Uses existing `user_preferences` table with `preference_type = 'package_slip_config'`
+- Value shape: `{ sourceStatuses: ["processing"], targetStatus: "completed" }`
+- Need to add `'package_slip_config'` to the CHECK constraint on `preference_type`
 
-**`supabase/functions/team/index.ts`:**
-- In `handleAcceptInvitation`, when the invitation is already `accepted`, return success instead of an error (idempotent acceptance)
-- Check: if invitation status is `accepted` AND user is already a team member, return `{ success: true, already_accepted: true }`
+## Files to Modify
 
-**`src/pages/Auth.tsx`:**
-- Add a guard to prevent the accept `useEffect` from firing multiple times (use a `useRef` flag)
-- After successful acceptance, remove `invite_token` from URL params to prevent re-triggering
+### `src/App.tsx`
+Add protected route: `/package-slips` → `<PackageSlips />`
 
-### 2. Fix store connection visibility for team members
+### `src/components/chat/ConversationSidebar.tsx`
+Add "Package Slips" nav link with `Package` icon, linking to `/package-slips`
 
-**`src/pages/Index.tsx`:**
-- Update the connection check: if the user has no `woo_connections` row, check if they're in a team and look up the team owner's connection instead
-- Query: get user's `team_members.team_id` → get `teams.owner_id` → check `woo_connections` for owner
+## Database Migration
+```sql
+ALTER TABLE public.user_preferences
+  DROP CONSTRAINT IF EXISTS user_preferences_preference_type_check;
+ALTER TABLE public.user_preferences
+  ADD CONSTRAINT user_preferences_preference_type_check
+  CHECK (preference_type IN ('product_alias','shortcut','pattern','meta_definition','package_slip_config'));
+```
 
-**`supabase/functions/chat/index.ts` + `tool-executor.ts`:**
-- Update all `woo_connections` queries to resolve through team membership: if no connection found for user, find their team's owner and use that connection
-- This ensures team members can actually chat and use the store
-
-### Files to Change
-- `supabase/functions/team/index.ts` — make accept idempotent
-- `src/pages/Auth.tsx` — prevent double-fire, clean URL
-- `src/pages/Index.tsx` — team-aware connection check
-- `supabase/functions/chat/index.ts` — team-aware woo_connections lookup
-- `supabase/functions/chat/tool-executor.ts` — team-aware woo_connections lookup
+## Technical Details
+- Reuses `woo-proxy` for all WooCommerce API calls (fetch orders, update status)
+- Order statuses list comes from `woo_connections.order_statuses` (already cached)
+- Uses existing UI: `Table`, `Card`, `Checkbox`, `Select`, `Button`, `Tabs`, `Badge`
+- Team members resolve connection through team owner (already handled by `woo-proxy`)
+- Preferences auto-save on selection change (debounced upsert)
 
