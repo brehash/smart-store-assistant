@@ -174,13 +174,13 @@ export const TOOLS = [
     type: "function",
     function: {
       name: "save_preference",
-      description: "Save a user preference/alias.",
+      description: "Save a user preference, alias, or custom meta key definition. Use preference_type 'meta_definition' to teach the system about custom WooCommerce meta keys the user's store uses.",
       parameters: {
         type: "object",
         properties: {
-          preference_type: { type: "string", enum: ["product_alias", "shortcut", "pattern"] },
-          key: { type: "string", description: "The alias or shortcut name" },
-          value: { type: "object", description: "The mapped data (e.g., product_id, product_name)" },
+          preference_type: { type: "string", enum: ["product_alias", "shortcut", "pattern", "meta_definition"] },
+          key: { type: "string", description: "The alias/shortcut name, or the meta_key name for meta_definition type" },
+          value: { type: "object", description: "The mapped data. For meta_definition: { description, category } where category is 'invoice', 'shipping', 'custom', etc." },
         },
         required: ["preference_type", "key", "value"],
       },

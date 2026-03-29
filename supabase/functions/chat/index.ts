@@ -53,9 +53,18 @@ serve(async (req) => {
       .eq("user_id", userId);
     let prefsContext = "";
     if (prefs?.length) {
-      prefsContext =
-        "\n\nUser's saved preferences/aliases:\n" +
-        prefs.map((p: any) => `- ${p.preference_type}: "${p.key}" → ${JSON.stringify(p.value)}`).join("\n");
+      const regularPrefs = prefs.filter((p: any) => p.preference_type !== "meta_definition");
+      const metaDefs = prefs.filter((p: any) => p.preference_type === "meta_definition");
+      if (regularPrefs.length) {
+        prefsContext +=
+          "\n\nUser's saved preferences/aliases:\n" +
+          regularPrefs.map((p: any) => `- ${p.preference_type}: "${p.key}" → ${JSON.stringify(p.value)}`).join("\n");
+      }
+      if (metaDefs.length) {
+        prefsContext +=
+          "\n\nUser's custom meta key definitions (these are automatically included in order meta filtering):\n" +
+          metaDefs.map((p: any) => `- Meta key "${p.key}": ${JSON.stringify(p.value)}`).join("\n");
+      }
     }
 
     // ── Vector Memory: Retrieve relevant memories ──
