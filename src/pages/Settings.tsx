@@ -19,7 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   Settings, Globe, Palette, Store, User, Coins, Plug,
   Save, Trash2, CheckCircle2, XCircle, ListChecks, Loader2,
-  Sun, Moon, Monitor, X, RefreshCw, Package,
+  Sun, Moon, Monitor, X, RefreshCw, Package, Eye, EyeOff,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -93,6 +93,9 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
   const [testingColete, setTestingColete] = useState(false);
   const [coleteTestResult, setColeteTestResult] = useState<"success" | "error" | null>(null);
   const [integrationLoaded, setIntegrationLoaded] = useState(false);
+  const [showConsumerKey, setShowConsumerKey] = useState(false);
+  const [showConsumerSecret, setShowConsumerSecret] = useState(false);
+  const [showColeteSecret, setShowColeteSecret] = useState(false);
 
   // Appearance
   const [theme, setTheme] = useState<"system" | "dark" | "light">(() => {
@@ -445,8 +448,8 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2"><Label>Store URL</Label><Input value={storeUrl} onChange={(e) => setStoreUrl(e.target.value)} placeholder="https://yourstore.com" /></div>
-          <div className="space-y-2"><Label>Consumer Key</Label><Input value={consumerKey} onChange={(e) => setConsumerKey(e.target.value)} placeholder="ck_..." type="password" /></div>
-          <div className="space-y-2"><Label>Consumer Secret</Label><Input value={consumerSecret} onChange={(e) => setConsumerSecret(e.target.value)} placeholder="cs_..." type="password" /></div>
+          <div className="space-y-2"><Label>Consumer Key</Label><div className="relative"><Input value={consumerKey} onChange={(e) => setConsumerKey(e.target.value)} placeholder="ck_..." type={showConsumerKey ? "text" : "password"} className="pr-10" /><button type="button" onClick={() => setShowConsumerKey(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">{showConsumerKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div></div>
+          <div className="space-y-2"><Label>Consumer Secret</Label><div className="relative"><Input value={consumerSecret} onChange={(e) => setConsumerSecret(e.target.value)} placeholder="cs_..." type={showConsumerSecret ? "text" : "password"} className="pr-10" /><button type="button" onClick={() => setShowConsumerSecret(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">{showConsumerSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div></div>
           <div className="flex gap-2 pt-2">
             <Button onClick={handleTest} variant="outline" disabled={testing || !storeUrl || !consumerKey || !consumerSecret}>
               {testing ? "Testing…" : "Test Connection"}
@@ -726,7 +729,10 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
           </div>
           <div className="space-y-2">
             <Label>Client Secret</Label>
-            <Input type="password" value={coleteClientSecret} onChange={(e) => setColeteClientSecret(e.target.value)} placeholder="Your Colete Online Client Secret" />
+            <div className="relative">
+              <Input type={showColeteSecret ? "text" : "password"} value={coleteClientSecret} onChange={(e) => setColeteClientSecret(e.target.value)} placeholder="Your Colete Online Client Secret" className="pr-10" />
+              <button type="button" onClick={() => setShowColeteSecret(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">{showColeteSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
+            </div>
           </div>
           <div className="flex gap-2 justify-end pt-2">
             <Button onClick={handleTestColeteOnline} variant="outline" disabled={testingColete || !coleteClientId || !coleteClientSecret}>
