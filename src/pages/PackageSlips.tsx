@@ -66,7 +66,42 @@ export default function PackageSlips() {
   const [confirmOrderId, setConfirmOrderId] = useState<number | null>(null);
   const [confirmAll, setConfirmAll] = useState(false);
 
+  const autoLoadDone = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // localStorage keys
+  const lsCollected = user ? `ps_collected_${user.id}` : "";
+  const lsOrders = user ? `ps_orders_${user.id}` : "";
+  const lsPacked = user ? `ps_packed_${user.id}` : "";
+
+  // Restore from localStorage on mount
+  useEffect(() => {
+    if (!user) return;
+    try {
+      const savedOrders = localStorage.getItem(lsOrders);
+      if (savedOrders) setOrders(JSON.parse(savedOrders));
+      const savedCollected = localStorage.getItem(lsCollected);
+      if (savedCollected) setCollectedByKey(JSON.parse(savedCollected));
+      const savedPacked = localStorage.getItem(lsPacked);
+      if (savedPacked) setPackedIds(new Set(JSON.parse(savedPacked)));
+    } catch {}
+  }, [user]);
+
+  // Persist to localStorage
+  useEffect(() => {
+    if (!user) return;
+    try { localStorage.setItem(lsCollected, JSON.stringify(collectedByKey)); } catch {}
+  }, [collectedByKey, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    try { localStorage.setItem(lsOrders, JSON.stringify(orders)); } catch {}
+  }, [orders, user]);
+
+  useEffect(() => {
+    if (!user) return;
+    try { localStorage.setItem(lsPacked, JSON.stringify(Array.from(packedIds))); } catch {}
+  }, [packedIds, user]);
 
   // Load statuses from woo_connections
   useEffect(() => {
