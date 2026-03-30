@@ -151,7 +151,7 @@ export async function executeTool(
             nameKey: "name",
           },
         },
-        requestUri: `GET /wp-json/wc/v3/${endpoint}`,
+        requestUri: `GET /wp-json/wc/v3/orders (${orders.length} orders fetched)`,
       };
     }
     case "compare_sales": {
