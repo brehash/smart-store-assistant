@@ -501,7 +501,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
       </div>
 
       {/* Footer: User avatar dropup */}
-      <div className="border-t border-sidebar-border p-3">
+      <div className="border-t border-sidebar-border p-3 overflow-visible">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex w-full items-center gap-3 rounded-lg px-2 py-2 hover:bg-sidebar-accent/50 transition-colors">
@@ -513,7 +513,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
               </div>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="top" align="start" className="w-56">
+          <DropdownMenuContent side="top" align="start" sideOffset={8} className="w-56 z-[70]">
             <DropdownMenuItem onClick={onOpenSettings}>
               <Settings className="h-4 w-4 mr-2" /> Settings
             </DropdownMenuItem>
