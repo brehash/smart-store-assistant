@@ -513,7 +513,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
               </div>
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="top" align="start" sideOffset={8} className="w-56 z-[70]">
+          <DropdownMenuContent side="top" align="start" sideOffset={8} className="w-56 z-[9999]">
             <DropdownMenuItem onClick={onOpenSettings}>
               <Settings className="h-4 w-4 mr-2" /> Settings
             </DropdownMenuItem>
