@@ -1,25 +1,24 @@
 
 
-# Fix sidebar z-index conflicts with settings modal and dropup menu
+# Fix: "endpoint is not defined" in `get_sales_report`
 
-## Problem
-1. **Sidebar overlays settings modal** — The sidebar has `z-[60]` but the Radix Dialog overlay defaults to `z-50`, so the sidebar renders on top of the modal.
-2. **User dropup menu hidden when collapsed** — The `DropdownMenuContent` at `z-[70]` renders inside the sidebar's `z-[60]` stacking context (because `fixed` + `transform` creates a new stacking context). The portal escapes the DOM tree but the visual layering still conflicts.
+## Root cause
+
+The pagination loop (line 112-119) declares `const endpoint` inside the loop body. After the loop finishes, line 154 tries to use `endpoint` in the `requestUri` string — but it's out of scope, causing a runtime error.
+
+The same variable name `endpoint` was used before pagination was added (single call), and the return statement still references it. The pagination refactor introduced this scoping bug.
 
 ## Fix
 
-### 1. Lower sidebar z-index, raise modal z-index (`src/pages/Index.tsx`)
-- Change the sidebar container from `z-[60]` to `z-[40]`
-- Change the mobile backdrop from `z-[55]` to `z-[35]`
-- Add `z-[50]` to the `DialogContent` for the settings modal so it always sits above the sidebar
+In `supabase/functions/chat/tool-executor.ts`, line 154: replace the reference to the out-of-scope `endpoint` variable with an inline string, e.g.:
 
-### 2. Raise dropup z-index (`src/components/chat/ConversationSidebar.tsx`)
-- Change `DropdownMenuContent` from `z-[70]` to `z-[9999]` — since it portals to `<body>`, this ensures it's above everything including the sidebar's stacking context
+```typescript
+requestUri: `GET /wp-json/wc/v3/orders (${orders.length} orders fetched)`,
+```
 
-## Files changed
+This is purely a debug/display URI shown in the debug panel — it doesn't affect functionality. Just needs to not throw.
 
 | File | Change |
 |------|--------|
-| `src/pages/Index.tsx` | Sidebar `z-[40]`, backdrop `z-[35]`, dialog `z-[50]` |
-| `src/components/chat/ConversationSidebar.tsx` | Dropup `z-[9999]` |
+| `supabase/functions/chat/tool-executor.ts` line 154 | Replace `endpoint` reference with inline string |
 
