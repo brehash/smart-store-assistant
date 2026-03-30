@@ -143,7 +143,7 @@ serve(async (req) => {
       const accessToken = tokenData.access_token;
 
       // 4. Fetch non-completed orders from WooCommerce
-      const excludeStatuses = ["completed", "cancelled", "refunded", "failed", "trash"];
+      const excludeStatuses = ["completed", "cancelled", "refunded", "failed", "trash", "refuzata"];
       const baseUrl = conn.store_url.replace(/\/+$/, "");
       const ck = conn.consumer_key;
       const cs = conn.consumer_secret;
