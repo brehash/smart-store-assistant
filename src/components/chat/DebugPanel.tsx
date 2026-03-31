@@ -56,7 +56,7 @@ function DebugEntryCard({ entry, index }: { entry: DebugEntry; index: number }) 
         className="flex items-center gap-1 text-muted-foreground hover:text-foreground mb-1"
       >
         {showArgs ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-        Request Args
+        Parametri cerere
       </button>
       {showArgs && (
         <pre className="bg-muted rounded p-2 overflow-x-auto text-[10px] leading-relaxed mb-2 max-h-[200px] overflow-y-auto">
