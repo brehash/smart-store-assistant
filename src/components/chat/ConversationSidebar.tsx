@@ -315,7 +315,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
                 </button>
               </DropdownMenuTrigger>
             </TooltipTrigger>
-            <TooltipContent side="right">Account</TooltipContent>
+            <TooltipContent side="right">Cont</TooltipContent>
           </Tooltip>
           <DropdownMenuContent side="top" align="center" className="w-48">
             <DropdownMenuItem onClick={onOpenSettings}>
