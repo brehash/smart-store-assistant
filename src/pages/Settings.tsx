@@ -632,7 +632,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
                 <CardContent className="pt-4 pb-4 text-center space-y-2">
                   <p className="font-semibold text-sm">{pack.name}</p>
                   <p className="text-2xl font-bold text-primary">{pack.credits}</p>
-                  <p className="text-xs text-muted-foreground">credits</p>
+                  <p className="text-xs text-muted-foreground">credite</p>
                   <p className="text-sm font-medium">${(pack.price_cents / 100).toFixed(2)}</p>
                   <p className="text-xs text-muted-foreground">
                     ${(pack.price_cents / pack.credits / 100).toFixed(3)}/credit
