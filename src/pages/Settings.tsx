@@ -624,8 +624,8 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
         </Card>
 
         <div>
-          <h3 className="text-sm font-semibold mb-3">Top-Up Packs</h3>
-          <p className="text-xs text-muted-foreground mb-4">One-time credit purchases. Contact your administrator to purchase.</p>
+          <h3 className="text-sm font-semibold mb-3">Pachete de încărcare</h3>
+          <p className="text-xs text-muted-foreground mb-4">Achiziții unice de credite. Contactează administratorul pentru a achiziționa.</p>
           <div className="grid grid-cols-2 gap-3">
             {topupPacks.map((pack) => (
               <Card key={pack.id} className="hover:border-primary/50 transition-colors">
