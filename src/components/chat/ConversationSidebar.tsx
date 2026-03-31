@@ -474,7 +474,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
                   onClick={() => setRecentsLimit((prev) => prev + 10)}
                   className="w-full px-3 py-1.5 text-[11px] text-sidebar-foreground/50 hover:text-sidebar-foreground/80 transition-colors text-center"
                 >
-                  Show more chats
+                  Arată mai multe conversații
                 </button>
               )}
             </div>
