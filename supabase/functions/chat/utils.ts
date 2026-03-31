@@ -93,6 +93,103 @@ export function sanitizeAiHistory(messages: Array<{ role: string; content: unkno
     }));
 }
 
+// ── Strip raw API responses to only AI-relevant fields ──
+
+function stripProduct(p: any): any {
+  if (!p || typeof p !== "object") return p;
+  return {
+    id: p.id, name: p.name, sku: p.sku,
+    price: p.price, regular_price: p.regular_price, sale_price: p.sale_price,
+    stock_quantity: p.stock_quantity, stock_status: p.stock_status,
+    status: p.status, total_sales: p.total_sales,
+    categories: Array.isArray(p.categories) ? p.categories.map((c: any) => c.name || c.slug) : undefined,
+    short_description: p.short_description ? p.short_description.replace(/<[^>]*>/g, "").slice(0, 200) : undefined,
+  };
+}
+
+function stripOrder(o: any): any {
+  if (!o || typeof o !== "object") return o;
+  return {
+    id: o.id, number: o.number, status: o.status,
+    total: o.total, currency: o.currency,
+    date_created: o.date_created,
+    payment_method_title: o.payment_method_title,
+    billing: o.billing ? { first_name: o.billing.first_name, last_name: o.billing.last_name, email: o.billing.email, phone: o.billing.phone } : undefined,
+    shipping: o.shipping ? { city: o.shipping.city, state: o.shipping.state, country: o.shipping.country } : undefined,
+    line_items: Array.isArray(o.line_items) ? o.line_items.map((li: any) => ({
+      name: li.name, quantity: li.quantity, total: li.total, product_id: li.product_id,
+    })) : [],
+  };
+}
+
+function stripWpContent(d: any): any {
+  if (!d || typeof d !== "object") return d;
+  return {
+    id: d.id, slug: d.slug, status: d.status, link: d.link,
+    title: d.title?.rendered || d.title,
+  };
+}
+
+function stripCrudResult(d: any, type: "product" | "order" | "page" | "post"): any {
+  if (!d || typeof d !== "object") return d;
+  if (d.error) return d;
+  return {
+    id: d.id,
+    status: d.status,
+    ...(type === "product" ? { name: d.name } : {}),
+    ...(type === "order" ? { number: d.number, total: d.total } : {}),
+    ...(type === "page" || type === "post" ? { title: d.title?.rendered || d.title, link: d.link } : {}),
+    message: "success",
+  };
+}
+
+export function stripResultForAI(toolName: string, data: any): any {
+  if (!data || data.error) return data;
+
+  // Product reads
+  if (toolName === "search_products") {
+    return Array.isArray(data) ? data.map(stripProduct) : data;
+  }
+  if (toolName === "get_product") {
+    return stripProduct(data);
+  }
+
+  // Order reads
+  if (toolName === "search_orders") {
+    return Array.isArray(data) ? data.map(stripOrder) : data;
+  }
+
+  // CRUD writes — return minimal confirmation
+  if (toolName === "create_order" || toolName === "update_order" || toolName === "update_order_status") {
+    return stripCrudResult(data, "order");
+  }
+  if (toolName === "delete_order") {
+    return stripCrudResult(data, "order");
+  }
+  if (toolName === "create_product" || toolName === "update_product") {
+    return stripCrudResult(data, "product");
+  }
+  if (toolName === "delete_product") {
+    return stripCrudResult(data, "product");
+  }
+
+  // WP pages/posts
+  if (toolName === "create_page" || toolName === "update_page") {
+    return stripCrudResult(data, "page");
+  }
+  if (toolName === "delete_page") {
+    return stripCrudResult(data, "page");
+  }
+  if (toolName === "create_post" || toolName === "update_post") {
+    return stripCrudResult(data, "post");
+  }
+  if (toolName === "delete_post") {
+    return stripCrudResult(data, "post");
+  }
+
+  return data;
+}
+
 export function truncateForAI(toolName: string, result: any): any {
   try {
     const str = JSON.stringify(result);
@@ -150,41 +247,6 @@ export function truncateForAI(toolName: string, result: any): any {
         customer_count: result.customer_count,
         customers: Array.isArray(result.customers) ? result.customers.slice(0, 20) : result.customers,
       };
-    }
-
-    if (toolName === "search_orders" && Array.isArray(result)) {
-      return result.slice(0, 10).map((item: any) => ({
-        id: item.id,
-        status: item.status,
-        total: item.total,
-        date_created: item.date_created,
-        billing: item.billing ? { first_name: item.billing.first_name, last_name: item.billing.last_name } : undefined,
-      }));
-    }
-
-    if (toolName === "get_orders_with_meta" && Array.isArray(result)) {
-      return result.slice(0, 30).map((item: any) => ({
-        id: item.id,
-        status: item.status,
-        total: item.total,
-        currency: item.currency,
-        date_created: item.date_created,
-        billing: item.billing ? { first_name: item.billing.first_name, last_name: item.billing.last_name } : undefined,
-        meta_data: item.meta_data,
-        line_items: Array.isArray(item.line_items)
-          ? item.line_items.map((li: any) => ({ name: li.name, quantity: li.quantity }))
-          : [],
-      }));
-    }
-
-    if (toolName === "search_products" && Array.isArray(result)) {
-      return result.slice(0, 10).map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        stock_quantity: item.stock_quantity,
-        total_sales: item.total_sales,
-      }));
     }
 
     if (toolName === "check_shipping_status") {
