@@ -178,7 +178,7 @@ export default function Auth() {
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {!isLogin && (
                     <div className="space-y-2">
-                      <Label htmlFor="fullName">Full name</Label>
+                      <Label htmlFor="fullName">Nume complet</Label>
                       <Input
                         id="fullName"
                         value={fullName}
