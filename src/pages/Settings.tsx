@@ -429,8 +429,8 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
   const renderConnection = () => (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold">Connection</h2>
-        <p className="text-sm text-muted-foreground">Manage your WooCommerce store connection</p>
+        <h2 className="text-lg font-semibold">Conexiune</h2>
+        <p className="text-sm text-muted-foreground">Gestionează conexiunea magazinului WooCommerce</p>
       </div>
       <Card>
         <CardHeader>
