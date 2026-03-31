@@ -189,7 +189,7 @@ export function ConnectionSetupCard({ onComplete }: ConnectionSetupCardProps) {
               {testResult === "success" && (
                 <Badge variant="outline" className="w-full justify-center gap-1.5 py-2 text-emerald-600 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-800 dark:text-emerald-400">
                   <CheckCircle2 className="h-4 w-4" />
-                  Connected to {storeName}
+                  Conectat la {storeName}
                 </Badge>
               )}
 
