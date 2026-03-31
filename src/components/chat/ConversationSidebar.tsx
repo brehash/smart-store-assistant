@@ -263,7 +263,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
               <PanelLeft className="h-5 w-5" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="right">Expand sidebar</TooltipContent>
+          <TooltipContent side="right">Extinde bara laterală</TooltipContent>
         </Tooltip>
 
         {/* New Chat */}
