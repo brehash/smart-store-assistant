@@ -700,7 +700,7 @@ export default function PackageSlips() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="h-8 text-xs">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="h-8 text-xs">Anulează</AlertDialogCancel>
             <AlertDialogAction
               className="h-8 text-xs"
               onClick={() => {
