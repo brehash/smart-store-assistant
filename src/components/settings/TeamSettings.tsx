@@ -408,9 +408,9 @@ export function TeamSettings() {
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Leave team?</AlertDialogTitle>
+                  <AlertDialogTitle>Părăsești echipa?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    You will lose access to the shared credit balance.
+                    Vei pierde accesul la soldul de credite partajate.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
