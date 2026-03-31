@@ -258,7 +258,7 @@ export default function PackageSlips() {
         setOrders([]);
       }
     } catch (e: any) {
-      toast({ title: "Error loading orders", description: e.message, variant: "destructive" });
+      toast({ title: "Eroare la încărcarea comenzilor", description: e.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
