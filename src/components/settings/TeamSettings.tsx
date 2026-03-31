@@ -207,7 +207,7 @@ export function TeamSettings() {
             </div>
             <Button onClick={handleCreateTeam} disabled={creating || !teamName.trim()} className="gap-1.5">
               <Users className="h-4 w-4" />
-              {creating ? "Creating…" : "Create Team"}
+              {creating ? "Se creează…" : "Creează echipă"}
             </Button>
           </CardContent>
         </Card>
