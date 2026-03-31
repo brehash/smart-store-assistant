@@ -459,7 +459,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
               {testResult === "error" && <XCircle className="ml-1.5 h-4 w-4 text-destructive" />}
             </Button>
             <Button onClick={handleSave} disabled={saving || !storeUrl || !consumerKey || !consumerSecret} className="gap-1.5">
-              <Save className="h-4 w-4" /> {saving ? "Saving…" : "Save"}
+              <Save className="h-4 w-4" /> {saving ? "Se salvează…" : "Salvează"}
             </Button>
             {existingConnection && (
               <>
