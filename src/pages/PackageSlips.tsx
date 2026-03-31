@@ -640,7 +640,7 @@ export default function PackageSlips() {
       <AlertDialog open={!!confirmOrder} onOpenChange={(open) => { if (!open) setConfirmOrderId(null); }}>
         <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm">Confirm packing — #{confirmOrder?.number}</AlertDialogTitle>
+            <AlertDialogTitle className="text-sm">Confirmă ambalarea — #{confirmOrder?.number}</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">
