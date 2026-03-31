@@ -84,7 +84,7 @@ export function CreditsModal({ open, onOpenChange, currentBalance, currentPlanId
 
             {/* Subscription Plans */}
             <div>
-              <h3 className="text-sm font-semibold mb-3">Subscription Plans</h3>
+              <h3 className="text-sm font-semibold mb-3">Planuri de abonament</h3>
               <div className="grid gap-3 sm:grid-cols-2">
                 {plans.map((plan) => {
                   const isCurrent = plan.id === currentPlanId;
