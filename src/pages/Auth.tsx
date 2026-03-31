@@ -172,7 +172,7 @@ export default function Auth() {
           </CardHeader>
           <CardContent>
             {inviteLoading ? (
-              <div className="text-center py-4 text-muted-foreground">Loading invitation details...</div>
+              <div className="text-center py-4 text-muted-foreground">Se încarcă detaliile invitației...</div>
             ) : (
               <>
                 <form onSubmit={handleSubmit} className="space-y-4">
