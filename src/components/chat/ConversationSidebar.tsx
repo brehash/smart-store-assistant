@@ -515,7 +515,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
           </DropdownMenuTrigger>
           <DropdownMenuContent side="top" align="start" sideOffset={8} className="w-56 z-[9999]">
             <DropdownMenuItem onClick={onOpenSettings}>
-              <Settings className="h-4 w-4 mr-2" /> Settings
+              <Settings className="h-4 w-4 mr-2" /> Setări
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={signOut}>
