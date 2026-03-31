@@ -277,7 +277,7 @@ export function TeamSettings() {
               <div className="flex items-center gap-2">
                 {member.role === "owner" && (
                   <Badge variant="outline" className="text-xs gap-1">
-                    <Crown className="h-3 w-3" />Owner
+                    <Crown className="h-3 w-3" />Proprietar
                   </Badge>
                 )}
                 {isOwner && member.user_id !== user?.id && (
