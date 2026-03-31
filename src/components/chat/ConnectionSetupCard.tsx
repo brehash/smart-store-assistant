@@ -79,7 +79,7 @@ export function ConnectionSetupCard({ onComplete }: ConnectionSetupCardProps) {
       // Delay to show success before transitioning
       setTimeout(() => onComplete(), 1500);
     } catch {
-      setError("Failed to save connection.");
+      setError("Salvarea conexiunii a eșuat.");
     } finally {
       setSaving(false);
     }
