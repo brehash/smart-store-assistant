@@ -258,7 +258,7 @@ export function TeamSettings() {
       {/* Members */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Members</CardTitle>
+          <CardTitle className="text-base">Membri</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {teamData.members.map((member: any) => (
