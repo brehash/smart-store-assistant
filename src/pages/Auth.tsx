@@ -213,7 +213,7 @@ export default function Auth() {
                     />
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "Loading..." : isLogin ? "Sign in" : "Create account"}
+                    {loading ? "Se încarcă..." : isLogin ? "Autentificare" : "Creează cont"}
                   </Button>
                 </form>
                 <div className="mt-6 text-center text-sm text-muted-foreground">
