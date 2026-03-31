@@ -213,7 +213,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditingConvId(c.id); setEditingConvTitle(c.title); }}>
-                  <Pencil className="h-3.5 w-3.5 mr-2" /> Rename
+                  <Pencil className="h-3.5 w-3.5 mr-2" /> Redenumește
                 </DropdownMenuItem>
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
