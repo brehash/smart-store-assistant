@@ -350,7 +350,7 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
         {/* Payment Method */}
         {paymentMethods && paymentMethods.length > 0 && (
           <div>
-            <Label className="text-xs font-medium mb-1.5 block">Payment Method</Label>
+            <Label className="text-xs font-medium mb-1.5 block">Metodă de plată</Label>
             <Select value={paymentMethod} onValueChange={setPaymentMethod} disabled={isDisabled}>
               <SelectTrigger className="h-9 text-sm">
                 <SelectValue placeholder="Select payment method..." />
