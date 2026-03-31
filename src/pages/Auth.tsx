@@ -183,7 +183,7 @@ export default function Auth() {
                         id="fullName"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        placeholder="Your name"
+                        placeholder="Numele tău"
                         required={!isLogin}
                       />
                     </div>
