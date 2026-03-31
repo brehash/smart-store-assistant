@@ -201,7 +201,7 @@ export function TeamSettings() {
               <Input
                 value={teamName}
                 onChange={(e) => setTeamName(e.target.value)}
-                placeholder="My Team"
+                placeholder="Echipa mea"
                 onKeyDown={(e) => e.key === "Enter" && handleCreateTeam()}
               />
             </div>
