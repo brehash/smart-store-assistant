@@ -374,7 +374,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
           {/* Views Section */}
           <div>
             <div className="flex items-center justify-between px-2 py-1">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">Views</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">Vederi</span>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button onClick={handleCreateView} className="p-1 rounded-md hover:bg-sidebar-accent/50 text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors">
