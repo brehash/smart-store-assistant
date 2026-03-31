@@ -265,8 +265,8 @@ export default function Index() {
           if (isStreaming && !streamAliveRef.current) {
             setIsStreaming(false);
             toast({
-              title: "Connection lost",
-              description: "The stream was interrupted while the tab was in the background. Your partial response has been saved.",
+              title: "Conexiune pierdută",
+              description: "Fluxul a fost întrerupt cât tab-ul era în fundal. Răspunsul parțial a fost salvat.",
               variant: "destructive",
             });
           }
