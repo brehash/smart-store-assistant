@@ -245,7 +245,7 @@ export function TeamSettings() {
         {teamData.creditBalance && (
           <CardContent className="pt-0 pb-4">
             <div className="rounded-lg border border-border p-3 bg-muted/30 space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Shared Credit Balance</p>
+              <p className="text-xs font-medium text-muted-foreground">Sold credite partajate</p>
               <p className="text-2xl font-bold text-primary">{teamData.creditBalance.balance}</p>
               <p className="text-xs text-muted-foreground">
                 Monthly allowance: {teamData.creditBalance.monthly_allowance}
