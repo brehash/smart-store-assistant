@@ -325,7 +325,7 @@ export function TeamSettings() {
                   <div>
                     <p className="text-sm">{inv.email}</p>
                     <p className="text-xs text-muted-foreground">
-                      Expires {new Date(inv.expires_at).toLocaleDateString()}
+                      Expiră {new Date(inv.expires_at).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
