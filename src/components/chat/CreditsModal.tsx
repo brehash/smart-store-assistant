@@ -103,7 +103,7 @@ export function CreditsModal({ open, onOpenChange, currentBalance, currentPlanId
                           <span className="text-sm font-medium">{plan.credits} credite/lună</span>
                           {!isCurrent && (
                             <Button size="sm" variant="outline" className="h-7 text-xs" disabled>
-                              Contact Admin
+                              Contactează Admin
                             </Button>
                           )}
                         </div>
