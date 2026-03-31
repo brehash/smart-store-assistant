@@ -234,7 +234,7 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search products..."
+              placeholder="Caută produse..."
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
               className="pl-9 h-9 text-sm"
