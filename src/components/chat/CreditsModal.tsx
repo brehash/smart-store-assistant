@@ -91,7 +91,7 @@ export function CreditsModal({ open, onOpenChange, currentBalance, currentPlanId
                   return (
                     <Card key={plan.id} className={`relative ${isCurrent ? "border-primary" : ""}`}>
                       {isCurrent && (
-                        <Badge className="absolute -top-2 right-3 text-xs">Current</Badge>
+                        <Badge className="absolute -top-2 right-3 text-xs">Curent</Badge>
                       )}
                       <CardContent className="pt-4 pb-3 px-4">
                         <div className="flex items-baseline justify-between mb-1">
