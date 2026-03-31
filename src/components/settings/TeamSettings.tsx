@@ -126,7 +126,7 @@ export function TeamSettings() {
       });
       const result = await resp.json();
       if (!resp.ok) throw new Error(result.error);
-      toast({ title: "Invitation cancelled" });
+      toast({ title: "Invitație anulată" });
       fetchTeam();
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
