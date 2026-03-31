@@ -385,7 +385,7 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
           <CollapsibleContent className="pt-3 space-y-2">
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label className="text-xs">First Name</Label>
+                <Label className="text-xs">Prenume</Label>
                 <Input className="h-8 text-sm" value={billing.first_name} onChange={(e) => setBilling((b) => ({ ...b, first_name: e.target.value }))} disabled={isDisabled} />
               </div>
               <div>
