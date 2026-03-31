@@ -439,7 +439,7 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
                 <p className="text-xs font-medium text-muted-foreground">Adresă de livrare</p>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <Label className="text-xs">First Name</Label>
+                    <Label className="text-xs">Prenume</Label>
                     <Input className="h-8 text-sm" value={shipping.first_name} onChange={(e) => setShipping((s) => ({ ...s, first_name: e.target.value }))} disabled={isDisabled} />
                   </div>
                   <div>
