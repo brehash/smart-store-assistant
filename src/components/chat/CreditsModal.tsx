@@ -125,7 +125,7 @@ export function CreditsModal({ open, onOpenChange, currentBalance, currentPlanId
                         <Zap className="h-4 w-4 text-primary" />
                         <div>
                           <p className="text-sm font-medium">{pack.name}</p>
-                          <p className="text-xs text-muted-foreground">{pack.credits} credits</p>
+                          <p className="text-xs text-muted-foreground">{pack.credits} credite</p>
                         </div>
                       </div>
                       <Button size="sm" variant="outline" className="h-7 text-xs" disabled>
