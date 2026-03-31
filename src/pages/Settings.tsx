@@ -229,7 +229,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
       toast({ title: "Conexiune reușită!", description: `Conectat la ${data?.name || storeUrl}` });
       fetchOrderStatuses(storeUrl, consumerKey, consumerSecret);
       fetchPlugins(storeUrl, consumerKey, consumerSecret);
-    } catch { setTestResult("error"); toast({ title: "Connection failed", description: "Check your API keys and store URL.", variant: "destructive" }); }
+    } catch { setTestResult("error"); toast({ title: "Conexiune eșuată", description: "Verifică cheile API și URL-ul magazinului.", variant: "destructive" }); }
     finally { setTesting(false); }
   };
 
