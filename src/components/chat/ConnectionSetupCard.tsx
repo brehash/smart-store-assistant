@@ -165,7 +165,7 @@ export function ConnectionSetupCard({ onComplete }: ConnectionSetupCardProps) {
                   disabled={!consumerKey.trim() || !consumerSecret.trim()}
                   className="flex-1 gap-2"
                 >
-                  Next <ArrowRight className="h-4 w-4" />
+                  Următorul <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
             </>
