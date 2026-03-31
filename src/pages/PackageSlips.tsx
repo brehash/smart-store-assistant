@@ -422,7 +422,7 @@ export default function PackageSlips() {
       <div className="border-b border-border px-3 py-2 space-y-2">
         {/* Source statuses */}
         <div className="space-y-1">
-          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Fetch orders with status</label>
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Preluare comenzi cu statusul</label>
           <div className="flex flex-wrap gap-x-3 gap-y-1">
             {allStatuses.map((s) => (
               <label key={s} className="flex items-center gap-1 cursor-pointer">
