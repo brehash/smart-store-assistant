@@ -432,7 +432,7 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
                 onCheckedChange={(v) => setShippingDiffers(!!v)}
                 disabled={isDisabled}
               />
-              <Label htmlFor="shipping-differs" className="text-xs cursor-pointer">Shipping address differs from billing</Label>
+              <Label htmlFor="shipping-differs" className="text-xs cursor-pointer">Adresa de livrare diferă de facturare</Label>
             </div>
             {shippingDiffers && (
               <div className="space-y-2 pt-2 border-t mt-2">
