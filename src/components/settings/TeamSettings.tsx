@@ -111,7 +111,7 @@ export function TeamSettings() {
       toast({ title: "Membru eliminat" });
       fetchTeam();
     } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: "Eroare", description: e.message, variant: "destructive" });
     }
   };
 
