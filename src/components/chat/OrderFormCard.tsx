@@ -224,7 +224,7 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <ShoppingCart className="h-4 w-4" />
-          Create Order
+          Creează comandă
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
