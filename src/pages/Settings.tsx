@@ -394,8 +394,8 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-lg font-semibold">Appearance</h2>
-          <p className="text-sm text-muted-foreground">Customize how the app looks</p>
+          <h2 className="text-lg font-semibold">Aspect</h2>
+          <p className="text-sm text-muted-foreground">Personalizează aspectul aplicației</p>
         </div>
         <div className="grid gap-3">
           {options.map((opt) => (
