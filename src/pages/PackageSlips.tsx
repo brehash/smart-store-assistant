@@ -457,7 +457,7 @@ export default function PackageSlips() {
 
           <Button size="sm" className="h-8 text-xs" onClick={loadOrders} disabled={loading || sourceStatuses.length === 0}>
             {loading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
-            Load Orders
+            Încarcă comenzi
           </Button>
           {orders.length > 0 && (
             <Button size="sm" variant="ghost" className="h-8 text-xs text-destructive" onClick={clearSession}>
