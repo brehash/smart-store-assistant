@@ -462,7 +462,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
           {/* Recents Section */}
           <div>
             <div className="px-2 py-1">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">Recents</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">Recente</span>
             </div>
             <div className="space-y-0.5">
               {visibleRecents.length === 0 && (
