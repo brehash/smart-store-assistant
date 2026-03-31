@@ -273,7 +273,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
               <Plus className="h-5 w-5" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="right">New Chat</TooltipContent>
+          <TooltipContent side="right">Chat nou</TooltipContent>
         </Tooltip>
 
         {/* Search */}
