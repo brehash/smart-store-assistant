@@ -152,10 +152,10 @@ export default function Auth() {
                 <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
                   <Users className="h-6 w-6" />
                 </div>
-                <CardTitle className="text-2xl">You're invited!</CardTitle>
+                <CardTitle className="text-2xl">Ești invitat!</CardTitle>
                 <CardDescription>
-                  <strong>{inviteInfo.inviter_name}</strong> invited you to join{" "}
-                  <strong>{inviteInfo.team_name}</strong>. Sign in or create an account to accept.
+                  <strong>{inviteInfo.inviter_name}</strong> te-a invitat să te alături echipei{" "}
+                  <strong>{inviteInfo.team_name}</strong>. Autentifică-te sau creează un cont pentru a accepta.
                 </CardDescription>
               </>
             ) : (
