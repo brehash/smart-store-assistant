@@ -434,7 +434,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
                     {isExpanded && (
                       <div className="ml-4 space-y-0.5">
                         {viewConvs.length === 0 && (
-                          <p className="text-[10px] text-sidebar-foreground/30 px-3 py-1">No chats yet</p>
+                          <p className="text-[10px] text-sidebar-foreground/30 px-3 py-1">Niciun chat încă</p>
                         )}
                         {viewConvs.map(renderConversation)}
                         <button
