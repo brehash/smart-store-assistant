@@ -233,7 +233,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleTogglePin(c); }}>
-                  <Pin className="h-3.5 w-3.5 mr-2 rotate-45" /> {c.pinned ? "Unpin chat" : "Pin chat"}
+                  <Pin className="h-3.5 w-3.5 mr-2 rotate-45" /> {c.pinned ? "Anulează fixare" : "Fixează chat"}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={(e) => { e.stopPropagation(); handleDelete(c.id); }}>
