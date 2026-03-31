@@ -618,7 +618,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
                 </div>
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No credit balance found.</p>
+              <p className="text-sm text-muted-foreground">Niciun sold de credite găsit.</p>
             )}
           </CardContent>
         </Card>
