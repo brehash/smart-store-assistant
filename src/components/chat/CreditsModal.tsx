@@ -71,8 +71,8 @@ export function CreditsModal({ open, onOpenChange, currentBalance, currentPlanId
             {/* Current Balance */}
             <div className="rounded-lg border bg-muted/30 p-4 flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Current Balance</p>
-                <p className="text-3xl font-bold tabular-nums">{currentBalance ?? 0} <span className="text-base font-normal text-muted-foreground">credits</span></p>
+                <p className="text-sm text-muted-foreground">Sold curent</p>
+                <p className="text-3xl font-bold tabular-nums">{currentBalance ?? 0} <span className="text-base font-normal text-muted-foreground">credite</span></p>
               </div>
               {currentPlan && (
                 <Badge variant="secondary" className="text-sm">
