@@ -714,7 +714,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
               <div className="rounded-lg bg-primary/10 p-2"><Package className="h-5 w-5 text-primary" /></div>
               <div>
                 <CardTitle className="text-base">Colete Online</CardTitle>
-                <CardDescription>Automatic shipment tracking &amp; order status updates</CardDescription>
+                <CardDescription>Urmărire automată a expedierilor &amp; actualizări status comenzi</CardDescription>
               </div>
             </div>
             <Switch checked={coleteOnlineEnabled} onCheckedChange={setColeteOnlineEnabled} />
