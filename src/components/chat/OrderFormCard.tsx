@@ -436,7 +436,7 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
             </div>
             {shippingDiffers && (
               <div className="space-y-2 pt-2 border-t mt-2">
-                <p className="text-xs font-medium text-muted-foreground">Shipping Address</p>
+                <p className="text-xs font-medium text-muted-foreground">Adresă de livrare</p>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <Label className="text-xs">First Name</Label>
