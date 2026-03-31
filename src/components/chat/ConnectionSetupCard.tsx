@@ -37,7 +37,7 @@ export function ConnectionSetupCard({ onComplete }: ConnectionSetupCardProps) {
       setStoreName(data?.name || storeUrl);
     } catch (e) {
       setTestResult("error");
-      setError("Connection failed. Check your store URL and API credentials.");
+      setError("Conexiune eșuată. Verifică URL-ul magazinului și cheile API.");
     } finally {
       setTesting(false);
     }
