@@ -381,7 +381,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
                     <Plus className="h-4 w-4" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right">New View</TooltipContent>
+                <TooltipContent side="right">Vedere nouă</TooltipContent>
               </Tooltip>
             </div>
             <div className="space-y-0.5">
