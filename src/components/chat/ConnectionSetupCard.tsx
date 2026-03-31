@@ -179,7 +179,7 @@ export function ConnectionSetupCard({ onComplete }: ConnectionSetupCardProps) {
                   <span className="font-medium truncate ml-4">{storeUrl}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">API Key</span>
+                  <span className="text-muted-foreground">Cheie API</span>
                   <span className="font-mono text-xs">
                     {consumerKey.slice(0, 8)}...
                   </span>
