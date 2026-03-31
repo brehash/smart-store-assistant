@@ -345,8 +345,8 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
           <div className="flex items-center gap-3">
             <div className="rounded-lg bg-primary/10 p-2"><Globe className="h-5 w-5 text-primary" /></div>
             <div>
-              <CardTitle className="text-base">AI Response Language</CardTitle>
-              <CardDescription>Choose the language for AI responses</CardDescription>
+              <CardTitle className="text-base">Limba răspunsurilor AI</CardTitle>
+              <CardDescription>Alege limba pentru răspunsurile AI</CardDescription>
             </div>
           </div>
         </CardHeader>
