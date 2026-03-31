@@ -403,7 +403,7 @@ export function TeamSettings() {
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="outline" className="gap-1.5 text-destructive hover:text-destructive">
-                  <LogOut className="h-4 w-4" /> Leave Team
+                  <LogOut className="h-4 w-4" /> Părăsește echipa
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
