@@ -680,7 +680,7 @@ export async function executeTool(
         body: rest,
         apiPrefix: "wp/v2",
       });
-      return { result: data, requestUri: `PUT /wp-json/wp/v2/posts/${post_id}` };
+      return { result: stripResultForAI("update_post", data), requestUri: `PUT /wp-json/wp/v2/posts/${post_id}` };
     }
     case "delete_post": {
       const force = args.force ? "?force=true" : "";
