@@ -143,7 +143,7 @@ export function WebhookSetupCard({ onComplete, onDismiss }: WebhookSetupCardProp
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="gap-1 text-destructive border-destructive/30 bg-destructive/10">
-                      <XCircle className="h-3 w-3" /> Failed
+                      <XCircle className="h-3 w-3" /> Eșuat
                     </Badge>
                   )}
                 </div>
