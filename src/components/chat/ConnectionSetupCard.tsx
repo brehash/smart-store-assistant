@@ -112,7 +112,7 @@ export function ConnectionSetupCard({ onComplete }: ConnectionSetupCardProps) {
           {step === 1 && (
             <>
               <div className="space-y-2">
-                <Label>Store URL</Label>
+                <Label>URL Magazin</Label>
                 <Input
                   value={storeUrl}
                   onChange={(e) => setStoreUrl(e.target.value)}
