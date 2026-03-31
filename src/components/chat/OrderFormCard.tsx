@@ -398,7 +398,7 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
               <Input className="h-8 text-sm" type="email" value={billing.email} onChange={(e) => setBilling((b) => ({ ...b, email: e.target.value }))} disabled={isDisabled} />
             </div>
             <div>
-              <Label className="text-xs">Phone</Label>
+              <Label className="text-xs">Telefon</Label>
               <Input className="h-8 text-sm" value={billing.phone} onChange={(e) => setBilling((b) => ({ ...b, phone: e.target.value }))} disabled={isDisabled} />
             </div>
             <div>
