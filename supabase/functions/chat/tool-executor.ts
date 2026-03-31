@@ -625,7 +625,7 @@ export async function executeTool(
       const endpoint = `products/${args.product_id}`;
       const force = args.force ? "?force=true" : "";
       const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `${endpoint}${force}`, method: "DELETE" });
-      return { result: data, requestUri: `DELETE /wp-json/wc/v3/${endpoint}` };
+      return { result: stripResultForAI("delete_product", data), requestUri: `DELETE /wp-json/wc/v3/${endpoint}` };
     }
     // ── CRUD: Pages (WordPress) ──
     case "create_page": {
