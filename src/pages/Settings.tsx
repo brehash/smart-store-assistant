@@ -322,7 +322,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-semibold">General</h2>
-        <p className="text-sm text-muted-foreground">Profile and account basics</p>
+        <p className="text-sm text-muted-foreground">Profil și setări de bază</p>
       </div>
       <Card>
         <CardContent className="pt-6 space-y-4">
