@@ -298,7 +298,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
               )}
             </button>
           </TooltipTrigger>
-          <TooltipContent side="right">Package Slips</TooltipContent>
+          <TooltipContent side="right">Fișe ambalare</TooltipContent>
         </Tooltip>
 
         <div className="flex-1" />
