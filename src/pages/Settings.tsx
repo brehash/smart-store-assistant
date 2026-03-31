@@ -722,8 +722,8 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            When enabled, the system checks every 2 hours for orders with AWBs from Colete Online. 
-            Orders are automatically marked as "completed" once the shipment is delivered.
+            Când este activat, sistemul verifică la fiecare 2 ore comenzile cu AWB-uri de la Colete Online.
+            Comenzile sunt marcate automat ca „finalizate" odată ce expedierea este livrată.
           </p>
           <div className="space-y-2">
             <Label>Client ID</Label>
