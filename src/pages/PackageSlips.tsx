@@ -672,7 +672,7 @@ export default function PackageSlips() {
                 setConfirmOrderId(null);
               }}
             >
-              Confirm
+              Confirmă
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
