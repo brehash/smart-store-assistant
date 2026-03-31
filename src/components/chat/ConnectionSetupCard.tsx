@@ -119,7 +119,7 @@ export function ConnectionSetupCard({ onComplete }: ConnectionSetupCardProps) {
                   placeholder="https://yourstore.com"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Enter the full URL of your WooCommerce store
+                  Introdu URL-ul complet al magazinului tău WooCommerce
                 </p>
               </div>
               <Button
