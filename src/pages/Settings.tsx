@@ -547,7 +547,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
             <span>{user?.email}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Member since</span>
+            <span className="text-muted-foreground">Membru din</span>
             <span>{createdAt}</span>
           </div>
         </CardContent>
