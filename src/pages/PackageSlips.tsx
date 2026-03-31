@@ -217,7 +217,7 @@ export default function PackageSlips() {
   // Load orders (merge mode — preserves collected state)
   const loadOrders = async () => {
     if (sourceStatuses.length === 0) {
-      toast({ title: "Select at least one source status", variant: "destructive" });
+      toast({ title: "Selectează cel puțin un status sursă", variant: "destructive" });
       return;
     }
     setLoading(true);
