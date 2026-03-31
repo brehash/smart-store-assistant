@@ -496,7 +496,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
               </span>
             )}
           </div>
-          Package Slips
+          Fișe ambalare
         </button>
       </div>
 
