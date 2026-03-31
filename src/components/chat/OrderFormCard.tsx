@@ -490,7 +490,7 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
 
         {/* Submit */}
         <Button onClick={handleSubmit} disabled={isDisabled || lineItems.length === 0} className="w-full">
-          {submitting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Creating...</> : "Create Order"}
+          {submitting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Se creează...</> : "Creează comandă"}
         </Button>
       </CardContent>
     </Card>
