@@ -64,7 +64,7 @@ export function TeamSettings() {
       setTeamName("");
       fetchTeam();
     } catch (e: any) {
-      toast({ title: "Error", description: e.message || "Failed to create team", variant: "destructive" });
+      toast({ title: "Eroare", description: e.message || "Crearea echipei a eșuat", variant: "destructive" });
     } finally {
       setCreating(false);
     }
