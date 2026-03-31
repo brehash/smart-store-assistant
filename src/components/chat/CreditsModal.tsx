@@ -117,7 +117,7 @@ export function CreditsModal({ open, onOpenChange, currentBalance, currentPlanId
             {/* Top-Up Packs */}
             {packs.length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold mb-3">One-Time Top-Ups</h3>
+                <h3 className="text-sm font-semibold mb-3">Încărcări unice</h3>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {packs.map((pack) => (
                     <div key={pack.id} className="flex items-center justify-between rounded-lg border p-3">
