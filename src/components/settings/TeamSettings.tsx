@@ -87,7 +87,7 @@ export function TeamSettings() {
       });
       const result = await resp.json();
       if (!resp.ok) throw new Error(result.error || "Failed to invite");
-      toast({ title: "Invitation sent!", description: `Invitation email sent to ${inviteEmail}` });
+      toast({ title: "Invitație trimisă!", description: `Email de invitație trimis la ${inviteEmail}` });
       setInviteEmail("");
       fetchTeam();
     } catch (e: any) {
