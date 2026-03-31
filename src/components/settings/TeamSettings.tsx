@@ -232,7 +232,7 @@ export function TeamSettings() {
               <div className="rounded-lg bg-primary/10 p-2"><Users className="h-5 w-5 text-primary" /></div>
               <div>
                 <CardTitle className="text-base">{teamData.team.name}</CardTitle>
-                <CardDescription>{teamData.members.length} member{teamData.members.length !== 1 ? "s" : ""}</CardDescription>
+                <CardDescription>{teamData.members.length} membr{teamData.members.length !== 1 ? "i" : "u"}</CardDescription>
               </div>
             </div>
             <Badge variant={isOwner ? "default" : "secondary"}>
