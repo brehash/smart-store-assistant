@@ -691,7 +691,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
         toast({ title: "Conexiune reușită!", description: "Credențialele Colete Online sunt valide." });
       } else {
         setColeteTestResult("error");
-        toast({ title: "Connection failed", description: result.error || "Invalid credentials.", variant: "destructive" });
+        toast({ title: "Conexiune eșuată", description: result.error || "Credențiale invalide.", variant: "destructive" });
       }
     } catch {
       setColeteTestResult("error");
