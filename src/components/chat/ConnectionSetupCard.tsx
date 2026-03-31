@@ -154,7 +154,7 @@ export function ConnectionSetupCard({ onComplete }: ConnectionSetupCardProps) {
               </div>
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <ExternalLink className="h-3 w-3" />
-                Find these in WooCommerce → Settings → Advanced → REST API
+                Le găsești în WooCommerce → Setări → Avansat → REST API
               </p>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
