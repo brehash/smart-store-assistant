@@ -1,4 +1,4 @@
-import { formatDate } from "./utils.ts";
+import { formatDate, stripResultForAI } from "./utils.ts";
 
 export async function callWooProxy(supabaseUrl: string, authHeader: string, payload: any) {
   const resp = await fetch(`${supabaseUrl}/functions/v1/woo-proxy`, {
@@ -39,7 +39,7 @@ export async function executeTool(
       const endpoint = `products?${params.toString()}`;
       const data = await callWooProxy(supabaseUrl, authHeader, { endpoint });
       return {
-        result: data,
+        result: stripResultForAI("search_products", data),
         richContent: { type: "products", data: Array.isArray(data) ? data : [] },
         requestUri: `GET /wp-json/wc/v3/${endpoint}`,
       };
@@ -48,7 +48,7 @@ export async function executeTool(
       const endpoint = `products/${args.product_id}`;
       const data = await callWooProxy(supabaseUrl, authHeader, { endpoint });
       return {
-        result: data,
+        result: stripResultForAI("get_product", data),
         richContent: { type: "products", data: [data] },
         requestUri: `GET /wp-json/wc/v3/${endpoint}`,
       };
@@ -64,7 +64,7 @@ export async function executeTool(
       const endpoint = `orders?${params.toString()}`;
       const data = await callWooProxy(supabaseUrl, authHeader, { endpoint });
       return {
-        result: data,
+        result: stripResultForAI("search_orders", data),
         richContent: { type: "orders", data: Array.isArray(data) ? data : [] },
         requestUri: `GET /wp-json/wc/v3/${endpoint}`,
       };
@@ -76,7 +76,7 @@ export async function executeTool(
         method: "POST",
         body: { line_items: args.line_items, customer_id: args.customer_id || 0, status: args.status || "processing" },
       });
-      return { result: data, requestUri: `POST /wp-json/wc/v3/${endpoint}` };
+      return { result: stripResultForAI("create_order", data), requestUri: `POST /wp-json/wc/v3/${endpoint}` };
     }
     case "update_order_status": {
       const endpoint = `orders/${args.order_id}`;
@@ -85,7 +85,7 @@ export async function executeTool(
         method: "PUT",
         body: { status: args.status },
       });
-      return { result: data, requestUri: `PUT /wp-json/wc/v3/${endpoint}` };
+      return { result: stripResultForAI("update_order_status", data), requestUri: `PUT /wp-json/wc/v3/${endpoint}` };
     }
     case "get_sales_report": {
       const params = new URLSearchParams();
@@ -583,13 +583,13 @@ export async function executeTool(
           body: { note: args.note },
         });
       }
-      return { result: data, requestUri: `PUT /wp-json/wc/v3/${endpoint}` };
+      return { result: stripResultForAI("update_order", data), requestUri: `PUT /wp-json/wc/v3/${endpoint}` };
     }
     case "delete_order": {
       const endpoint = `orders/${args.order_id}`;
       const force = args.force ? "?force=true" : "";
       const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `${endpoint}${force}`, method: "DELETE" });
-      return { result: data, requestUri: `DELETE /wp-json/wc/v3/${endpoint}` };
+      return { result: stripResultForAI("delete_order", data), requestUri: `DELETE /wp-json/wc/v3/${endpoint}` };
     }
     // ── CRUD: Products ──
     case "create_product": {
@@ -606,7 +606,7 @@ export async function executeTool(
       if (args.status) body.status = args.status;
       const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: "products", method: "POST", body });
       return {
-        result: data,
+        result: stripResultForAI("create_product", data),
         richContent: data?.id ? { type: "products", data: [data] } : undefined,
         requestUri: `POST /wp-json/wc/v3/products`,
       };
@@ -616,7 +616,7 @@ export async function executeTool(
       const { product_id, ...rest } = args;
       const data = await callWooProxy(supabaseUrl, authHeader, { endpoint, method: "PUT", body: rest });
       return {
-        result: data,
+        result: stripResultForAI("update_product", data),
         richContent: data?.id ? { type: "products", data: [data] } : undefined,
         requestUri: `PUT /wp-json/wc/v3/${endpoint}`,
       };
@@ -625,7 +625,7 @@ export async function executeTool(
       const endpoint = `products/${args.product_id}`;
       const force = args.force ? "?force=true" : "";
       const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: `${endpoint}${force}`, method: "DELETE" });
-      return { result: data, requestUri: `DELETE /wp-json/wc/v3/${endpoint}` };
+      return { result: stripResultForAI("delete_product", data), requestUri: `DELETE /wp-json/wc/v3/${endpoint}` };
     }
     // ── CRUD: Pages (WordPress) ──
     case "create_page": {
@@ -637,7 +637,7 @@ export async function executeTool(
         body,
         apiPrefix: "wp/v2",
       });
-      return { result: data, requestUri: `POST /wp-json/wp/v2/pages` };
+      return { result: stripResultForAI("create_page", data), requestUri: `POST /wp-json/wp/v2/pages` };
     }
     case "update_page": {
       const { page_id, ...rest } = args;
@@ -647,7 +647,7 @@ export async function executeTool(
         body: rest,
         apiPrefix: "wp/v2",
       });
-      return { result: data, requestUri: `PUT /wp-json/wp/v2/pages/${page_id}` };
+      return { result: stripResultForAI("update_page", data), requestUri: `PUT /wp-json/wp/v2/pages/${page_id}` };
     }
     case "delete_page": {
       const force = args.force ? "?force=true" : "";
@@ -656,7 +656,7 @@ export async function executeTool(
         method: "DELETE",
         apiPrefix: "wp/v2",
       });
-      return { result: data, requestUri: `DELETE /wp-json/wp/v2/pages/${args.page_id}` };
+      return { result: stripResultForAI("delete_page", data), requestUri: `DELETE /wp-json/wp/v2/pages/${args.page_id}` };
     }
     // ── CRUD: Posts (WordPress) ──
     case "create_post": {
@@ -670,7 +670,7 @@ export async function executeTool(
         body,
         apiPrefix: "wp/v2",
       });
-      return { result: data, requestUri: `POST /wp-json/wp/v2/posts` };
+      return { result: stripResultForAI("create_post", data), requestUri: `POST /wp-json/wp/v2/posts` };
     }
     case "update_post": {
       const { post_id, ...rest } = args;
@@ -680,7 +680,7 @@ export async function executeTool(
         body: rest,
         apiPrefix: "wp/v2",
       });
-      return { result: data, requestUri: `PUT /wp-json/wp/v2/posts/${post_id}` };
+      return { result: stripResultForAI("update_post", data), requestUri: `PUT /wp-json/wp/v2/posts/${post_id}` };
     }
     case "delete_post": {
       const force = args.force ? "?force=true" : "";
@@ -689,7 +689,7 @@ export async function executeTool(
         method: "DELETE",
         apiPrefix: "wp/v2",
       });
-      return { result: data, requestUri: `DELETE /wp-json/wp/v2/posts/${args.post_id}` };
+      return { result: stripResultForAI("delete_post", data), requestUri: `DELETE /wp-json/wp/v2/posts/${args.post_id}` };
     }
     case "check_shipping_status": {
       const orderData = await callWooProxy(supabaseUrl, authHeader, { endpoint: `orders/${args.order_id}` });
