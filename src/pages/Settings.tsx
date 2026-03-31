@@ -773,7 +773,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
       {/* Sidebar nav */}
       <nav className="w-52 shrink-0 border-r border-border p-3 space-y-1">
         <div className="flex items-center justify-between mb-2 px-1">
-          <span className="text-sm font-semibold text-foreground">Settings</span>
+          <span className="text-sm font-semibold text-foreground">Setări</span>
           {onClose && (
             <button onClick={onClose} className="rounded-sm p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
               <X className="h-4 w-4" />
