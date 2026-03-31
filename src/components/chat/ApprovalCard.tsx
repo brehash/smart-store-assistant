@@ -18,7 +18,7 @@ export function ApprovalCard({ summary, details, onApprove, onSkip, onEdit, disa
   const [editText, setEditText] = useState(details || summary);
 
   if (resolved) {
-    const labels = { approved: "Approved", skipped: "Skipped", edited: "Edited & Approved" };
+    const labels = { approved: "Aprobat", skipped: "Omis", edited: "Editat & Aprobat" };
     const colors = { approved: "text-green-600", skipped: "text-muted-foreground", edited: "text-amber-600" };
     return (
       <div className="rounded-lg border border-border bg-muted/50 px-4 py-3 my-2">
