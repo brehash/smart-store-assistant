@@ -387,9 +387,9 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
 
   const renderAppearance = () => {
     const options: { value: "system" | "light" | "dark"; label: string; icon: React.ElementType; desc: string }[] = [
-      { value: "system", label: "System", icon: Monitor, desc: "Follow your device settings" },
-      { value: "light", label: "Light", icon: Sun, desc: "Always use light mode" },
-      { value: "dark", label: "Dark", icon: Moon, desc: "Always use dark mode" },
+      { value: "system", label: "Sistem", icon: Monitor, desc: "Urmează setările dispozitivului" },
+      { value: "light", label: "Luminos", icon: Sun, desc: "Folosește întotdeauna modul luminos" },
+      { value: "dark", label: "Întunecat", icon: Moon, desc: "Folosește întotdeauna modul întunecat" },
     ];
     return (
       <div className="space-y-6">
