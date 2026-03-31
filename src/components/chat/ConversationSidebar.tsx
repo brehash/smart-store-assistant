@@ -319,7 +319,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
           </Tooltip>
           <DropdownMenuContent side="top" align="center" className="w-48">
             <DropdownMenuItem onClick={onOpenSettings}>
-              <Settings className="h-4 w-4 mr-2" /> Settings
+              <Settings className="h-4 w-4 mr-2" /> Setări
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={signOut}>
