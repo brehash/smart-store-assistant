@@ -688,7 +688,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
       const result = await resp.json();
       if (result.success) {
         setColeteTestResult("success");
-        toast({ title: "Connection successful!", description: "Colete Online credentials are valid." });
+        toast({ title: "Conexiune reușită!", description: "Credențialele Colete Online sunt valide." });
       } else {
         setColeteTestResult("error");
         toast({ title: "Connection failed", description: result.error || "Invalid credentials.", variant: "destructive" });
