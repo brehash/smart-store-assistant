@@ -104,7 +104,7 @@ export default function Auth() {
           },
         });
         if (error) throw error;
-        toast({ title: "Account created!", description: "Check your email to verify your account." });
+        toast({ title: "Cont creat!", description: "Verifică-ți emailul pentru a confirma contul." });
       }
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
