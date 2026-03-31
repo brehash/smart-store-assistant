@@ -919,12 +919,27 @@ export async function executeTool(
       if (!hasDetailsSummary) recommendations.push("Add collapsible FAQ section using <details>/<summary> tags");
       if (!hasMeta) recommendations.push("Add meta description via Yoast/RankMath or similar plugin");
 
+      const categoriesArray = Object.entries(categories).map(([key, val]) => ({
+        name: key.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()),
+        score: val.score,
+        maxScore: val.max,
+        details: val.details,
+      }));
+
+      const recsArray = recommendations.map((text, i) => ({
+        text,
+        priority: i < 2 ? "high" : i < 4 ? "medium" : "low",
+        category: "general",
+      }));
+
       const reportData = {
-        mode: "single",
+        mode: "single" as const,
         entityName,
+        entityType: entity_type,
+        entityId: entity_id,
         score: totalScore,
-        categories,
-        recommendations,
+        categories: categoriesArray,
+        recommendations: recsArray,
       };
 
       return {
