@@ -127,7 +127,7 @@ export function ConnectionSetupCard({ onComplete }: ConnectionSetupCardProps) {
                 disabled={!storeUrl.trim()}
                 className="w-full gap-2"
               >
-                Next <ArrowRight className="h-4 w-4" />
+                Următorul <ArrowRight className="h-4 w-4" />
               </Button>
             </>
           )}
