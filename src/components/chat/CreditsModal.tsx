@@ -100,7 +100,7 @@ export function CreditsModal({ open, onOpenChange, currentBalance, currentPlanId
                         </div>
                         <p className="text-xs text-muted-foreground mb-2">{plan.description}</p>
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">{plan.credits} credits/mo</span>
+                          <span className="text-sm font-medium">{plan.credits} credite/lună</span>
                           {!isCurrent && (
                             <Button size="sm" variant="outline" className="h-7 text-xs" disabled>
                               Contact Admin
