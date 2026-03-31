@@ -220,8 +220,8 @@ export function TeamSettings() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold">Team</h2>
-        <p className="text-sm text-muted-foreground">Manage your team members and shared credits</p>
+          <h2 className="text-lg font-semibold">Echipă</h2>
+          <p className="text-sm text-muted-foreground">Gestionează membrii echipei și creditele partajate</p>
       </div>
 
       {/* Team info */}
