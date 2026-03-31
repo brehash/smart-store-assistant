@@ -465,7 +465,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
               <>
                 <Button onClick={() => refreshCache()} variant="outline" disabled={refreshingCache} className="gap-1.5">
                   <RefreshCw className={cn("h-4 w-4", refreshingCache && "animate-spin")} />
-                  {refreshingCache ? "Refreshing…" : "Refresh Cache"}
+                  {refreshingCache ? "Se reîmprospătează…" : "Reîmprospătează cache"}
                 </Button>
                 <Button onClick={handleDelete} variant="destructive" size="icon"><Trash2 className="h-4 w-4" /></Button>
               </>
