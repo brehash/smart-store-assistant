@@ -44,7 +44,7 @@ export function QuestionCard({ question, options, onAnswer, disabled, resolved }
           }}
         />
         <Button size="sm" variant="secondary" onClick={() => otherText.trim() && onAnswer(otherText.trim())} disabled={disabled || !otherText.trim()}>
-          Send
+          Trimite
         </Button>
       </div>
     </div>

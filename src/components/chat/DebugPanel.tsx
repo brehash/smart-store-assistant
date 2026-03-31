@@ -69,7 +69,7 @@ function DebugEntryCard({ entry, index }: { entry: DebugEntry; index: number }) 
         className="flex items-center gap-1 text-muted-foreground hover:text-foreground mb-1"
       >
         {showResult ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-        Response
+        Răspuns
       </button>
       {showResult && (
         <pre className="bg-muted rounded p-2 overflow-x-auto text-[10px] leading-relaxed max-h-[300px] overflow-y-auto">

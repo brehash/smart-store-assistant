@@ -42,8 +42,8 @@ export function ReasoningBubbles({ entries, isStreaming }: ReasoningBubblesProps
 
   // Collapsed state: single summary line with expand
   const summaryLabel = hasError
-    ? `Process stopped after ${entries.length} steps`
-    : `Thought for ${durationSec}s · ${entries.length} steps`;
+    ? `Proces oprit după ${entries.length} pași`
+    : `A gândit ${durationSec}s · ${entries.length} pași`;
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen} className="my-1 w-full max-w-[400px]">
