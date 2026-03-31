@@ -352,7 +352,7 @@ export default function PackageSlips() {
         toast({ title: `Order #${orders.find((o) => o.id === orderId)?.number || orderId} → ${targetStatus}` });
       }
     } catch (e: any) {
-      toast({ title: "Error updating order", description: e.message, variant: "destructive" });
+      toast({ title: "Eroare la actualizarea comenzii", description: e.message, variant: "destructive" });
     } finally {
       setUpdatingIds((prev) => {
         const next = new Set(prev);
