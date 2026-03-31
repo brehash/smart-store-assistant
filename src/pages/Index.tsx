@@ -772,7 +772,7 @@ export default function Index() {
               </span>
             )}
           </Button>
-          <h1 className="text-lg font-semibold truncate">WooCommerce AI Assistant</h1>
+          <h1 className="text-lg font-semibold truncate">Asistent AI WooCommerce</h1>
           {creditBalance !== null && (
             <button
               onClick={() => topupModalEnabled && setCreditsModalOpen(true)}
