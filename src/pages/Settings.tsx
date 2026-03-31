@@ -309,7 +309,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
   const handleDeleteAccount = async () => {
     // Sign out — actual deletion would require a backend function
     await signOut();
-    toast({ title: "Signed out", description: "Contact support to permanently delete your account." });
+    toast({ title: "Deconectat", description: "Contactează suportul pentru a-ți șterge permanent contul." });
   };
 
   const createdAt = user?.created_at ? new Date(user.created_at).toLocaleDateString() : "—";
