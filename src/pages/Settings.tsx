@@ -365,7 +365,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>New Password</Label>
+            <Label>Parolă nouă</Label>
             <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" />
           </div>
           <div className="space-y-2">
