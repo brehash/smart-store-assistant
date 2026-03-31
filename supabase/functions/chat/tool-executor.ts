@@ -689,7 +689,7 @@ export async function executeTool(
         method: "DELETE",
         apiPrefix: "wp/v2",
       });
-      return { result: data, requestUri: `DELETE /wp-json/wp/v2/posts/${args.post_id}` };
+      return { result: stripResultForAI("delete_post", data), requestUri: `DELETE /wp-json/wp/v2/posts/${args.post_id}` };
     }
     case "check_shipping_status": {
       const orderData = await callWooProxy(supabaseUrl, authHeader, { endpoint: `orders/${args.order_id}` });
