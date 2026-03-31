@@ -117,7 +117,7 @@ export function WebhookSetupCard({ onComplete, onDismiss }: WebhookSetupCardProp
               </div>
               <div className="flex gap-2">
                 <Button variant="ghost" onClick={onDismiss} className="flex-1">
-                  Skip
+                Omite
                 </Button>
                 <Button
                   onClick={handleCreate}
@@ -125,9 +125,9 @@ export function WebhookSetupCard({ onComplete, onDismiss }: WebhookSetupCardProp
                   className="flex-1 gap-2"
                 >
                   {creating ? (
-                    <><Loader2 className="h-4 w-4 animate-spin" /> Creating...</>
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Se creează...</>
                   ) : (
-                    <>Create Webhooks</>
+                    <>Creează Webhook-uri</>
                   )}
                 </Button>
               </div>
