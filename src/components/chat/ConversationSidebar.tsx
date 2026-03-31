@@ -352,7 +352,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
           onClick={onNew}
           className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors"
         >
-          <Plus className="h-4 w-4" /> New Chat
+          <Plus className="h-4 w-4" /> Chat nou
         </button>
       </div>
 
