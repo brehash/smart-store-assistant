@@ -810,12 +810,12 @@ export default function Index() {
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 </svg>
               </div>
-              <h2 className="text-xl font-semibold mb-2">How can I help you?</h2>
+              <h2 className="text-xl font-semibold mb-2">Cu ce te pot ajuta?</h2>
               <p className="text-muted-foreground text-sm max-w-md">
-                Search products, create orders, get analytics, or ask anything about your WooCommerce store.
+                Caută produse, creează comenzi, obține analize sau întreabă orice despre magazinul tău WooCommerce.
               </p>
               <div className="mt-6 flex flex-wrap justify-center gap-2">
-                {["Search for pasta products", "Show me today's orders", "Sales report for this week", "Create a new order"].map((s) => (
+                {["Caută produse de paste", "Arată comenzile de azi", "Raport vânzări săptămâna aceasta", "Creează o comandă nouă"].map((s) => (
                   <button key={s} onClick={() => handleSend(s)} className="rounded-full border border-border bg-card px-4 py-2 text-sm hover:bg-accent transition-colors">
                     {s}
                   </button>
