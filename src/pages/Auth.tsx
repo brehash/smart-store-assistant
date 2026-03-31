@@ -217,12 +217,12 @@ export default function Auth() {
                   </Button>
                 </form>
                 <div className="mt-6 text-center text-sm text-muted-foreground">
-                  {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
+                  {isLogin ? "Nu ai cont?" : "Ai deja cont?"}{" "}
                   <button
                     onClick={() => setIsLogin(!isLogin)}
                     className="font-medium text-primary hover:underline"
                   >
-                    {isLogin ? "Sign up" : "Sign in"}
+                    {isLogin ? "Înregistrează-te" : "Autentifică-te"}
                   </button>
                 </div>
               </>
