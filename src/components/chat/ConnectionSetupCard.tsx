@@ -175,7 +175,7 @@ export function ConnectionSetupCard({ onComplete }: ConnectionSetupCardProps) {
             <>
               <div className="rounded-lg border bg-muted/50 p-4 space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Store</span>
+                  <span className="text-muted-foreground">Magazin</span>
                   <span className="font-medium truncate ml-4">{storeUrl}</span>
                 </div>
                 <div className="flex justify-between">
