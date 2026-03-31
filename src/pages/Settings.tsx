@@ -226,7 +226,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
       if (error) throw error;
       setTestResult("success");
       if (data?.name) setStoreName(data.name);
-      toast({ title: "Connection successful!", description: `Connected to ${data?.name || storeUrl}` });
+      toast({ title: "Conexiune reușită!", description: `Conectat la ${data?.name || storeUrl}` });
       fetchOrderStatuses(storeUrl, consumerKey, consumerSecret);
       fetchPlugins(storeUrl, consumerKey, consumerSecret);
     } catch { setTestResult("error"); toast({ title: "Connection failed", description: "Check your API keys and store URL.", variant: "destructive" }); }
