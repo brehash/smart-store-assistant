@@ -417,7 +417,7 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label className="text-xs">Postcode</Label>
+                <Label className="text-xs">Cod poștal</Label>
                 <Input className="h-8 text-sm" value={billing.postcode} onChange={(e) => setBilling((b) => ({ ...b, postcode: e.target.value }))} disabled={isDisabled} />
               </div>
               <div>
