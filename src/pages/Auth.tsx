@@ -74,7 +74,7 @@ export default function Auth() {
           if (!resp.ok) throw new Error(result.error);
           toast({ title: "Bine ai venit în echipă!", description: "Te-ai alăturat cu succes echipei." });
         } catch (e: any) {
-          toast({ title: "Invitation error", description: e.message, variant: "destructive" });
+          toast({ title: "Eroare invitație", description: e.message, variant: "destructive" });
         }
         // Clean invite_token from URL and navigate home
         navigate("/", { replace: true });
