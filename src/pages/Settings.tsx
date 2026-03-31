@@ -454,7 +454,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
           <div className="space-y-2"><Label>Consumer Secret</Label><div className="relative"><Input value={consumerSecret} onChange={(e) => setConsumerSecret(e.target.value)} placeholder="cs_..." type={showConsumerSecret ? "text" : "password"} className="pr-10" /><button type="button" onClick={() => setShowConsumerSecret(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">{showConsumerSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button></div></div>
           <div className="flex gap-2 pt-2">
             <Button onClick={handleTest} variant="outline" disabled={testing || !storeUrl || !consumerKey || !consumerSecret}>
-              {testing ? "Testing…" : "Test Connection"}
+              {testing ? "Se testează…" : "Testează conexiunea"}
               {testResult === "success" && <CheckCircle2 className="ml-1.5 h-4 w-4 text-emerald-500" />}
               {testResult === "error" && <XCircle className="ml-1.5 h-4 w-4 text-destructive" />}
             </Button>
