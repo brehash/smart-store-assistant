@@ -72,7 +72,7 @@ export default function Auth() {
           );
           const result = await resp.json();
           if (!resp.ok) throw new Error(result.error);
-          toast({ title: "Welcome to the team!", description: "You've successfully joined the team." });
+          toast({ title: "Bine ai venit în echipă!", description: "Te-ai alăturat cu succes echipei." });
         } catch (e: any) {
           toast({ title: "Invitation error", description: e.message, variant: "destructive" });
         }
