@@ -295,9 +295,9 @@ export function TeamSettings() {
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel>Anulează</AlertDialogCancel>
                         <AlertDialogAction onClick={() => handleRemoveMember(member.user_id)}>
-                          Remove
+                          Elimină
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
