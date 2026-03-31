@@ -124,9 +124,9 @@ export default function Auth() {
     <div className="flex min-h-screen">
       {/* Left panel - branding */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-center px-12 bg-primary text-primary-foreground">
-        <h1 className="text-4xl font-bold tracking-tight mb-4">WooCommerce AI Assistant</h1>
+        <h1 className="text-4xl font-bold tracking-tight mb-4">Asistent AI WooCommerce</h1>
         <p className="text-lg opacity-90 mb-10">
-          Chat with your store. Create orders, search products, and get analytics — all through conversation.
+          Discută cu magazinul tău. Creează comenzi, caută produse și obține analize — totul prin conversație.
         </p>
         <div className="space-y-6">
           {features.map((f) => (
