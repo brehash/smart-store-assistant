@@ -361,7 +361,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
       </Card>
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Change Password</CardTitle>
+          <CardTitle className="text-base">Schimbă parola</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
