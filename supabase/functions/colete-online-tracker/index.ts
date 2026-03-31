@@ -10,16 +10,12 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   const startTime = Date.now();
-  const logDetails: any[] = [];
-  let totalOrdersScanned = 0;
-  let totalOrdersCompleted = 0;
-  let totalErrors = 0;
 
   try {
     const url = new URL(req.url);
     const action = url.searchParams.get("action");
 
-    // ── Test Connection action ──
+    // ── Test Connection action (kept as-is) ──
     if (action === "test") {
       const { client_id, client_secret } = await req.json();
       if (!client_id || !client_secret) {
@@ -53,214 +49,84 @@ serve(async (req) => {
       });
     }
 
-    // ── Default: tracker action ──
+    // ── Orchestrator: dispatch workers ──
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // 1. Get all users with Colete Online enabled
+    // Fetch all enabled Colete Online integrations
     const { data: integrations, error: intErr } = await supabase
       .from("woo_integrations")
-      .select("*")
+      .select("id, user_id")
       .eq("integration_key", "colete_online")
       .eq("is_enabled", true);
 
     if (intErr) throw intErr;
+
     if (!integrations || integrations.length === 0) {
-      const durationMs = Date.now() - startTime;
       await supabase.from("cron_job_logs").insert({
         job_name: "colete_online_tracker",
         status: "no_integrations",
-        summary: { integrations_checked: 0, orders_scanned: 0, orders_completed: 0, errors: 0 },
+        summary: { integrations_checked: 0, workers_dispatched: 0 },
         details: [],
-        duration_ms: durationMs,
+        duration_ms: Date.now() - startTime,
       });
       return new Response(JSON.stringify({ message: "No enabled Colete Online integrations" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const results: any[] = [];
+    // Fan-out: invoke worker for each integration with concurrency limit of 10
+    const workerUrl = `${supabaseUrl}/functions/v1/colete-online-worker`;
+    const concurrencyLimit = 10;
+    const results: { integration_id: string; status: string; error?: string }[] = [];
 
-    for (const integration of integrations) {
-      const userId = integration.user_id;
-      const config = integration.config as { client_id?: string; client_secret?: string };
-      const userLog: any = {
-        userId,
-        storeName: null,
-        authStatus: "skipped",
-        ordersScanned: 0,
-        ordersWithAwb: 0,
-        ordersCompleted: 0,
-        checkedOrders: [],
-        errors: [],
-      };
-
-      if (!config.client_id || !config.client_secret) {
-        userLog.authStatus = "missing_credentials";
-        logDetails.push(userLog);
-        continue;
-      }
-
-      // 2. Get user's WooCommerce connection
-      const { data: conn } = await supabase
-        .from("woo_connections")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("is_active", true)
-        .limit(1)
-        .single();
-
-      if (!conn) {
-        userLog.authStatus = "no_woo_connection";
-        logDetails.push(userLog);
-        continue;
-      }
-
-      userLog.storeName = conn.store_name || conn.store_url;
-
-      // 3. Authenticate with Colete Online
-      const basicAuth = btoa(`${config.client_id}:${config.client_secret}`);
-      const tokenResp = await fetch("https://auth.colete-online.ro/token", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-          "Authorization": `Basic ${basicAuth}`,
-        },
-        body: "grant_type=client_credentials",
-      });
-
-      if (!tokenResp.ok) {
-        userLog.authStatus = `failed_${tokenResp.status}`;
-        userLog.errors.push({ step: "auth", error: `HTTP ${tokenResp.status}` });
-        totalErrors++;
-        logDetails.push(userLog);
-        continue;
-      }
-
-      userLog.authStatus = "success";
-      const tokenData = await tokenResp.json();
-      const accessToken = tokenData.access_token;
-
-      // 4. Fetch non-completed orders from WooCommerce
-      const excludeStatuses = ["completed", "cancelled", "refunded", "failed", "trash", "refuzata"];
-      const baseUrl = conn.store_url.replace(/\/+$/, "");
-      const ck = conn.consumer_key;
-      const cs = conn.consumer_secret;
-
-      let page = 1;
-      let processedCount = 0;
-
-      while (true) {
-        const orderUrl = `${baseUrl}/wp-json/wc/v3/orders?per_page=50&page=${page}&consumer_key=${ck}&consumer_secret=${cs}`;
-        const ordersResp = await fetch(orderUrl);
-        if (!ordersResp.ok) {
-          userLog.errors.push({ step: "fetch_orders", error: `HTTP ${ordersResp.status}`, page });
-          totalErrors++;
-          break;
-        }
-
-        const orders = await ordersResp.json();
-        if (!Array.isArray(orders) || orders.length === 0) break;
-
-        for (const order of orders) {
-          if (excludeStatuses.includes(order.status)) continue;
-          userLog.ordersScanned++;
-          totalOrdersScanned++;
-
-          // 5. Check for _coleteonline_courier_order meta
-          const meta = order.meta_data?.find((m: any) => m.key === "_coleteonline_courier_order");
-          if (!meta?.value) continue;
-
-          let metaValue = meta.value;
-          if (typeof metaValue === "string") {
-            try { metaValue = JSON.parse(metaValue); } catch { continue; }
-          }
-
-          const uniqueId = metaValue?.result?.uniqueId;
-          const awb = metaValue?.result?.awb;
-          if (!uniqueId) continue;
-
-          userLog.ordersWithAwb++;
-
-          // 6. Check status via Colete Online API
-          const statusResp = await fetch(`https://api.colete-online.ro/v1/order/status/${uniqueId}`, {
-            headers: { "Authorization": `Bearer ${accessToken}` },
-          });
-
-          if (!statusResp.ok) {
-            userLog.errors.push({ step: "check_status", orderId: order.id, awb, error: `HTTP ${statusResp.status}` });
-            userLog.checkedOrders.push({ orderId: order.id, awb, uniqueId, wooStatus: order.status, shippingStatus: null, shippingCode: null, action: "error" });
-            totalErrors++;
-            continue;
-          }
-
-          const statusData = await statusResp.json();
-          const history = statusData.history;
-          if (!Array.isArray(history) || history.length === 0) {
-            userLog.checkedOrders.push({ orderId: order.id, awb, uniqueId, wooStatus: order.status, shippingStatus: null, shippingCode: null, action: "no_history" });
-            continue;
-          }
-
-          const latest = history[history.length - 1];
-          const latestStatus = latest?.status || latest?.description || null;
-          const latestCode = latest?.code ?? latest?.status_id ?? null;
-          const isDelivered = history.some((h: any) => h.code === 20800 || h.code === 30500);
-
-          if (isDelivered) {
-            // 7. Update order status to completed
-            const updateUrl = `${baseUrl}/wp-json/wc/v3/orders/${order.id}?consumer_key=${ck}&consumer_secret=${cs}`;
-            const updateResp = await fetch(updateUrl, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ status: "completed" }),
+    for (let i = 0; i < integrations.length; i += concurrencyLimit) {
+      const batch = integrations.slice(i, i + concurrencyLimit);
+      const batchResults = await Promise.allSettled(
+        batch.map(async (integration) => {
+          try {
+            const resp = await fetch(workerUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${serviceRoleKey}`,
+              },
+              body: JSON.stringify({ integration_id: integration.id }),
             });
-
-            if (updateResp.ok) {
-              processedCount++;
-              userLog.ordersCompleted++;
-              totalOrdersCompleted++;
-              userLog.checkedOrders.push({ orderId: order.id, awb, uniqueId, wooStatus: order.status, shippingStatus: latestStatus, shippingCode: latestCode, action: "completed" });
-              console.log(`Order #${order.id} (AWB: ${awb}) marked as completed`);
-            } else {
-              const errMsg = `HTTP ${updateResp.status}`;
-              userLog.errors.push({ step: "update_order", orderId: order.id, awb, error: errMsg });
-              userLog.checkedOrders.push({ orderId: order.id, awb, uniqueId, wooStatus: order.status, shippingStatus: latestStatus, shippingCode: latestCode, action: "error" });
-              totalErrors++;
-            }
-          } else {
-            userLog.checkedOrders.push({ orderId: order.id, awb, uniqueId, wooStatus: order.status, shippingStatus: latestStatus, shippingCode: latestCode, action: "in_transit" });
+            const body = await resp.text();
+            return { integration_id: integration.id, status: resp.ok ? "dispatched" : "failed", error: resp.ok ? undefined : body.slice(0, 200) };
+          } catch (e) {
+            return { integration_id: integration.id, status: "failed", error: e instanceof Error ? e.message : "Unknown" };
           }
-        }
+        })
+      );
 
-        if (orders.length < 50) break;
-        page++;
+      for (const r of batchResults) {
+        results.push(r.status === "fulfilled" ? r.value : { integration_id: "unknown", status: "rejected", error: String(r.reason) });
       }
-
-      logDetails.push(userLog);
-      results.push({ userId, processedCount });
     }
 
-    // Insert cron job log
-    const durationMs = Date.now() - startTime;
+    const dispatched = results.filter(r => r.status === "dispatched").length;
+    const failed = results.filter(r => r.status !== "dispatched").length;
+
+    // Log orchestrator summary
     await supabase.from("cron_job_logs").insert({
       job_name: "colete_online_tracker",
-      status: totalErrors > 0 ? "error" : "success",
+      status: failed > 0 ? "partial" : "success",
       summary: {
         integrations_checked: integrations.length,
-        orders_scanned: totalOrdersScanned,
-        orders_completed: totalOrdersCompleted,
-        errors: totalErrors,
+        workers_dispatched: dispatched,
+        workers_failed: failed,
       },
-      details: logDetails,
-      duration_ms: durationMs,
+      details: results,
+      duration_ms: Date.now() - startTime,
     });
 
-    return new Response(JSON.stringify({ success: true, results }), {
+    return new Response(JSON.stringify({ success: true, dispatched, failed, total: integrations.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
-    // Log error run
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     if (supabaseUrl && serviceRoleKey) {
@@ -269,20 +135,13 @@ serve(async (req) => {
         await sb.from("cron_job_logs").insert({
           job_name: "colete_online_tracker",
           status: "error",
-          summary: {
-            integrations_checked: 0,
-            orders_scanned: totalOrdersScanned,
-            orders_completed: totalOrdersCompleted,
-            errors: totalErrors + 1,
-            fatal_error: e instanceof Error ? e.message : "Unknown error",
-          },
-          details: logDetails,
+          summary: { fatal_error: e instanceof Error ? e.message : "Unknown error" },
+          details: [],
           duration_ms: Date.now() - startTime,
         });
-      } catch { /* ignore logging failure */ }
+      } catch { /* ignore */ }
     }
-
-    console.error("colete-online-tracker error:", e);
+    console.error("colete-online-tracker orchestrator error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
