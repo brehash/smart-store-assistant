@@ -372,8 +372,8 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
 
         {/* Note */}
         <div>
-          <Label className="text-xs font-medium mb-1.5 block">Order Note (optional)</Label>
-          <Textarea placeholder="Add a note..." value={note} onChange={(e) => setNote(e.target.value)} className="text-sm min-h-[60px]" disabled={isDisabled} />
+          <Label className="text-xs font-medium mb-1.5 block">Notă comandă (opțional)</Label>
+          <Textarea placeholder="Adaugă o notă..." value={note} onChange={(e) => setNote(e.target.value)} className="text-sm min-h-[60px]" disabled={isDisabled} />
         </div>
 
         {/* Billing - collapsible */}
