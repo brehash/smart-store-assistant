@@ -102,10 +102,10 @@ export function GeoReportCard({ data }: { data: GeoReportData }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead className="w-[60px]">Type</TableHead>
-                <TableHead className="w-[70px]">Score</TableHead>
-                <TableHead>Top Issue</TableHead>
+                <TableHead>Nume</TableHead>
+                <TableHead className="w-[60px]">Tip</TableHead>
+                <TableHead className="w-[70px]">Scor</TableHead>
+                <TableHead>Problema principală</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
