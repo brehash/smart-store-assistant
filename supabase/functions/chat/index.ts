@@ -3,7 +3,13 @@ import { corsHeaders, WRITE_TOOLS } from "./types.ts";
 import type { SemanticStep } from "./types.ts";
 import { TOOLS } from "./tools.ts";
 import { selectToolsForIntent, isShippingIntent } from "./intent.ts";
-import { coerceMessageContent, sanitizeAiHistory, truncateForAI, normalizeSalesReportDates, normalizeCompareSalesDates } from "./utils.ts";
+import {
+  coerceMessageContent,
+  sanitizeAiHistory,
+  truncateForAI,
+  normalizeSalesReportDates,
+  normalizeCompareSalesDates,
+} from "./utils.ts";
 import { TOOL_LABELS, generateReasoningBefore, generateReasoningAfter, generateSemanticPlan } from "./reasoning.ts";
 import { buildSystemPrompt, buildShippingPrompt } from "./prompts.ts";
 import { executeTool, callWooProxy } from "./tool-executor.ts";
@@ -40,7 +46,7 @@ serve(async (req) => {
     // ── Credit check (resolve through team if applicable) ──
     const serviceClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {});
     const { data: creditBalance } = await serviceClient.rpc("refill_credits_if_due", { _user_id: userId });
-    
+
     // Check if user is in a team and use team balance instead
     let effectiveBalance = creditBalance?.balance || 0;
     let teamCreditRow: any = null;
@@ -58,12 +64,15 @@ serve(async (req) => {
         teamCreditRow = teamBal;
       }
     }
-    
+
     if (effectiveBalance <= 0) {
-      return new Response(JSON.stringify({ error: "You've run out of credits. Contact your administrator for more." }), {
-        status: 402,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: "You've run out of credits. Contact your administrator for more." }),
+        {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
     }
 
     const { data: prefs } = await supabase
@@ -120,13 +129,15 @@ serve(async (req) => {
     }
 
     // Resolve woo_connections: own connection first, then team owner's
-    let connData = (await serviceClient
-      .from("woo_connections")
-      .select("response_language, order_statuses")
-      .eq("user_id", userId)
-      .eq("is_active", true)
-      .maybeSingle()).data;
-    
+    let connData = (
+      await serviceClient
+        .from("woo_connections")
+        .select("response_language, order_statuses")
+        .eq("user_id", userId)
+        .eq("is_active", true)
+        .maybeSingle()
+    ).data;
+
     if (!connData) {
       // Check if user is in a team and use team owner's connection
       const { data: membership } = await serviceClient
@@ -141,12 +152,14 @@ serve(async (req) => {
           .eq("id", membership.team_id)
           .single();
         if (team) {
-          connData = (await serviceClient
-            .from("woo_connections")
-            .select("response_language, order_statuses")
-            .eq("user_id", team.owner_id)
-            .eq("is_active", true)
-            .maybeSingle()).data;
+          connData = (
+            await serviceClient
+              .from("woo_connections")
+              .select("response_language, order_statuses")
+              .eq("user_id", team.owner_id)
+              .eq("is_active", true)
+              .maybeSingle()
+          ).data;
         }
       }
     }
@@ -213,7 +226,7 @@ serve(async (req) => {
       ? "https://api.openai.com/v1/chat/completions"
       : "https://ai.gateway.lovable.dev/v1/chat/completions";
     const aiAuthHeader = useOpenAI ? `Bearer ${userOpenAIKey}` : `Bearer ${LOVABLE_API_KEY}`;
-    const aiModel = useOpenAI ? "gpt-5.4-mini" : "google/gemini-3-flash-preview";
+    const aiModel = useOpenAI ? "gpt-5.4-nano" : "google/gemini-3-flash-preview";
 
     // Detect shipping intent for optimized prompt/tool selection
     const lastUserMsg = (messages as any[]).filter((m: any) => m.role === "user").pop()?.content || "";
@@ -244,23 +257,31 @@ serve(async (req) => {
           const totalUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
 
           // ── Order-creation intent detection ──
-          const orderIntentRe = /(cre(?:ea)?z[aă]|f[aă]|plaseaz[aă]|adaug[aă]|pune|place|create|make|add|new)\s.*?(comand[aă]|order)/i;
+          const orderIntentRe =
+            /(cre(?:ea)?z[aă]|f[aă]|plaseaz[aă]|adaug[aă]|pune|place|create|make|add|new)\s.*?(comand[aă]|order)/i;
           if (orderIntentRe.test(lastUserMsg)) {
             sendSSE({ type: "pipeline_plan", title: "Execution Plan", steps: ["Creating order form"] });
             sendSSE({ type: "pipeline_step", stepIndex: 0, title: "Creating order form", status: "done" });
             sendSSE({ type: "order_form", toolCallId: "manual-order", stepIndex: 0, prefill: {} });
-            const formText = responseLanguage !== "English"
-              ? "Completați formularul de mai jos pentru a crea comanda."
-              : "Please fill in the order form below to create the order.";
+            const formText =
+              responseLanguage !== "English"
+                ? "Completați formularul de mai jos pentru a crea comanda."
+                : "Please fill in the order form below to create the order.";
             sendSSE({ choices: [{ delta: { content: formText } }] });
             sendSSE({ type: "pipeline_complete" });
 
             const CREDIT_COST = 1;
             const deductRow = teamCreditRow || creditBalance;
             const newBalance = Math.max(0, (deductRow?.balance || 1) - CREDIT_COST);
-            await serviceClient.from("credit_balances").update({ balance: newBalance }).eq("user_id", deductRow?.user_id || userId);
+            await serviceClient
+              .from("credit_balances")
+              .update({ balance: newBalance })
+              .eq("user_id", deductRow?.user_id || userId);
             await serviceClient.from("credit_transactions").insert({
-              user_id: userId, amount: -CREDIT_COST, balance_after: newBalance, reason: "chat_message",
+              user_id: userId,
+              amount: -CREDIT_COST,
+              balance_after: newBalance,
+              reason: "chat_message",
             });
             sendSSE({ type: "credit_usage", cost: CREDIT_COST, remaining_balance: newBalance });
             controller.enqueue(encoder.encode("data: [DONE]\n\n"));
@@ -269,24 +290,38 @@ serve(async (req) => {
           }
 
           // ── Cache refresh intent detection ──
-          const cacheIntentRe = /(update|refresh|actualizeaz[aă]|sincronizeaz[aă]|sync)\s.*(product|cache|memor|produs)/i;
+          const cacheIntentRe =
+            /(update|refresh|actualizeaz[aă]|sincronizeaz[aă]|sync)\s.*(product|cache|memor|produs)/i;
           if (cacheIntentRe.test(lastUserMsg)) {
             sendSSE({ type: "pipeline_plan", title: "Execution Plan", steps: ["Refreshing product cache"] });
             sendSSE({ type: "pipeline_step", stepIndex: 0, title: "Refreshing product cache", status: "running" });
 
-            let conn = (await serviceClient
-              .from("woo_connections")
-              .select("store_url, consumer_key, consumer_secret, user_id")
-              .eq("user_id", userId)
-              .eq("is_active", true)
-              .maybeSingle()).data;
+            let conn = (
+              await serviceClient
+                .from("woo_connections")
+                .select("store_url, consumer_key, consumer_secret, user_id")
+                .eq("user_id", userId)
+                .eq("is_active", true)
+                .maybeSingle()
+            ).data;
             if (!conn) {
               // Fallback to team owner's connection
-              const { data: tm } = await serviceClient.from("team_members").select("team_id").eq("user_id", userId).maybeSingle();
+              const { data: tm } = await serviceClient
+                .from("team_members")
+                .select("team_id")
+                .eq("user_id", userId)
+                .maybeSingle();
               if (tm) {
                 const { data: t } = await serviceClient.from("teams").select("owner_id").eq("id", tm.team_id).single();
                 if (t) {
-                  conn = (await serviceClient.from("woo_connections").select("store_url, consumer_key, consumer_secret, user_id").eq("user_id", t.owner_id).eq("is_active", true).maybeSingle()).data;
+                  conn = (
+                    await serviceClient
+                      .from("woo_connections")
+                      .select("store_url, consumer_key, consumer_secret, user_id")
+                      .eq("user_id", t.owner_id)
+                      .eq("is_active", true)
+                      .maybeSingle()
+                  ).data;
                 }
               }
             }
@@ -296,47 +331,92 @@ serve(async (req) => {
                 let allProducts: any[] = [];
                 let page = 1;
                 while (true) {
-                  const wooResp = await callWooProxy(supabaseUrl, authHeader, { endpoint: `products?per_page=100&page=${page}`, storeUrl: conn.store_url, consumerKey: conn.consumer_key, consumerSecret: conn.consumer_secret });
+                  const wooResp = await callWooProxy(supabaseUrl, authHeader, {
+                    endpoint: `products?per_page=100&page=${page}`,
+                    storeUrl: conn.store_url,
+                    consumerKey: conn.consumer_key,
+                    consumerSecret: conn.consumer_secret,
+                  });
                   if (!Array.isArray(wooResp) || wooResp.length === 0) break;
-                  allProducts = [...allProducts, ...wooResp.map((p: any) => ({ id: p.id, name: p.name, sku: p.sku, price: p.price, regular_price: p.regular_price, stock_status: p.stock_status, images: p.images?.slice(0, 1) }))];
+                  allProducts = [
+                    ...allProducts,
+                    ...wooResp.map((p: any) => ({
+                      id: p.id,
+                      name: p.name,
+                      sku: p.sku,
+                      price: p.price,
+                      regular_price: p.regular_price,
+                      stock_status: p.stock_status,
+                      images: p.images?.slice(0, 1),
+                    })),
+                  ];
                   if (wooResp.length < 100) break;
                   page++;
                 }
                 let paymentMethods: any[] = [];
                 try {
-                  const gwResp = await callWooProxy(supabaseUrl, authHeader, { endpoint: "payment_gateways", storeUrl: conn.store_url, consumerKey: conn.consumer_key, consumerSecret: conn.consumer_secret });
-                  paymentMethods = Array.isArray(gwResp) ? gwResp.filter((g: any) => g.enabled).map((g: any) => ({ id: g.id, title: g.title })) : [];
-                } catch { /* payment gateways may not be accessible */ }
+                  const gwResp = await callWooProxy(supabaseUrl, authHeader, {
+                    endpoint: "payment_gateways",
+                    storeUrl: conn.store_url,
+                    consumerKey: conn.consumer_key,
+                    consumerSecret: conn.consumer_secret,
+                  });
+                  paymentMethods = Array.isArray(gwResp)
+                    ? gwResp.filter((g: any) => g.enabled).map((g: any) => ({ id: g.id, title: g.title }))
+                    : [];
+                } catch {
+                  /* payment gateways may not be accessible */
+                }
                 let allStatuses: any[] = [];
                 try {
-                  const stResp = await callWooProxy(supabaseUrl, authHeader, { endpoint: "reports/orders/totals", storeUrl: conn.store_url, consumerKey: conn.consumer_key, consumerSecret: conn.consumer_secret });
+                  const stResp = await callWooProxy(supabaseUrl, authHeader, {
+                    endpoint: "reports/orders/totals",
+                    storeUrl: conn.store_url,
+                    consumerKey: conn.consumer_key,
+                    consumerSecret: conn.consumer_secret,
+                  });
                   allStatuses = Array.isArray(stResp) ? stResp.map((s: any) => ({ slug: s.slug, name: s.name })) : [];
-                } catch { /* silent */ }
+                } catch {
+                  /* silent */
+                }
                 const upserts = [
                   { user_id: userId, cache_key: "products", data: allProducts, updated_at: new Date().toISOString() },
-                  { user_id: userId, cache_key: "payment_methods", data: paymentMethods, updated_at: new Date().toISOString() },
-                  { user_id: userId, cache_key: "order_statuses", data: allStatuses, updated_at: new Date().toISOString() },
+                  {
+                    user_id: userId,
+                    cache_key: "payment_methods",
+                    data: paymentMethods,
+                    updated_at: new Date().toISOString(),
+                  },
+                  {
+                    user_id: userId,
+                    cache_key: "order_statuses",
+                    data: allStatuses,
+                    updated_at: new Date().toISOString(),
+                  },
                 ];
                 for (const row of upserts) {
                   await serviceClient.from("woo_cache").upsert(row, { onConflict: "user_id,cache_key" });
                 }
                 sendSSE({ type: "pipeline_step", stepIndex: 0, title: "Refreshing product cache", status: "done" });
-                const doneText = responseLanguage !== "English"
-                  ? `✅ Cache actualizat: ${allProducts.length} produse, ${paymentMethods.length} metode de plată, ${allStatuses.length} statusuri.`
-                  : `✅ Cache refreshed: ${allProducts.length} products, ${paymentMethods.length} payment methods, ${allStatuses.length} statuses.`;
+                const doneText =
+                  responseLanguage !== "English"
+                    ? `✅ Cache actualizat: ${allProducts.length} produse, ${paymentMethods.length} metode de plată, ${allStatuses.length} statusuri.`
+                    : `✅ Cache refreshed: ${allProducts.length} products, ${paymentMethods.length} payment methods, ${allStatuses.length} statuses.`;
                 sendSSE({ choices: [{ delta: { content: doneText } }] });
               } catch (err) {
                 sendSSE({ type: "pipeline_step", stepIndex: 0, title: "Refreshing product cache", status: "error" });
-                const errText = responseLanguage !== "English"
-                  ? "❌ Nu am putut actualiza cache-ul. Verificați conexiunea."
-                  : "❌ Failed to refresh cache. Check your connection.";
+                const errText =
+                  responseLanguage !== "English"
+                    ? "❌ Nu am putut actualiza cache-ul. Verificați conexiunea."
+                    : "❌ Failed to refresh cache. Check your connection.";
                 sendSSE({ choices: [{ delta: { content: errText } }] });
               }
             } else {
               sendSSE({ type: "pipeline_step", stepIndex: 0, title: "Refreshing product cache", status: "error" });
-              const noConnText = responseLanguage !== "English"
-                ? "❌ Nu aveți o conexiune WooCommerce activă."
-                : "❌ No active WooCommerce connection found.";
+              const noConnText =
+                responseLanguage !== "English"
+                  ? "❌ Nu aveți o conexiune WooCommerce activă."
+                  : "❌ No active WooCommerce connection found.";
               sendSSE({ choices: [{ delta: { content: noConnText } }] });
             }
 
@@ -344,9 +424,15 @@ serve(async (req) => {
             const CREDIT_COST = 1;
             const deductRow2 = teamCreditRow || creditBalance;
             const newBalance = Math.max(0, (deductRow2?.balance || 1) - CREDIT_COST);
-            await serviceClient.from("credit_balances").update({ balance: newBalance }).eq("user_id", deductRow2?.user_id || userId);
+            await serviceClient
+              .from("credit_balances")
+              .update({ balance: newBalance })
+              .eq("user_id", deductRow2?.user_id || userId);
             await serviceClient.from("credit_transactions").insert({
-              user_id: userId, amount: -CREDIT_COST, balance_after: newBalance, reason: "chat_message",
+              user_id: userId,
+              amount: -CREDIT_COST,
+              balance_after: newBalance,
+              reason: "chat_message",
             });
             sendSSE({ type: "credit_usage", cost: CREDIT_COST, remaining_balance: newBalance });
             controller.enqueue(encoder.encode("data: [DONE]\n\n"));
@@ -506,7 +592,10 @@ serve(async (req) => {
                     aiMessages.push({
                       role: "tool",
                       tool_call_id: tc.id,
-                      content: JSON.stringify({ status: "done", message: "Order form displayed. The user will complete and submit the order via the form." }),
+                      content: JSON.stringify({
+                        status: "done",
+                        message: "Order form displayed. The user will complete and submit the order via the form.",
+                      }),
                     });
 
                     sendSSE({ type: "pipeline_step", stepIndex, title: currentSemanticTitle, status: "done" });
@@ -716,10 +805,7 @@ serve(async (req) => {
               .eq("user_id", creditUserId)
               .single();
             const newBalance = Math.max(0, (bal?.balance || 0) - creditCost);
-            await serviceClient
-              .from("credit_balances")
-              .update({ balance: newBalance })
-              .eq("user_id", creditUserId);
+            await serviceClient.from("credit_balances").update({ balance: newBalance }).eq("user_id", creditUserId);
             await serviceClient.from("credit_transactions").insert({
               user_id: userId,
               amount: -creditCost,
