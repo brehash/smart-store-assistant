@@ -448,7 +448,7 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
                   </div>
                 </div>
                 <div>
-                  <Label className="text-xs">Phone</Label>
+                  <Label className="text-xs">Telefon</Label>
                   <Input className="h-8 text-sm" value={shipping.phone} onChange={(e) => setShipping((s) => ({ ...s, phone: e.target.value }))} disabled={isDisabled} />
                 </div>
                 <div>
