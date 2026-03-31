@@ -668,7 +668,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
 
   const handleTestColeteOnline = async () => {
     if (!coleteClientId || !coleteClientSecret) {
-      toast({ title: "Error", description: "Enter Client ID and Client Secret first.", variant: "destructive" });
+      toast({ title: "Eroare", description: "Introdu Client ID și Client Secret mai întâi.", variant: "destructive" });
       return;
     }
     setTestingColete(true);
