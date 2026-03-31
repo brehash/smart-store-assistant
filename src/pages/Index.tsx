@@ -141,10 +141,18 @@ export default function Index() {
         .maybeSingle();
       
       if (membership) {
-        // User is in a team — assume team owner has a connection
         setHasConnection(true);
       } else {
         setHasConnection(false);
+        // Retry once after a short delay in case invite acceptance is still in-flight
+        setTimeout(async () => {
+          const { data: retryMembership } = await supabase
+            .from("team_members")
+            .select("team_id")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          if (retryMembership) setHasConnection(true);
+        }, 2000);
       }
     };
     checkConnection();
