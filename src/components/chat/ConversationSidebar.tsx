@@ -453,7 +453,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
                   onClick={() => setViewsLimit((prev) => prev + 5)}
                   className="w-full px-3 py-1.5 text-[11px] text-sidebar-foreground/50 hover:text-sidebar-foreground/80 transition-colors text-center"
                 >
-                  Show more views
+                  Arată mai multe vederi
                 </button>
               )}
             </div>
