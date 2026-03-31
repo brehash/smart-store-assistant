@@ -289,9 +289,9 @@ export function TeamSettings() {
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Remove {member.display_name}?</AlertDialogTitle>
+                        <AlertDialogTitle>Elimini {member.display_name}?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          They will lose access to the shared credit balance.
+                          Va pierde accesul la soldul de credite partajate.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
