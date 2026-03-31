@@ -212,8 +212,8 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
       }
       // Save display name
       await supabase.from("profiles").update({ display_name: displayName } as any).eq("user_id", user.id);
-      toast({ title: "Saved!", description: "Settings updated successfully." });
-    } catch { toast({ title: "Error", description: "Failed to save.", variant: "destructive" }); }
+      toast({ title: "Salvat!", description: "Setările au fost actualizate cu succes." });
+    } catch { toast({ title: "Eroare", description: "Salvarea a eșuat.", variant: "destructive" }); }
     finally { setSaving(false); }
   };
 
