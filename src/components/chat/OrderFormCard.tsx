@@ -402,7 +402,7 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
               <Input className="h-8 text-sm" value={billing.phone} onChange={(e) => setBilling((b) => ({ ...b, phone: e.target.value }))} disabled={isDisabled} />
             </div>
             <div>
-              <Label className="text-xs">Address</Label>
+              <Label className="text-xs">Adresă</Label>
               <Input className="h-8 text-sm" value={billing.address_1} onChange={(e) => setBilling((b) => ({ ...b, address_1: e.target.value }))} disabled={isDisabled} />
             </div>
             <div className="grid grid-cols-2 gap-2">
