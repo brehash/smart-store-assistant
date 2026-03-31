@@ -369,7 +369,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
             <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="••••••••" />
           </div>
           <div className="space-y-2">
-            <Label>Confirm Password</Label>
+            <Label>Confirmă parola</Label>
             <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" />
           </div>
           <Button onClick={handlePasswordChange} disabled={changingPassword || !newPassword} size="sm">
