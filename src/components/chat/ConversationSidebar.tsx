@@ -386,7 +386,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
             </div>
             <div className="space-y-0.5">
               {visibleViews.length === 0 && (
-                <p className="px-3 py-2 text-[11px] text-sidebar-foreground/30">No views yet</p>
+                <p className="px-3 py-2 text-[11px] text-sidebar-foreground/30">Nicio vedere încă</p>
               )}
               {visibleViews.map((view) => {
                 const viewConvs = getViewConversations(view.id);
