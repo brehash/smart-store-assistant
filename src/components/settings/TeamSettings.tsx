@@ -248,7 +248,7 @@ export function TeamSettings() {
               <p className="text-xs font-medium text-muted-foreground">Sold credite partajate</p>
               <p className="text-2xl font-bold text-primary">{teamData.creditBalance.balance}</p>
               <p className="text-xs text-muted-foreground">
-                Monthly allowance: {teamData.creditBalance.monthly_allowance}
+                Alocație lunară: {teamData.creditBalance.monthly_allowance}
               </p>
             </div>
           </CardContent>
