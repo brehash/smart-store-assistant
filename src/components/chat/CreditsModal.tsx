@@ -135,7 +135,7 @@ export function CreditsModal({ open, onOpenChange, currentBalance, currentPlanId
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground mt-2 text-center">
-                  Contact your administrator to purchase credits or upgrade your plan.
+                  Contactează administratorul pentru a achiziționa credite sau a-ți actualiza planul.
                 </p>
               </div>
             )}

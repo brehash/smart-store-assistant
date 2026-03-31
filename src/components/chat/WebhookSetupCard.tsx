@@ -149,7 +149,7 @@ export function WebhookSetupCard({ onComplete, onDismiss }: WebhookSetupCardProp
                 </div>
               ))}
               <Button variant="ghost" onClick={onComplete} className="w-full mt-2">
-                Done
+                Gata
               </Button>
             </div>
           )}
