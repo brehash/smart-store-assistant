@@ -480,8 +480,8 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
             <div className="flex items-center gap-3">
               <div className="rounded-lg bg-primary/10 p-2"><ListChecks className="h-5 w-5 text-primary" /></div>
               <div>
-                <CardTitle>Default Order Statuses</CardTitle>
-                <CardDescription>Select which order statuses to include by default</CardDescription>
+                <CardTitle>Statusuri comenzi implicite</CardTitle>
+                <CardDescription>Selectează ce statusuri de comandă să fie incluse implicit</CardDescription>
               </div>
             </div>
           </CardHeader>
