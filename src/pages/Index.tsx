@@ -185,7 +185,7 @@ export default function Index() {
           const { topic, payload: eventData } = payload.new;
           // Ignore ping/unknown/action events
           if (!topic || topic === "unknown" || topic.startsWith("action.")) return;
-          let title = "Webhook Event";
+          let title = "Eveniment Webhook";
           let description = topic;
           if (topic === "order.created" && eventData) {
             const num = eventData.number || eventData.id;
@@ -193,15 +193,15 @@ export default function Index() {
             const name = eventData.billing?.first_name
               ? `${eventData.billing.first_name} ${eventData.billing.last_name || ""}`
               : "";
-            title = "🛒 New Order";
-            description = `Order #${num} — ${total}${name ? ` from ${name}` : ""}`;
+            title = "🛒 Comandă nouă";
+            description = `Comanda #${num} — ${total}${name ? ` de la ${name}` : ""}`;
           } else if (topic === "customer.created" && eventData) {
-            title = "👤 New Customer";
+            title = "👤 Client nou";
             description = eventData.email || `${eventData.first_name || ""} ${eventData.last_name || ""}`;
           } else if (topic === "order.updated" && eventData) {
             const num = eventData.number || eventData.id;
-            title = "📦 Order Updated";
-            description = `Order #${num} status: ${eventData.status || "unknown"}`;
+            title = "📦 Comandă actualizată";
+            description = `Comanda #${num} status: ${eventData.status || "necunoscut"}`;
           }
           toast({ title, description });
           // Increment new order count for package slips badge
