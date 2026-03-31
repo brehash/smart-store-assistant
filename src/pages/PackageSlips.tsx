@@ -682,7 +682,7 @@ export default function PackageSlips() {
       <AlertDialog open={confirmAll} onOpenChange={setConfirmAll}>
         <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm">Mark all as packed?</AlertDialogTitle>
+            <AlertDialogTitle className="text-sm">Marchează toate ca împachetate?</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground">
