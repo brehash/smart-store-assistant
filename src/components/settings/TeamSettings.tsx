@@ -313,7 +313,7 @@ export function TeamSettings() {
       {teamData.invitations.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Pending Invitations</CardTitle>
+            <CardTitle className="text-base">Invitații în așteptare</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {teamData.invitations.map((inv: any) => (
