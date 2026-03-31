@@ -139,7 +139,7 @@ export function WebhookSetupCard({ onComplete, onDismiss }: WebhookSetupCardProp
                   <span>{wh.label}</span>
                   {results[wh.topic] === "success" ? (
                     <Badge variant="outline" className="gap-1 text-emerald-600 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-800 dark:text-emerald-400">
-                      <CheckCircle2 className="h-3 w-3" /> Created
+                      <CheckCircle2 className="h-3 w-3" /> Creat
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="gap-1 text-destructive border-destructive/30 bg-destructive/10">
