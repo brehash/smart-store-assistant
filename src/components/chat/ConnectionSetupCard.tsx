@@ -37,7 +37,7 @@ export function ConnectionSetupCard({ onComplete }: ConnectionSetupCardProps) {
       setStoreName(data?.name || storeUrl);
     } catch (e) {
       setTestResult("error");
-      setError("Connection failed. Check your store URL and API credentials.");
+      setError("Conexiune eșuată. Verifică URL-ul magazinului și cheile API.");
     } finally {
       setTesting(false);
     }
@@ -79,7 +79,7 @@ export function ConnectionSetupCard({ onComplete }: ConnectionSetupCardProps) {
       // Delay to show success before transitioning
       setTimeout(() => onComplete(), 1500);
     } catch {
-      setError("Failed to save connection.");
+      setError("Salvarea conexiunii a eșuat.");
     } finally {
       setSaving(false);
     }
@@ -92,9 +92,9 @@ export function ConnectionSetupCard({ onComplete }: ConnectionSetupCardProps) {
           <div className="mx-auto rounded-2xl bg-primary/10 p-4 mb-3">
             <Store className="h-8 w-8 text-primary" />
           </div>
-          <CardTitle className="text-xl">Connect Your Store</CardTitle>
+          <CardTitle className="text-xl">Conectează-ți magazinul</CardTitle>
           <CardDescription>
-            Set up your WooCommerce connection to get started
+            Configurează conexiunea WooCommerce pentru a începe
           </CardDescription>
           {/* Step indicator */}
           <div className="flex items-center justify-center gap-2 pt-3">
@@ -112,14 +112,14 @@ export function ConnectionSetupCard({ onComplete }: ConnectionSetupCardProps) {
           {step === 1 && (
             <>
               <div className="space-y-2">
-                <Label>Store URL</Label>
+                <Label>URL Magazin</Label>
                 <Input
                   value={storeUrl}
                   onChange={(e) => setStoreUrl(e.target.value)}
                   placeholder="https://yourstore.com"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Enter the full URL of your WooCommerce store
+                  Introdu URL-ul complet al magazinului tău WooCommerce
                 </p>
               </div>
               <Button
@@ -127,7 +127,7 @@ export function ConnectionSetupCard({ onComplete }: ConnectionSetupCardProps) {
                 disabled={!storeUrl.trim()}
                 className="w-full gap-2"
               >
-                Next <ArrowRight className="h-4 w-4" />
+                Următorul <ArrowRight className="h-4 w-4" />
               </Button>
             </>
           )}
@@ -154,18 +154,18 @@ export function ConnectionSetupCard({ onComplete }: ConnectionSetupCardProps) {
               </div>
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <ExternalLink className="h-3 w-3" />
-                Find these in WooCommerce → Settings → Advanced → REST API
+                Le găsești în WooCommerce → Setări → Avansat → REST API
               </p>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
-                  Back
+                   Înapoi
                 </Button>
                 <Button
                   onClick={() => setStep(3)}
                   disabled={!consumerKey.trim() || !consumerSecret.trim()}
                   className="flex-1 gap-2"
                 >
-                  Next <ArrowRight className="h-4 w-4" />
+                  Următorul <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
             </>
@@ -175,11 +175,11 @@ export function ConnectionSetupCard({ onComplete }: ConnectionSetupCardProps) {
             <>
               <div className="rounded-lg border bg-muted/50 p-4 space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Store</span>
+                  <span className="text-muted-foreground">Magazin</span>
                   <span className="font-medium truncate ml-4">{storeUrl}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">API Key</span>
+                  <span className="text-muted-foreground">Cheie API</span>
                   <span className="font-mono text-xs">
                     {consumerKey.slice(0, 8)}...
                   </span>
@@ -189,7 +189,7 @@ export function ConnectionSetupCard({ onComplete }: ConnectionSetupCardProps) {
               {testResult === "success" && (
                 <Badge variant="outline" className="w-full justify-center gap-1.5 py-2 text-emerald-600 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-800 dark:text-emerald-400">
                   <CheckCircle2 className="h-4 w-4" />
-                  Connected to {storeName}
+                  Conectat la {storeName}
                 </Badge>
               )}
 
@@ -211,17 +211,17 @@ export function ConnectionSetupCard({ onComplete }: ConnectionSetupCardProps) {
                 {testResult === "success" ? (
                   <Button onClick={handleSave} disabled={saving} className="flex-1 gap-2">
                     {saving ? (
-                      <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</>
+                      <><Loader2 className="h-4 w-4 animate-spin" /> Se salvează...</>
                     ) : (
-                      <>Save & Continue</>
+                      <>Salvează & Continuă</>
                     )}
                   </Button>
                 ) : (
                   <Button onClick={handleTest} disabled={testing} className="flex-1 gap-2">
                     {testing ? (
-                      <><Loader2 className="h-4 w-4 animate-spin" /> Testing...</>
+                      <><Loader2 className="h-4 w-4 animate-spin" /> Se testează...</>
                     ) : (
-                      <>Test Connection</>
+                      <>Testează conexiunea</>
                     )}
                   </Button>
                 )}
@@ -232,9 +232,9 @@ export function ConnectionSetupCard({ onComplete }: ConnectionSetupCardProps) {
           {step === 4 && (
             <div className="text-center py-4">
               <CheckCircle2 className="h-12 w-12 text-emerald-500 mx-auto mb-3" />
-              <p className="font-semibold text-lg">Connected!</p>
+              <p className="font-semibold text-lg">Conectat!</p>
               <p className="text-sm text-muted-foreground">
-                Your store {storeName} is ready. Setting up...
+                Magazinul {storeName} este gata. Se configurează...
               </p>
             </div>
           )}

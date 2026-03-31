@@ -217,7 +217,7 @@ export default function PackageSlips() {
   // Load orders (merge mode — preserves collected state)
   const loadOrders = async () => {
     if (sourceStatuses.length === 0) {
-      toast({ title: "Select at least one source status", variant: "destructive" });
+      toast({ title: "Selectează cel puțin un status sursă", variant: "destructive" });
       return;
     }
     setLoading(true);
@@ -258,7 +258,7 @@ export default function PackageSlips() {
         setOrders([]);
       }
     } catch (e: any) {
-      toast({ title: "Error loading orders", description: e.message, variant: "destructive" });
+      toast({ title: "Eroare la încărcarea comenzilor", description: e.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -276,7 +276,7 @@ export default function PackageSlips() {
         localStorage.removeItem(lsPacked);
       } catch {}
     }
-    toast({ title: "Session cleared" });
+    toast({ title: "Sesiune golită" });
   };
 
   // Realtime: auto-add new orders from webhook events
@@ -338,7 +338,7 @@ export default function PackageSlips() {
   // Mark single order as packed
   const markAsPacked = async (orderId: number) => {
     if (!targetStatus) {
-      toast({ title: "Select a target status first", variant: "destructive" });
+      toast({ title: "Selectează mai întâi un status țintă", variant: "destructive" });
       return;
     }
     setUpdatingIds((prev) => new Set(prev).add(orderId));
@@ -352,7 +352,7 @@ export default function PackageSlips() {
         toast({ title: `Order #${orders.find((o) => o.id === orderId)?.number || orderId} → ${targetStatus}` });
       }
     } catch (e: any) {
-      toast({ title: "Error updating order", description: e.message, variant: "destructive" });
+      toast({ title: "Eroare la actualizarea comenzii", description: e.message, variant: "destructive" });
     } finally {
       setUpdatingIds((prev) => {
         const next = new Set(prev);
@@ -415,14 +415,14 @@ export default function PackageSlips() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <Package className="h-4 w-4 text-primary" />
-        <h1 className="text-sm font-semibold">Package Slips</h1>
+        <h1 className="text-sm font-semibold">Fișe ambalare</h1>
       </div>
 
       {/* Config bar — stacked on mobile */}
       <div className="border-b border-border px-3 py-2 space-y-2">
         {/* Source statuses */}
         <div className="space-y-1">
-          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Fetch orders with status</label>
+          <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Preluare comenzi cu statusul</label>
           <div className="flex flex-wrap gap-x-3 gap-y-1">
             {allStatuses.map((s) => (
               <label key={s} className="flex items-center gap-1 cursor-pointer">
@@ -440,10 +440,10 @@ export default function PackageSlips() {
         <div className="flex flex-wrap items-end gap-2">
           {/* Target status */}
           <div className="space-y-1">
-            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">After packing</label>
+            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">După ambalare</label>
             <Select value={targetStatus} onValueChange={handleTargetChange}>
               <SelectTrigger className="w-36 h-8 text-xs">
-                <SelectValue placeholder="Select status" />
+                <SelectValue placeholder="Selectează status" />
               </SelectTrigger>
               <SelectContent>
                 {allStatuses.map((s) => (
@@ -457,12 +457,12 @@ export default function PackageSlips() {
 
           <Button size="sm" className="h-8 text-xs" onClick={loadOrders} disabled={loading || sourceStatuses.length === 0}>
             {loading ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <RefreshCw className="h-3 w-3 mr-1" />}
-            Load Orders
+            Încarcă comenzi
           </Button>
           {orders.length > 0 && (
             <Button size="sm" variant="ghost" className="h-8 text-xs text-destructive" onClick={clearSession}>
               <Trash2 className="h-3 w-3 mr-1" />
-              Clear Session
+              Golește sesiunea
             </Button>
           )}
         </div>
@@ -473,7 +473,7 @@ export default function PackageSlips() {
         {orders.length === 0 && !loading && (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2 p-4">
             <Package className="h-10 w-10" />
-            <p className="text-xs">Select statuses and load orders to begin</p>
+            <p className="text-xs">Selectează statusuri și încarcă comenzi pentru a începe</p>
           </div>
         )}
 
@@ -481,8 +481,8 @@ export default function PackageSlips() {
           <Tabs defaultValue="picklist" className="flex flex-col h-full">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-3 py-2 border-b border-border">
               <TabsList className="h-8">
-                <TabsTrigger value="picklist" className="text-xs h-7 px-3">Pick List</TabsTrigger>
-                <TabsTrigger value="slips" className="text-xs h-7 px-3">Slips ({orders.length})</TabsTrigger>
+                <TabsTrigger value="picklist" className="text-xs h-7 px-3">Listă preluare</TabsTrigger>
+                <TabsTrigger value="slips" className="text-xs h-7 px-3">Fișe ({orders.length})</TabsTrigger>
               </TabsList>
               {targetStatus && (
                 <Button
@@ -493,7 +493,7 @@ export default function PackageSlips() {
                   disabled={packedIds.size === orders.length}
                 >
                   <CheckCircle2 className="h-3 w-3 mr-1" />
-                  Mark All ({unpackedOrders.length})
+                  Marchează toate ({unpackedOrders.length})
                 </Button>
               )}
             </div>
@@ -504,7 +504,7 @@ export default function PackageSlips() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-8 px-2"></TableHead>
-                    <TableHead className="text-xs px-2">Product</TableHead>
+                    <TableHead className="text-xs px-2">Produs</TableHead>
                     <TableHead className="text-xs px-2 text-right w-16">Qty</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -554,7 +554,7 @@ export default function PackageSlips() {
                   })}
                   {pickList.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center text-xs text-muted-foreground py-4">No items</TableCell>
+                      <TableCell colSpan={3} className="text-center text-xs text-muted-foreground py-4">Niciun articol</TableCell>
                     </TableRow>
                   )}
                 </TableBody>
@@ -622,7 +622,7 @@ export default function PackageSlips() {
                               ) : (
                                 <CheckCircle2 className="h-3 w-3 mr-1" />
                               )}
-                              Mark as Packed
+                              Marchează ca împachetat
                             </Button>
                           )}
                         </div>
@@ -640,7 +640,7 @@ export default function PackageSlips() {
       <AlertDialog open={!!confirmOrder} onOpenChange={(open) => { if (!open) setConfirmOrderId(null); }}>
         <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm">Confirm packing — #{confirmOrder?.number}</AlertDialogTitle>
+            <AlertDialogTitle className="text-sm">Confirmă ambalarea — #{confirmOrder?.number}</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground">
@@ -664,7 +664,7 @@ export default function PackageSlips() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="h-8 text-xs">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="h-8 text-xs">Anulează</AlertDialogCancel>
             <AlertDialogAction
               className="h-8 text-xs"
               onClick={() => {
@@ -672,7 +672,7 @@ export default function PackageSlips() {
                 setConfirmOrderId(null);
               }}
             >
-              Confirm
+              Confirmă
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -682,7 +682,7 @@ export default function PackageSlips() {
       <AlertDialog open={confirmAll} onOpenChange={setConfirmAll}>
         <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-sm">Mark all as packed?</AlertDialogTitle>
+            <AlertDialogTitle className="text-sm">Marchează toate ca împachetate?</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground">
@@ -700,7 +700,7 @@ export default function PackageSlips() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="h-8 text-xs">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="h-8 text-xs">Anulează</AlertDialogCancel>
             <AlertDialogAction
               className="h-8 text-xs"
               onClick={() => {
@@ -708,7 +708,7 @@ export default function PackageSlips() {
                 setConfirmAll(false);
               }}
             >
-              Confirm All
+              Confirmă toate
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

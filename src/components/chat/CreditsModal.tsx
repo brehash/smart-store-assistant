@@ -58,7 +58,7 @@ export function CreditsModal({ open, onOpenChange, currentBalance, currentPlanId
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Coins className="h-5 w-5 text-primary" />
-            Credits & Plans
+            Credite & Planuri
           </DialogTitle>
         </DialogHeader>
 
@@ -71,8 +71,8 @@ export function CreditsModal({ open, onOpenChange, currentBalance, currentPlanId
             {/* Current Balance */}
             <div className="rounded-lg border bg-muted/30 p-4 flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Current Balance</p>
-                <p className="text-3xl font-bold tabular-nums">{currentBalance ?? 0} <span className="text-base font-normal text-muted-foreground">credits</span></p>
+                <p className="text-sm text-muted-foreground">Sold curent</p>
+                <p className="text-3xl font-bold tabular-nums">{currentBalance ?? 0} <span className="text-base font-normal text-muted-foreground">credite</span></p>
               </div>
               {currentPlan && (
                 <Badge variant="secondary" className="text-sm">
@@ -84,14 +84,14 @@ export function CreditsModal({ open, onOpenChange, currentBalance, currentPlanId
 
             {/* Subscription Plans */}
             <div>
-              <h3 className="text-sm font-semibold mb-3">Subscription Plans</h3>
+              <h3 className="text-sm font-semibold mb-3">Planuri de abonament</h3>
               <div className="grid gap-3 sm:grid-cols-2">
                 {plans.map((plan) => {
                   const isCurrent = plan.id === currentPlanId;
                   return (
                     <Card key={plan.id} className={`relative ${isCurrent ? "border-primary" : ""}`}>
                       {isCurrent && (
-                        <Badge className="absolute -top-2 right-3 text-xs">Current</Badge>
+                        <Badge className="absolute -top-2 right-3 text-xs">Curent</Badge>
                       )}
                       <CardContent className="pt-4 pb-3 px-4">
                         <div className="flex items-baseline justify-between mb-1">
@@ -100,10 +100,10 @@ export function CreditsModal({ open, onOpenChange, currentBalance, currentPlanId
                         </div>
                         <p className="text-xs text-muted-foreground mb-2">{plan.description}</p>
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">{plan.credits} credits/mo</span>
+                          <span className="text-sm font-medium">{plan.credits} credite/lună</span>
                           {!isCurrent && (
                             <Button size="sm" variant="outline" className="h-7 text-xs" disabled>
-                              Contact Admin
+                              Contactează Admin
                             </Button>
                           )}
                         </div>
@@ -117,7 +117,7 @@ export function CreditsModal({ open, onOpenChange, currentBalance, currentPlanId
             {/* Top-Up Packs */}
             {packs.length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold mb-3">One-Time Top-Ups</h3>
+                <h3 className="text-sm font-semibold mb-3">Încărcări unice</h3>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {packs.map((pack) => (
                     <div key={pack.id} className="flex items-center justify-between rounded-lg border p-3">
@@ -125,7 +125,7 @@ export function CreditsModal({ open, onOpenChange, currentBalance, currentPlanId
                         <Zap className="h-4 w-4 text-primary" />
                         <div>
                           <p className="text-sm font-medium">{pack.name}</p>
-                          <p className="text-xs text-muted-foreground">{pack.credits} credits</p>
+                          <p className="text-xs text-muted-foreground">{pack.credits} credite</p>
                         </div>
                       </div>
                       <Button size="sm" variant="outline" className="h-7 text-xs" disabled>
@@ -135,7 +135,7 @@ export function CreditsModal({ open, onOpenChange, currentBalance, currentPlanId
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground mt-2 text-center">
-                  Contact your administrator to purchase credits or upgrade your plan.
+                  Contactează administratorul pentru a achiziționa credite sau a-ți actualiza planul.
                 </p>
               </div>
             )}

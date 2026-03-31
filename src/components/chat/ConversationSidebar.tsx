@@ -213,16 +213,16 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setEditingConvId(c.id); setEditingConvTitle(c.title); }}>
-                  <Pencil className="h-3.5 w-3.5 mr-2" /> Rename
+                  <Pencil className="h-3.5 w-3.5 mr-2" /> Redenumește
                 </DropdownMenuItem>
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
-                    <ArrowRight className="h-3.5 w-3.5 mr-2" /> Move to view
+                    <ArrowRight className="h-3.5 w-3.5 mr-2" /> Mută în vedere
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
                     {c.view_id && (
                       <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleMoveToView(c.id, null); }}>
-                        <X className="h-3.5 w-3.5 mr-2" /> Remove from view
+                        <X className="h-3.5 w-3.5 mr-2" /> Elimină din vedere
                       </DropdownMenuItem>
                     )}
                     {views.map((v) => (
@@ -233,11 +233,11 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
                   </DropdownMenuSubContent>
                 </DropdownMenuSub>
                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleTogglePin(c); }}>
-                  <Pin className="h-3.5 w-3.5 mr-2 rotate-45" /> {c.pinned ? "Unpin chat" : "Pin chat"}
+                  <Pin className="h-3.5 w-3.5 mr-2 rotate-45" /> {c.pinned ? "Anulează fixare" : "Fixează chat"}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={(e) => { e.stopPropagation(); handleDelete(c.id); }}>
-                  <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+                  <Trash2 className="h-3.5 w-3.5 mr-2" /> Șterge
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -263,7 +263,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
               <PanelLeft className="h-5 w-5" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="right">Expand sidebar</TooltipContent>
+          <TooltipContent side="right">Extinde bara laterală</TooltipContent>
         </Tooltip>
 
         {/* New Chat */}
@@ -273,7 +273,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
               <Plus className="h-5 w-5" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="right">New Chat</TooltipContent>
+          <TooltipContent side="right">Chat nou</TooltipContent>
         </Tooltip>
 
         {/* Search */}
@@ -283,7 +283,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
               <Search className="h-5 w-5" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="right">Search</TooltipContent>
+          <TooltipContent side="right">Căutare</TooltipContent>
         </Tooltip>
 
         {/* Package Slips */}
@@ -298,7 +298,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
               )}
             </button>
           </TooltipTrigger>
-          <TooltipContent side="right">Package Slips</TooltipContent>
+          <TooltipContent side="right">Fișe ambalare</TooltipContent>
         </Tooltip>
 
         <div className="flex-1" />
@@ -315,15 +315,15 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
                 </button>
               </DropdownMenuTrigger>
             </TooltipTrigger>
-            <TooltipContent side="right">Account</TooltipContent>
+            <TooltipContent side="right">Cont</TooltipContent>
           </Tooltip>
           <DropdownMenuContent side="top" align="center" className="w-48">
             <DropdownMenuItem onClick={onOpenSettings}>
-              <Settings className="h-4 w-4 mr-2" /> Settings
+              <Settings className="h-4 w-4 mr-2" /> Setări
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={signOut}>
-              <LogOut className="h-4 w-4 mr-2" /> Sign out
+              <LogOut className="h-4 w-4 mr-2" /> Deconectare
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -343,7 +343,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
                 <PanelLeftClose className="h-5 w-5" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right">Collapse sidebar</TooltipContent>
+            <TooltipContent side="right">Restrânge bara laterală</TooltipContent>
           </Tooltip>
         </div>
 
@@ -352,7 +352,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
           onClick={onNew}
           className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/50 transition-colors"
         >
-          <Plus className="h-4 w-4" /> New Chat
+          <Plus className="h-4 w-4" /> Chat nou
         </button>
       </div>
 
@@ -363,7 +363,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search chats..."
+            placeholder="Caută conversații..."
             className="h-8 pl-8 text-xs bg-sidebar-accent/30 border-sidebar-border text-sidebar-foreground placeholder:text-sidebar-foreground/40"
           />
         </div>
@@ -374,19 +374,19 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
           {/* Views Section */}
           <div>
             <div className="flex items-center justify-between px-2 py-1">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">Views</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">Vederi</span>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button onClick={handleCreateView} className="p-1 rounded-md hover:bg-sidebar-accent/50 text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors">
                     <Plus className="h-4 w-4" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right">New View</TooltipContent>
+                <TooltipContent side="right">Vedere nouă</TooltipContent>
               </Tooltip>
             </div>
             <div className="space-y-0.5">
               {visibleViews.length === 0 && (
-                <p className="px-3 py-2 text-[11px] text-sidebar-foreground/30">No views yet</p>
+                <p className="px-3 py-2 text-[11px] text-sidebar-foreground/30">Nicio vedere încă</p>
               )}
               {visibleViews.map((view) => {
                 const viewConvs = getViewConversations(view.id);
@@ -434,14 +434,14 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
                     {isExpanded && (
                       <div className="ml-4 space-y-0.5">
                         {viewConvs.length === 0 && (
-                          <p className="text-[10px] text-sidebar-foreground/30 px-3 py-1">No chats yet</p>
+                          <p className="text-[10px] text-sidebar-foreground/30 px-3 py-1">Niciun chat încă</p>
                         )}
                         {viewConvs.map(renderConversation)}
                         <button
                           onClick={() => onNewInView?.(view.id)}
                           className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-[11px] text-sidebar-foreground/40 hover:text-sidebar-foreground/70 hover:bg-sidebar-accent/30 transition-colors"
                         >
-                          <Plus className="h-3 w-3" /> New Chat
+                          <Plus className="h-3 w-3" /> Chat nou
                         </button>
                       </div>
                     )}
@@ -453,7 +453,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
                   onClick={() => setViewsLimit((prev) => prev + 5)}
                   className="w-full px-3 py-1.5 text-[11px] text-sidebar-foreground/50 hover:text-sidebar-foreground/80 transition-colors text-center"
                 >
-                  Show more views
+                  Arată mai multe vederi
                 </button>
               )}
             </div>
@@ -462,11 +462,11 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
           {/* Recents Section */}
           <div>
             <div className="px-2 py-1">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">Recents</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40">Recente</span>
             </div>
             <div className="space-y-0.5">
               {visibleRecents.length === 0 && (
-                <p className="px-3 py-2 text-[11px] text-sidebar-foreground/30">No chats yet</p>
+                <p className="px-3 py-2 text-[11px] text-sidebar-foreground/30">Niciun chat încă</p>
               )}
               {visibleRecents.map(renderConversation)}
               {ungroupedConversations.length > recentsLimit && (
@@ -474,7 +474,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
                   onClick={() => setRecentsLimit((prev) => prev + 10)}
                   className="w-full px-3 py-1.5 text-[11px] text-sidebar-foreground/50 hover:text-sidebar-foreground/80 transition-colors text-center"
                 >
-                  Show more chats
+                  Arată mai multe conversații
                 </button>
               )}
             </div>
@@ -496,7 +496,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
               </span>
             )}
           </div>
-          Package Slips
+          Fișe ambalare
         </button>
       </div>
 
@@ -515,11 +515,11 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
           </DropdownMenuTrigger>
           <DropdownMenuContent side="top" align="start" sideOffset={8} className="w-56 z-[9999]">
             <DropdownMenuItem onClick={onOpenSettings}>
-              <Settings className="h-4 w-4 mr-2" /> Settings
+              <Settings className="h-4 w-4 mr-2" /> Setări
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={signOut}>
-              <LogOut className="h-4 w-4 mr-2" /> Sign out
+              <LogOut className="h-4 w-4 mr-2" /> Deconectare
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

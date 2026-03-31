@@ -38,7 +38,7 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Ask about products, orders, analytics..."
+          placeholder="Întreabă despre produse, comenzi, analize..."
           className="min-h-[44px] max-h-[160px] resize-none bg-background"
           rows={1}
           disabled={disabled}

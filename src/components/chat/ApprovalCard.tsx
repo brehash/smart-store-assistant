@@ -18,7 +18,7 @@ export function ApprovalCard({ summary, details, onApprove, onSkip, onEdit, disa
   const [editText, setEditText] = useState(details || summary);
 
   if (resolved) {
-    const labels = { approved: "Approved", skipped: "Skipped", edited: "Edited & Approved" };
+    const labels = { approved: "Aprobat", skipped: "Omis", edited: "Editat & Aprobat" };
     const colors = { approved: "text-green-600", skipped: "text-muted-foreground", edited: "text-amber-600" };
     return (
       <div className="rounded-lg border border-border bg-muted/50 px-4 py-3 my-2">
@@ -49,13 +49,13 @@ export function ApprovalCard({ summary, details, onApprove, onSkip, onEdit, disa
       )}
       <div className="flex gap-2 mt-3">
         <Button size="sm" onClick={onApprove} disabled={disabled} className="gap-1.5">
-          <Check className="h-3.5 w-3.5" /> Approve
+          <Check className="h-3.5 w-3.5" /> Aprobă
         </Button>
         <Button size="sm" variant="outline" onClick={onSkip} disabled={disabled} className="gap-1.5">
-          <X className="h-3.5 w-3.5" /> Skip
+          <X className="h-3.5 w-3.5" /> Omite
         </Button>
         <Button size="sm" variant="ghost" onClick={() => setEditing(!editing)} disabled={disabled} className="gap-1.5">
-          <Pencil className="h-3.5 w-3.5" /> Edit
+          <Pencil className="h-3.5 w-3.5" /> Editează
         </Button>
       </div>
     </div>

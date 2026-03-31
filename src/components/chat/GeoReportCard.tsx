@@ -102,10 +102,10 @@ export function GeoReportCard({ data }: { data: GeoReportData }) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead className="w-[60px]">Type</TableHead>
-                <TableHead className="w-[70px]">Score</TableHead>
-                <TableHead>Top Issue</TableHead>
+                <TableHead>Nume</TableHead>
+                <TableHead className="w-[60px]">Tip</TableHead>
+                <TableHead className="w-[70px]">Scor</TableHead>
+                <TableHead>Problema principală</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -143,14 +143,14 @@ export function GeoReportCard({ data }: { data: GeoReportData }) {
           <ScoreCircle score={score} />
           <div className="flex-1 space-y-1.5">
             <p className="text-sm font-medium">
-              {score >= 70 ? "Good" : score >= 40 ? "Needs Improvement" : "Poor"} GEO Readiness
+              {score >= 70 ? "Bună" : score >= 40 ? "Necesită îmbunătățiri" : "Slabă"} pregătire GEO
             </p>
             <p className="text-xs text-muted-foreground">
               {score >= 70
-                ? "This content is well-optimized for AI search engines."
+                ? "Acest conținut este bine optimizat pentru motoarele de căutare AI."
                 : score >= 40
-                  ? "Some improvements needed to rank well in AI-powered search."
-                  : "Significant optimization needed for AI search visibility."}
+                  ? "Sunt necesare unele îmbunătățiri pentru a se clasa bine în căutarea AI."
+                  : "Optimizare semnificativă necesară pentru vizibilitatea în căutarea AI."}
             </p>
           </div>
         </div>
@@ -158,7 +158,7 @@ export function GeoReportCard({ data }: { data: GeoReportData }) {
         {/* Category breakdown */}
         {data.categories && data.categories.length > 0 && (
           <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Categories</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Categorii</p>
             {data.categories.map((cat) => {
               const pct = Math.round((cat.score / cat.maxScore) * 100);
               return (
@@ -177,7 +177,7 @@ export function GeoReportCard({ data }: { data: GeoReportData }) {
         {/* Recommendations */}
         {data.recommendations && data.recommendations.length > 0 && (
           <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Recommendations</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Recomandări</p>
             <ul className="space-y-1.5">
               {data.recommendations.map((rec, i) => (
                 <li key={i} className="flex items-start gap-2 text-xs">

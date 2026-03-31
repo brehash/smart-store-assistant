@@ -60,11 +60,11 @@ export function TeamSettings() {
         body: { name: teamName.trim() },
       });
       if (error) throw error;
-      toast({ title: "Team created!", description: `"${teamName}" is ready.` });
+      toast({ title: "Echipă creată!", description: `„${teamName}" este gata.` });
       setTeamName("");
       fetchTeam();
     } catch (e: any) {
-      toast({ title: "Error", description: e.message || "Failed to create team", variant: "destructive" });
+      toast({ title: "Eroare", description: e.message || "Crearea echipei a eșuat", variant: "destructive" });
     } finally {
       setCreating(false);
     }
@@ -87,11 +87,11 @@ export function TeamSettings() {
       });
       const result = await resp.json();
       if (!resp.ok) throw new Error(result.error || "Failed to invite");
-      toast({ title: "Invitation sent!", description: `Invitation email sent to ${inviteEmail}` });
+      toast({ title: "Invitație trimisă!", description: `Email de invitație trimis la ${inviteEmail}` });
       setInviteEmail("");
       fetchTeam();
     } catch (e: any) {
-      toast({ title: "Error", description: e.message || "Failed to send invitation", variant: "destructive" });
+      toast({ title: "Eroare", description: e.message || "Trimiterea invitației a eșuat", variant: "destructive" });
     } finally {
       setInviting(false);
     }
@@ -108,10 +108,10 @@ export function TeamSettings() {
       });
       const result = await resp.json();
       if (!resp.ok) throw new Error(result.error);
-      toast({ title: "Member removed" });
+      toast({ title: "Membru eliminat" });
       fetchTeam();
     } catch (e: any) {
-      toast({ title: "Error", description: e.message, variant: "destructive" });
+      toast({ title: "Eroare", description: e.message, variant: "destructive" });
     }
   };
 
@@ -126,7 +126,7 @@ export function TeamSettings() {
       });
       const result = await resp.json();
       if (!resp.ok) throw new Error(result.error);
-      toast({ title: "Invitation cancelled" });
+      toast({ title: "Invitație anulată" });
       fetchTeam();
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
@@ -144,7 +144,7 @@ export function TeamSettings() {
       });
       const result = await resp.json();
       if (!resp.ok) throw new Error(result.error);
-      toast({ title: "Left team" });
+      toast({ title: "Ai părăsit echipa" });
       fetchTeam();
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
@@ -162,7 +162,7 @@ export function TeamSettings() {
       });
       const result = await resp.json();
       if (!resp.ok) throw new Error(result.error);
-      toast({ title: "Team deleted" });
+      toast({ title: "Echipă ștearsă" });
       fetchTeam();
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
@@ -172,7 +172,7 @@ export function TeamSettings() {
   if (loading) {
     return (
       <div className="flex items-center gap-2 p-6 text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading team…
+        <Loader2 className="h-4 w-4 animate-spin" /> Se încarcă echipa…
       </div>
     );
   }
@@ -182,32 +182,32 @@ export function TeamSettings() {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-lg font-semibold">Team</h2>
-          <p className="text-sm text-muted-foreground">Create a team to share credits and collaborate</p>
+          <h2 className="text-lg font-semibold">Echipă</h2>
+          <p className="text-sm text-muted-foreground">Creează o echipă pentru a partaja credite și a colabora</p>
         </div>
         <Card>
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="rounded-lg bg-primary/10 p-2"><Users className="h-5 w-5 text-primary" /></div>
               <div>
-                <CardTitle className="text-base">Create a Team</CardTitle>
-                <CardDescription>Start a team to invite members and share credits</CardDescription>
+                <CardTitle className="text-base">Creează o echipă</CardTitle>
+                <CardDescription>Începe o echipă pentru a invita membri și a partaja credite</CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>Team Name</Label>
+              <Label>Numele echipei</Label>
               <Input
                 value={teamName}
                 onChange={(e) => setTeamName(e.target.value)}
-                placeholder="My Team"
+                placeholder="Echipa mea"
                 onKeyDown={(e) => e.key === "Enter" && handleCreateTeam()}
               />
             </div>
             <Button onClick={handleCreateTeam} disabled={creating || !teamName.trim()} className="gap-1.5">
               <Users className="h-4 w-4" />
-              {creating ? "Creating…" : "Create Team"}
+              {creating ? "Se creează…" : "Creează echipă"}
             </Button>
           </CardContent>
         </Card>
@@ -220,8 +220,8 @@ export function TeamSettings() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold">Team</h2>
-        <p className="text-sm text-muted-foreground">Manage your team members and shared credits</p>
+          <h2 className="text-lg font-semibold">Echipă</h2>
+          <p className="text-sm text-muted-foreground">Gestionează membrii echipei și creditele partajate</p>
       </div>
 
       {/* Team info */}
@@ -232,11 +232,11 @@ export function TeamSettings() {
               <div className="rounded-lg bg-primary/10 p-2"><Users className="h-5 w-5 text-primary" /></div>
               <div>
                 <CardTitle className="text-base">{teamData.team.name}</CardTitle>
-                <CardDescription>{teamData.members.length} member{teamData.members.length !== 1 ? "s" : ""}</CardDescription>
+                <CardDescription>{teamData.members.length} membr{teamData.members.length !== 1 ? "i" : "u"}</CardDescription>
               </div>
             </div>
             <Badge variant={isOwner ? "default" : "secondary"}>
-              {isOwner ? <><Crown className="h-3 w-3 mr-1" />Owner</> : "Member"}
+              {isOwner ? <><Crown className="h-3 w-3 mr-1" />Proprietar</> : "Membru"}
             </Badge>
           </div>
         </CardHeader>
@@ -245,10 +245,10 @@ export function TeamSettings() {
         {teamData.creditBalance && (
           <CardContent className="pt-0 pb-4">
             <div className="rounded-lg border border-border p-3 bg-muted/30 space-y-1">
-              <p className="text-xs font-medium text-muted-foreground">Shared Credit Balance</p>
+              <p className="text-xs font-medium text-muted-foreground">Sold credite partajate</p>
               <p className="text-2xl font-bold text-primary">{teamData.creditBalance.balance}</p>
               <p className="text-xs text-muted-foreground">
-                Monthly allowance: {teamData.creditBalance.monthly_allowance}
+                Alocație lunară: {teamData.creditBalance.monthly_allowance}
               </p>
             </div>
           </CardContent>
@@ -258,7 +258,7 @@ export function TeamSettings() {
       {/* Members */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Members</CardTitle>
+          <CardTitle className="text-base">Membri</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {teamData.members.map((member: any) => (
@@ -277,7 +277,7 @@ export function TeamSettings() {
               <div className="flex items-center gap-2">
                 {member.role === "owner" && (
                   <Badge variant="outline" className="text-xs gap-1">
-                    <Crown className="h-3 w-3" />Owner
+                    <Crown className="h-3 w-3" />Proprietar
                   </Badge>
                 )}
                 {isOwner && member.user_id !== user?.id && (
@@ -289,15 +289,15 @@ export function TeamSettings() {
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Remove {member.display_name}?</AlertDialogTitle>
+                        <AlertDialogTitle>Elimini {member.display_name}?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          They will lose access to the shared credit balance.
+                          Va pierde accesul la soldul de credite partajate.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogCancel>Anulează</AlertDialogCancel>
                         <AlertDialogAction onClick={() => handleRemoveMember(member.user_id)}>
-                          Remove
+                          Elimină
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -313,7 +313,7 @@ export function TeamSettings() {
       {teamData.invitations.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Pending Invitations</CardTitle>
+            <CardTitle className="text-base">Invitații în așteptare</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {teamData.invitations.map((inv: any) => (
@@ -325,7 +325,7 @@ export function TeamSettings() {
                   <div>
                     <p className="text-sm">{inv.email}</p>
                     <p className="text-xs text-muted-foreground">
-                      Expires {new Date(inv.expires_at).toLocaleDateString()}
+                      Expiră {new Date(inv.expires_at).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
@@ -336,7 +336,7 @@ export function TeamSettings() {
                     onClick={() => handleCancelInvitation(inv.id)}
                     className="text-destructive hover:text-destructive text-xs"
                   >
-                    Cancel
+                    Anulează
                   </Button>
                 )}
               </div>
@@ -352,8 +352,8 @@ export function TeamSettings() {
             <div className="flex items-center gap-3">
               <div className="rounded-lg bg-primary/10 p-2"><UserPlus className="h-5 w-5 text-primary" /></div>
               <div>
-                <CardTitle className="text-base">Invite Member</CardTitle>
-                <CardDescription>Send an invitation email to add a team member</CardDescription>
+                <CardTitle className="text-base">Invită membru</CardTitle>
+                <CardDescription>Trimite un email de invitație pentru a adăuga un membru în echipă</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -369,7 +369,7 @@ export function TeamSettings() {
               />
               <Button onClick={handleInvite} disabled={inviting || !inviteEmail.trim()} className="gap-1.5">
                 <Send className="h-4 w-4" />
-                {inviting ? "Sending…" : "Invite"}
+                {inviting ? "Se trimite…" : "Invită"}
               </Button>
             </div>
           </CardContent>
@@ -383,19 +383,19 @@ export function TeamSettings() {
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" className="gap-1.5">
-                  <Trash2 className="h-4 w-4" /> Delete Team
+                  <Trash2 className="h-4 w-4" /> Șterge echipa
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Delete team?</AlertDialogTitle>
+                  <AlertDialogTitle>Ștergi echipa?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will remove all members and unlink shared credits. This cannot be undone.
+                    Toți membrii vor fi eliminați și creditele partajate vor fi deconectate. Acțiunea nu poate fi anulată.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDeleteTeam}>Delete</AlertDialogAction>
+                  <AlertDialogCancel>Anulează</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDeleteTeam}>Șterge</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -403,19 +403,19 @@ export function TeamSettings() {
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="outline" className="gap-1.5 text-destructive hover:text-destructive">
-                  <LogOut className="h-4 w-4" /> Leave Team
+                  <LogOut className="h-4 w-4" /> Părăsește echipa
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Leave team?</AlertDialogTitle>
+                  <AlertDialogTitle>Părăsești echipa?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    You will lose access to the shared credit balance.
+                    Vei pierde accesul la soldul de credite partajate.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleLeaveTeam}>Leave</AlertDialogAction>
+                  <AlertDialogCancel>Anulează</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleLeaveTeam}>Părăsește</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>

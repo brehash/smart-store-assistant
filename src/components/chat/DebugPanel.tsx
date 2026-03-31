@@ -20,7 +20,7 @@ export function DebugPanel({ logs }: { logs: DebugEntry[] }) {
         className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
       >
         <Bug className="h-3.5 w-3.5" />
-        <span>API Responses ({logs.length})</span>
+        <span>Răspunsuri API ({logs.length})</span>
         {open ? <ChevronDown className="h-3.5 w-3.5 ml-auto" /> : <ChevronRight className="h-3.5 w-3.5 ml-auto" />}
       </button>
 
@@ -56,7 +56,7 @@ function DebugEntryCard({ entry, index }: { entry: DebugEntry; index: number }) 
         className="flex items-center gap-1 text-muted-foreground hover:text-foreground mb-1"
       >
         {showArgs ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-        Request Args
+        Parametri cerere
       </button>
       {showArgs && (
         <pre className="bg-muted rounded p-2 overflow-x-auto text-[10px] leading-relaxed mb-2 max-h-[200px] overflow-y-auto">
@@ -69,7 +69,7 @@ function DebugEntryCard({ entry, index }: { entry: DebugEntry; index: number }) 
         className="flex items-center gap-1 text-muted-foreground hover:text-foreground mb-1"
       >
         {showResult ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-        Response
+        Răspuns
       </button>
       {showResult && (
         <pre className="bg-muted rounded p-2 overflow-x-auto text-[10px] leading-relaxed max-h-[300px] overflow-y-auto">

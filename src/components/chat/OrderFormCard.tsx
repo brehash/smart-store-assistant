@@ -209,7 +209,7 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
         <CardContent className="flex items-center gap-3 py-4">
           <CheckCircle2 className="h-5 w-5 text-[hsl(var(--success))] shrink-0" />
           <div>
-            <p className="font-medium text-sm">Order #{data.resolved.orderNumber} created</p>
+            <p className="font-medium text-sm">Comanda #{data.resolved.orderNumber} creată</p>
             <p className="text-xs text-muted-foreground">Total: {data.resolved.total}</p>
           </div>
         </CardContent>
@@ -224,17 +224,17 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <ShoppingCart className="h-4 w-4" />
-          Create Order
+          Creează comandă
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Product Search */}
         <div className="relative" ref={resultsRef}>
-          <Label className="text-xs font-medium mb-1.5 block">Products</Label>
+          <Label className="text-xs font-medium mb-1.5 block">Produse</Label>
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search products..."
+              placeholder="Caută produse..."
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
               className="pl-9 h-9 text-sm"
@@ -350,10 +350,10 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
         {/* Payment Method */}
         {paymentMethods && paymentMethods.length > 0 && (
           <div>
-            <Label className="text-xs font-medium mb-1.5 block">Payment Method</Label>
+            <Label className="text-xs font-medium mb-1.5 block">Metodă de plată</Label>
             <Select value={paymentMethod} onValueChange={setPaymentMethod} disabled={isDisabled}>
               <SelectTrigger className="h-9 text-sm">
-                <SelectValue placeholder="Select payment method..." />
+                <SelectValue placeholder="Selectează metoda de plată..." />
               </SelectTrigger>
               <SelectContent>
                 {paymentMethods.map((pm) => (
@@ -366,30 +366,30 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
 
         {/* Coupon / Voucher */}
         <div>
-          <Label className="text-xs font-medium mb-1.5 block">Voucher / Coupon (optional)</Label>
-          <Input placeholder="Enter coupon code..." value={couponCode} onChange={(e) => setCouponCode(e.target.value)} className="h-9 text-sm" disabled={isDisabled} />
+          <Label className="text-xs font-medium mb-1.5 block">Voucher / Cupon (opțional)</Label>
+          <Input placeholder="Introdu codul cuponului..." value={couponCode} onChange={(e) => setCouponCode(e.target.value)} className="h-9 text-sm" disabled={isDisabled} />
         </div>
 
         {/* Note */}
         <div>
-          <Label className="text-xs font-medium mb-1.5 block">Order Note (optional)</Label>
-          <Textarea placeholder="Add a note..." value={note} onChange={(e) => setNote(e.target.value)} className="text-sm min-h-[60px]" disabled={isDisabled} />
+          <Label className="text-xs font-medium mb-1.5 block">Notă comandă (opțional)</Label>
+          <Textarea placeholder="Adaugă o notă..." value={note} onChange={(e) => setNote(e.target.value)} className="text-sm min-h-[60px]" disabled={isDisabled} />
         </div>
 
         {/* Billing - collapsible */}
         <Collapsible open={billingOpen} onOpenChange={setBillingOpen}>
           <CollapsibleTrigger className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
             <ChevronDown className={cn("h-3 w-3 transition-transform", billingOpen && "rotate-180")} />
-            Customer Details (optional)
+            Detalii client (opțional)
           </CollapsibleTrigger>
           <CollapsibleContent className="pt-3 space-y-2">
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label className="text-xs">First Name</Label>
+                <Label className="text-xs">Prenume</Label>
                 <Input className="h-8 text-sm" value={billing.first_name} onChange={(e) => setBilling((b) => ({ ...b, first_name: e.target.value }))} disabled={isDisabled} />
               </div>
               <div>
-                <Label className="text-xs">Last Name</Label>
+                <Label className="text-xs">Nume</Label>
                 <Input className="h-8 text-sm" value={billing.last_name} onChange={(e) => setBilling((b) => ({ ...b, last_name: e.target.value }))} disabled={isDisabled} />
               </div>
             </div>
@@ -398,30 +398,30 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
               <Input className="h-8 text-sm" type="email" value={billing.email} onChange={(e) => setBilling((b) => ({ ...b, email: e.target.value }))} disabled={isDisabled} />
             </div>
             <div>
-              <Label className="text-xs">Phone</Label>
+              <Label className="text-xs">Telefon</Label>
               <Input className="h-8 text-sm" value={billing.phone} onChange={(e) => setBilling((b) => ({ ...b, phone: e.target.value }))} disabled={isDisabled} />
             </div>
             <div>
-              <Label className="text-xs">Address</Label>
+              <Label className="text-xs">Adresă</Label>
               <Input className="h-8 text-sm" value={billing.address_1} onChange={(e) => setBilling((b) => ({ ...b, address_1: e.target.value }))} disabled={isDisabled} />
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label className="text-xs">City</Label>
+                <Label className="text-xs">Oraș</Label>
                 <Input className="h-8 text-sm" value={billing.city} onChange={(e) => setBilling((b) => ({ ...b, city: e.target.value }))} disabled={isDisabled} />
               </div>
               <div>
-                <Label className="text-xs">State / County</Label>
+                <Label className="text-xs">Județ</Label>
                 <Input className="h-8 text-sm" value={billing.state} onChange={(e) => setBilling((b) => ({ ...b, state: e.target.value }))} disabled={isDisabled} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label className="text-xs">Postcode</Label>
+                <Label className="text-xs">Cod poștal</Label>
                 <Input className="h-8 text-sm" value={billing.postcode} onChange={(e) => setBilling((b) => ({ ...b, postcode: e.target.value }))} disabled={isDisabled} />
               </div>
               <div>
-                <Label className="text-xs">Country</Label>
+                <Label className="text-xs">Țară</Label>
                 <Input className="h-8 text-sm" value={billing.country} onChange={(e) => setBilling((b) => ({ ...b, country: e.target.value }))} disabled={isDisabled} />
               </div>
             </div>
@@ -432,46 +432,46 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
                 onCheckedChange={(v) => setShippingDiffers(!!v)}
                 disabled={isDisabled}
               />
-              <Label htmlFor="shipping-differs" className="text-xs cursor-pointer">Shipping address differs from billing</Label>
+              <Label htmlFor="shipping-differs" className="text-xs cursor-pointer">Adresa de livrare diferă de facturare</Label>
             </div>
             {shippingDiffers && (
               <div className="space-y-2 pt-2 border-t mt-2">
-                <p className="text-xs font-medium text-muted-foreground">Shipping Address</p>
+                <p className="text-xs font-medium text-muted-foreground">Adresă de livrare</p>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <Label className="text-xs">First Name</Label>
+                    <Label className="text-xs">Prenume</Label>
                     <Input className="h-8 text-sm" value={shipping.first_name} onChange={(e) => setShipping((s) => ({ ...s, first_name: e.target.value }))} disabled={isDisabled} />
                   </div>
                   <div>
-                    <Label className="text-xs">Last Name</Label>
+                    <Label className="text-xs">Nume</Label>
                     <Input className="h-8 text-sm" value={shipping.last_name} onChange={(e) => setShipping((s) => ({ ...s, last_name: e.target.value }))} disabled={isDisabled} />
                   </div>
                 </div>
                 <div>
-                  <Label className="text-xs">Phone</Label>
+                  <Label className="text-xs">Telefon</Label>
                   <Input className="h-8 text-sm" value={shipping.phone} onChange={(e) => setShipping((s) => ({ ...s, phone: e.target.value }))} disabled={isDisabled} />
                 </div>
                 <div>
-                  <Label className="text-xs">Address</Label>
+                  <Label className="text-xs">Adresă</Label>
                   <Input className="h-8 text-sm" value={shipping.address_1} onChange={(e) => setShipping((s) => ({ ...s, address_1: e.target.value }))} disabled={isDisabled} />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <Label className="text-xs">City</Label>
+                    <Label className="text-xs">Oraș</Label>
                     <Input className="h-8 text-sm" value={shipping.city} onChange={(e) => setShipping((s) => ({ ...s, city: e.target.value }))} disabled={isDisabled} />
                   </div>
                   <div>
-                    <Label className="text-xs">State / County</Label>
+                    <Label className="text-xs">Județ</Label>
                     <Input className="h-8 text-sm" value={shipping.state} onChange={(e) => setShipping((s) => ({ ...s, state: e.target.value }))} disabled={isDisabled} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <Label className="text-xs">Postcode</Label>
+                    <Label className="text-xs">Cod poștal</Label>
                     <Input className="h-8 text-sm" value={shipping.postcode} onChange={(e) => setShipping((s) => ({ ...s, postcode: e.target.value }))} disabled={isDisabled} />
                   </div>
                   <div>
-                    <Label className="text-xs">Country</Label>
+                    <Label className="text-xs">Țară</Label>
                     <Input className="h-8 text-sm" value={shipping.country} onChange={(e) => setShipping((s) => ({ ...s, country: e.target.value }))} disabled={isDisabled} />
                   </div>
                 </div>
@@ -490,7 +490,7 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
 
         {/* Submit */}
         <Button onClick={handleSubmit} disabled={isDisabled || lineItems.length === 0} className="w-full">
-          {submitting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Creating...</> : "Create Order"}
+          {submitting ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Se creează...</> : "Creează comandă"}
         </Button>
       </CardContent>
     </Card>

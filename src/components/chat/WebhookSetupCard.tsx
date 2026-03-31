@@ -15,9 +15,9 @@ interface WebhookTopic {
 }
 
 const WEBHOOK_TOPICS: WebhookTopic[] = [
-  { id: "order-created", topic: "order.created", label: "New Order", description: "Get notified when a new order is placed" },
-  { id: "order-updated", topic: "order.updated", label: "Order Updated", description: "Get notified when an order status changes" },
-  { id: "customer-created", topic: "customer.created", label: "New Customer", description: "Get notified when a new customer registers" },
+  { id: "order-created", topic: "order.created", label: "Comandă nouă", description: "Primești notificare când se plasează o comandă nouă" },
+  { id: "order-updated", topic: "order.updated", label: "Comandă actualizată", description: "Primești notificare când se schimbă statusul unei comenzi" },
+  { id: "customer-created", topic: "customer.created", label: "Client nou", description: "Primești notificare când se înregistrează un client nou" },
 ];
 
 interface WebhookSetupCardProps {
@@ -87,9 +87,9 @@ export function WebhookSetupCard({ onComplete, onDismiss }: WebhookSetupCardProp
               <Bell className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-base">Enable Real-time Notifications</CardTitle>
+              <CardTitle className="text-base">Activează notificările în timp real</CardTitle>
               <CardDescription>
-                Create webhooks to receive instant notifications about store events
+                Creează webhook-uri pentru a primi notificări instantanee despre evenimentele din magazin
               </CardDescription>
             </div>
           </div>
@@ -117,7 +117,7 @@ export function WebhookSetupCard({ onComplete, onDismiss }: WebhookSetupCardProp
               </div>
               <div className="flex gap-2">
                 <Button variant="ghost" onClick={onDismiss} className="flex-1">
-                  Skip
+                Omite
                 </Button>
                 <Button
                   onClick={handleCreate}
@@ -125,9 +125,9 @@ export function WebhookSetupCard({ onComplete, onDismiss }: WebhookSetupCardProp
                   className="flex-1 gap-2"
                 >
                   {creating ? (
-                    <><Loader2 className="h-4 w-4 animate-spin" /> Creating...</>
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Se creează...</>
                   ) : (
-                    <>Create Webhooks</>
+                    <>Creează Webhook-uri</>
                   )}
                 </Button>
               </div>
@@ -139,17 +139,17 @@ export function WebhookSetupCard({ onComplete, onDismiss }: WebhookSetupCardProp
                   <span>{wh.label}</span>
                   {results[wh.topic] === "success" ? (
                     <Badge variant="outline" className="gap-1 text-emerald-600 border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20 dark:border-emerald-800 dark:text-emerald-400">
-                      <CheckCircle2 className="h-3 w-3" /> Created
+                      <CheckCircle2 className="h-3 w-3" /> Creat
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="gap-1 text-destructive border-destructive/30 bg-destructive/10">
-                      <XCircle className="h-3 w-3" /> Failed
+                      <XCircle className="h-3 w-3" /> Eșuat
                     </Badge>
                   )}
                 </div>
               ))}
               <Button variant="ghost" onClick={onComplete} className="w-full mt-2">
-                Done
+                Gata
               </Button>
             </div>
           )}

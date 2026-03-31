@@ -185,7 +185,7 @@ export default function Index() {
           const { topic, payload: eventData } = payload.new;
           // Ignore ping/unknown/action events
           if (!topic || topic === "unknown" || topic.startsWith("action.")) return;
-          let title = "Webhook Event";
+          let title = "Eveniment Webhook";
           let description = topic;
           if (topic === "order.created" && eventData) {
             const num = eventData.number || eventData.id;
@@ -193,15 +193,15 @@ export default function Index() {
             const name = eventData.billing?.first_name
               ? `${eventData.billing.first_name} ${eventData.billing.last_name || ""}`
               : "";
-            title = "🛒 New Order";
-            description = `Order #${num} — ${total}${name ? ` from ${name}` : ""}`;
+            title = "🛒 Comandă nouă";
+            description = `Comanda #${num} — ${total}${name ? ` de la ${name}` : ""}`;
           } else if (topic === "customer.created" && eventData) {
-            title = "👤 New Customer";
+            title = "👤 Client nou";
             description = eventData.email || `${eventData.first_name || ""} ${eventData.last_name || ""}`;
           } else if (topic === "order.updated" && eventData) {
             const num = eventData.number || eventData.id;
-            title = "📦 Order Updated";
-            description = `Order #${num} status: ${eventData.status || "unknown"}`;
+            title = "📦 Comandă actualizată";
+            description = `Comanda #${num} status: ${eventData.status || "necunoscut"}`;
           }
           toast({ title, description });
           // Increment new order count for package slips badge
@@ -265,8 +265,8 @@ export default function Index() {
           if (isStreaming && !streamAliveRef.current) {
             setIsStreaming(false);
             toast({
-              title: "Connection lost",
-              description: "The stream was interrupted while the tab was in the background. Your partial response has been saved.",
+              title: "Conexiune pierdută",
+              description: "Fluxul a fost întrerupt cât tab-ul era în fundal. Răspunsul parțial a fost salvat.",
               variant: "destructive",
             });
           }
@@ -323,7 +323,7 @@ export default function Index() {
     if (!user) return null;
     const { data } = await supabase
       .from("conversations")
-      .insert({ user_id: user.id, title: "New Conversation" })
+      .insert({ user_id: user.id, title: "Conversație nouă" })
       .select()
       .single();
     if (data) { skipLoadRef.current = true; setConversationId(data.id); setMessages([]); return data.id; }
@@ -358,7 +358,7 @@ export default function Index() {
     const { error: userMsgError } = await supabase.from("messages").insert({ conversation_id: convId, user_id: user.id, role: "user", content: input });
     if (userMsgError) {
       console.error("Failed to save user message:", userMsgError);
-      toast({ title: "Warning", description: "Your message may not be saved. Please check your connection.", variant: "destructive" });
+      toast({ title: "Atenție", description: "Mesajul tău s-ar putea să nu fie salvat. Verifică conexiunea.", variant: "destructive" });
     }
 
     if (messages.length === 0) {
@@ -530,13 +530,13 @@ export default function Index() {
         } as any);
         if (assistantMsgError) {
           console.error("Failed to save assistant message:", assistantMsgError);
-          toast({ title: "Warning", description: "AI response may not be saved. Please check your connection.", variant: "destructive" });
+          toast({ title: "Atenție", description: "Răspunsul AI s-ar putea să nu fie salvat. Verifică conexiunea.", variant: "destructive" });
         }
       },
       onError: async (error) => {
         setIsStreaming(false);
         streamAliveRef.current = false;
-        toast({ title: "Error", description: error, variant: "destructive" });
+        toast({ title: "Eroare", description: error, variant: "destructive" });
         // Persist the partial assistant message so it doesn't vanish
         if (assistantContent || reasoningEntries.length || pipelineData) {
           const errorContent = assistantContent || `⚠️ ${error}`;
@@ -669,7 +669,7 @@ export default function Index() {
       },
       onError: (error) => {
         setIsStreaming(false);
-        toast({ title: "Error", description: error, variant: "destructive" });
+        toast({ title: "Eroare", description: error, variant: "destructive" });
       },
     });
   };
@@ -731,7 +731,7 @@ export default function Index() {
     if (!user) return;
     const { data } = await supabase
       .from("conversations")
-      .insert({ user_id: user.id, title: "New Conversation", view_id: targetViewId })
+      .insert({ user_id: user.id, title: "Conversație nouă", view_id: targetViewId })
       .select()
       .single();
     if (data) {
@@ -772,13 +772,13 @@ export default function Index() {
               </span>
             )}
           </Button>
-          <h1 className="text-lg font-semibold truncate">WooCommerce AI Assistant</h1>
+          <h1 className="text-lg font-semibold truncate">Asistent AI WooCommerce</h1>
           {creditBalance !== null && (
             <button
               onClick={() => topupModalEnabled && setCreditsModalOpen(true)}
               className={`ml-auto text-xs font-medium text-muted-foreground tabular-nums bg-muted px-2 py-1 rounded-full ${topupModalEnabled ? "hover:bg-accent cursor-pointer" : ""} transition-colors`}
             >
-              {creditBalance} credit{creditBalance !== 1 ? "s" : ""}
+              {creditBalance} credit{creditBalance !== 1 ? "e" : ""}
             </button>
           )}
         </div>
@@ -810,12 +810,12 @@ export default function Index() {
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 </svg>
               </div>
-              <h2 className="text-xl font-semibold mb-2">How can I help you?</h2>
+              <h2 className="text-xl font-semibold mb-2">Cu ce te pot ajuta?</h2>
               <p className="text-muted-foreground text-sm max-w-md">
-                Search products, create orders, get analytics, or ask anything about your WooCommerce store.
+                Caută produse, creează comenzi, obține analize sau întreabă orice despre magazinul tău WooCommerce.
               </p>
               <div className="mt-6 flex flex-wrap justify-center gap-2">
-                {["Search for pasta products", "Show me today's orders", "Sales report for this week", "Create a new order"].map((s) => (
+                {["Caută produse de paste", "Arată comenzile de azi", "Raport vânzări săptămâna aceasta", "Creează o comandă nouă"].map((s) => (
                   <button key={s} onClick={() => handleSend(s)} className="rounded-full border border-border bg-card px-4 py-2 text-sm hover:bg-accent transition-colors">
                     {s}
                   </button>

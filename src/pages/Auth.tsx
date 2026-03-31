@@ -72,9 +72,9 @@ export default function Auth() {
           );
           const result = await resp.json();
           if (!resp.ok) throw new Error(result.error);
-          toast({ title: "Welcome to the team!", description: "You've successfully joined the team." });
+          toast({ title: "Bine ai venit în echipă!", description: "Te-ai alăturat cu succes echipei." });
         } catch (e: any) {
-          toast({ title: "Invitation error", description: e.message, variant: "destructive" });
+          toast({ title: "Eroare invitație", description: e.message, variant: "destructive" });
         }
         // Clean invite_token from URL and navigate home
         navigate("/", { replace: true });
@@ -104,29 +104,29 @@ export default function Auth() {
           },
         });
         if (error) throw error;
-        toast({ title: "Account created!", description: "Check your email to verify your account." });
+        toast({ title: "Cont creat!", description: "Verifică-ți emailul pentru a confirma contul." });
       }
     } catch (error: any) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ title: "Eroare", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
   };
 
   const features = [
-    { icon: Store, label: "WooCommerce Integration", desc: "Manage your store with natural language" },
-    { icon: Sparkles, label: "AI-Powered", desc: "Smart product search & order creation" },
-    { icon: BarChart3, label: "Analytics", desc: "Sales insights & visual charts" },
-    { icon: Brain, label: "Learns Your Style", desc: "Remembers your product aliases" },
+    { icon: Store, label: "Integrare WooCommerce", desc: "Gestionează magazinul cu limbaj natural" },
+    { icon: Sparkles, label: "Bazat pe AI", desc: "Căutare inteligentă de produse & creare comenzi" },
+    { icon: BarChart3, label: "Analize", desc: "Rapoarte de vânzări & grafice vizuale" },
+    { icon: Brain, label: "Învață stilul tău", desc: "Memorează aliasurile tale de produse" },
   ];
 
   return (
     <div className="flex min-h-screen">
       {/* Left panel - branding */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-center px-12 bg-primary text-primary-foreground">
-        <h1 className="text-4xl font-bold tracking-tight mb-4">WooCommerce AI Assistant</h1>
+        <h1 className="text-4xl font-bold tracking-tight mb-4">Asistent AI WooCommerce</h1>
         <p className="text-lg opacity-90 mb-10">
-          Chat with your store. Create orders, search products, and get analytics — all through conversation.
+          Discută cu magazinul tău. Creează comenzi, caută produse și obține analize — totul prin conversație.
         </p>
         <div className="space-y-6">
           {features.map((f) => (
@@ -152,10 +152,10 @@ export default function Auth() {
                 <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
                   <Users className="h-6 w-6" />
                 </div>
-                <CardTitle className="text-2xl">You're invited!</CardTitle>
+                <CardTitle className="text-2xl">Ești invitat!</CardTitle>
                 <CardDescription>
-                  <strong>{inviteInfo.inviter_name}</strong> invited you to join{" "}
-                  <strong>{inviteInfo.team_name}</strong>. Sign in or create an account to accept.
+                  <strong>{inviteInfo.inviter_name}</strong> te-a invitat să te alături echipei{" "}
+                  <strong>{inviteInfo.team_name}</strong>. Autentifică-te sau creează un cont pentru a accepta.
                 </CardDescription>
               </>
             ) : (
@@ -163,27 +163,27 @@ export default function Auth() {
                 <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
                   <Store className="h-6 w-6" />
                 </div>
-                <CardTitle className="text-2xl">{isLogin ? "Welcome back" : "Create account"}</CardTitle>
+                <CardTitle className="text-2xl">{isLogin ? "Bine ai revenit" : "Creează cont"}</CardTitle>
                 <CardDescription>
-                  {isLogin ? "Sign in to your WooCommerce assistant" : "Get started with your AI assistant"}
+                  {isLogin ? "Autentifică-te în asistentul tău WooCommerce" : "Începe cu asistentul tău AI"}
                 </CardDescription>
               </>
             )}
           </CardHeader>
           <CardContent>
             {inviteLoading ? (
-              <div className="text-center py-4 text-muted-foreground">Loading invitation details...</div>
+              <div className="text-center py-4 text-muted-foreground">Se încarcă detaliile invitației...</div>
             ) : (
               <>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {!isLogin && (
                     <div className="space-y-2">
-                      <Label htmlFor="fullName">Full name</Label>
+                      <Label htmlFor="fullName">Nume complet</Label>
                       <Input
                         id="fullName"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        placeholder="Your name"
+                        placeholder="Numele tău"
                         required={!isLogin}
                       />
                     </div>
@@ -201,7 +201,7 @@ export default function Auth() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
+                    <Label htmlFor="password">Parolă</Label>
                     <Input
                       id="password"
                       type="password"
@@ -213,16 +213,16 @@ export default function Auth() {
                     />
                   </div>
                   <Button type="submit" className="w-full" disabled={loading}>
-                    {loading ? "Loading..." : isLogin ? "Sign in" : "Create account"}
+                    {loading ? "Se încarcă..." : isLogin ? "Autentificare" : "Creează cont"}
                   </Button>
                 </form>
                 <div className="mt-6 text-center text-sm text-muted-foreground">
-                  {isLogin ? "Don't have an account?" : "Already have an account?"}{" "}
+                  {isLogin ? "Nu ai cont?" : "Ai deja cont?"}{" "}
                   <button
                     onClick={() => setIsLogin(!isLogin)}
                     className="font-medium text-primary hover:underline"
                   >
-                    {isLogin ? "Sign up" : "Sign in"}
+                    {isLogin ? "Înregistrează-te" : "Autentifică-te"}
                   </button>
                 </div>
               </>

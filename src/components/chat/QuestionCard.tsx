@@ -34,7 +34,7 @@ export function QuestionCard({ question, options, onAnswer, disabled, resolved }
       </div>
       <div className="flex gap-2 mt-2">
         <Input
-          placeholder="Other..."
+          placeholder="Altele..."
           value={otherText}
           onChange={(e) => setOtherText(e.target.value)}
           className="text-sm"
@@ -44,7 +44,7 @@ export function QuestionCard({ question, options, onAnswer, disabled, resolved }
           }}
         />
         <Button size="sm" variant="secondary" onClick={() => otherText.trim() && onAnswer(otherText.trim())} disabled={disabled || !otherText.trim()}>
-          Send
+          Trimite
         </Button>
       </div>
     </div>
