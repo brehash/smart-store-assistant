@@ -177,7 +177,7 @@ export function GeoReportCard({ data }: { data: GeoReportData }) {
         {/* Recommendations */}
         {data.recommendations && data.recommendations.length > 0 && (
           <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Recommendations</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Recomandări</p>
             <ul className="space-y-1.5">
               {data.recommendations.map((rec, i) => (
                 <li key={i} className="flex items-start gap-2 text-xs">
