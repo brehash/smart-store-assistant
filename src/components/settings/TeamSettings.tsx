@@ -182,8 +182,8 @@ export function TeamSettings() {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-lg font-semibold">Team</h2>
-          <p className="text-sm text-muted-foreground">Create a team to share credits and collaborate</p>
+          <h2 className="text-lg font-semibold">Echipă</h2>
+          <p className="text-sm text-muted-foreground">Creează o echipă pentru a partaja credite și a colabora</p>
         </div>
         <Card>
           <CardHeader>
