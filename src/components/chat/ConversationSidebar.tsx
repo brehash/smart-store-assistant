@@ -343,7 +343,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
                 <PanelLeftClose className="h-5 w-5" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right">Collapse sidebar</TooltipContent>
+            <TooltipContent side="right">Restrânge bara laterală</TooltipContent>
           </Tooltip>
         </div>
 
