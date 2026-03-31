@@ -380,7 +380,7 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
         <Collapsible open={billingOpen} onOpenChange={setBillingOpen}>
           <CollapsibleTrigger className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
             <ChevronDown className={cn("h-3 w-3 transition-transform", billingOpen && "rotate-180")} />
-            Customer Details (optional)
+            Detalii client (opțional)
           </CollapsibleTrigger>
           <CollapsibleContent className="pt-3 space-y-2">
             <div className="grid grid-cols-2 gap-2">
