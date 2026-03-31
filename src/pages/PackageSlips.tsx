@@ -440,7 +440,7 @@ export default function PackageSlips() {
         <div className="flex flex-wrap items-end gap-2">
           {/* Target status */}
           <div className="space-y-1">
-            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">After packing</label>
+            <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">După ambalare</label>
             <Select value={targetStatus} onValueChange={handleTargetChange}>
               <SelectTrigger className="w-36 h-8 text-xs">
                 <SelectValue placeholder="Select status" />
