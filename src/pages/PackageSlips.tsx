@@ -622,7 +622,7 @@ export default function PackageSlips() {
                               ) : (
                                 <CheckCircle2 className="h-3 w-3 mr-1" />
                               )}
-                              Mark as Packed
+                              Marchează ca împachetat
                             </Button>
                           )}
                         </div>
