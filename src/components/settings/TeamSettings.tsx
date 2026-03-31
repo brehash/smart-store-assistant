@@ -91,7 +91,7 @@ export function TeamSettings() {
       setInviteEmail("");
       fetchTeam();
     } catch (e: any) {
-      toast({ title: "Error", description: e.message || "Failed to send invitation", variant: "destructive" });
+      toast({ title: "Eroare", description: e.message || "Trimiterea invitației a eșuat", variant: "destructive" });
     } finally {
       setInviting(false);
     }
