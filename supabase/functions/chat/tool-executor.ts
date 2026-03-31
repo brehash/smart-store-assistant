@@ -647,7 +647,7 @@ export async function executeTool(
         body: rest,
         apiPrefix: "wp/v2",
       });
-      return { result: data, requestUri: `PUT /wp-json/wp/v2/pages/${page_id}` };
+      return { result: stripResultForAI("update_page", data), requestUri: `PUT /wp-json/wp/v2/pages/${page_id}` };
     }
     case "delete_page": {
       const force = args.force ? "?force=true" : "";
