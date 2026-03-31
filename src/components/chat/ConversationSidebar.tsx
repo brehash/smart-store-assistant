@@ -363,7 +363,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search chats..."
+            placeholder="Caută conversații..."
             className="h-8 pl-8 text-xs bg-sidebar-accent/30 border-sidebar-border text-sidebar-foreground placeholder:text-sidebar-foreground/40"
           />
         </div>
