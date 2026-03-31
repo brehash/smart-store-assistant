@@ -352,8 +352,8 @@ export function TeamSettings() {
             <div className="flex items-center gap-3">
               <div className="rounded-lg bg-primary/10 p-2"><UserPlus className="h-5 w-5 text-primary" /></div>
               <div>
-                <CardTitle className="text-base">Invite Member</CardTitle>
-                <CardDescription>Send an invitation email to add a team member</CardDescription>
+                <CardTitle className="text-base">Invită membru</CardTitle>
+                <CardDescription>Trimite un email de invitație pentru a adăuga un membru în echipă</CardDescription>
               </div>
             </div>
           </CardHeader>
