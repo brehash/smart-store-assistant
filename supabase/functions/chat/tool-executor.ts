@@ -1,4 +1,4 @@
-import { formatDate } from "./utils.ts";
+import { formatDate, stripResultForAI } from "./utils.ts";
 
 export async function callWooProxy(supabaseUrl: string, authHeader: string, payload: any) {
   const resp = await fetch(`${supabaseUrl}/functions/v1/woo-proxy`, {
