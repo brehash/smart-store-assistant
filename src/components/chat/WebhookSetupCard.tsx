@@ -15,9 +15,9 @@ interface WebhookTopic {
 }
 
 const WEBHOOK_TOPICS: WebhookTopic[] = [
-  { id: "order-created", topic: "order.created", label: "New Order", description: "Get notified when a new order is placed" },
-  { id: "order-updated", topic: "order.updated", label: "Order Updated", description: "Get notified when an order status changes" },
-  { id: "customer-created", topic: "customer.created", label: "New Customer", description: "Get notified when a new customer registers" },
+  { id: "order-created", topic: "order.created", label: "Comandă nouă", description: "Primești notificare când se plasează o comandă nouă" },
+  { id: "order-updated", topic: "order.updated", label: "Comandă actualizată", description: "Primești notificare când se schimbă statusul unei comenzi" },
+  { id: "customer-created", topic: "customer.created", label: "Client nou", description: "Primești notificare când se înregistrează un client nou" },
 ];
 
 interface WebhookSetupCardProps {
