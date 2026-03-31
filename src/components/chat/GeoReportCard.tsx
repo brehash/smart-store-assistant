@@ -143,14 +143,14 @@ export function GeoReportCard({ data }: { data: GeoReportData }) {
           <ScoreCircle score={score} />
           <div className="flex-1 space-y-1.5">
             <p className="text-sm font-medium">
-              {score >= 70 ? "Good" : score >= 40 ? "Needs Improvement" : "Poor"} GEO Readiness
+              {score >= 70 ? "Bună" : score >= 40 ? "Necesită îmbunătățiri" : "Slabă"} pregătire GEO
             </p>
             <p className="text-xs text-muted-foreground">
               {score >= 70
-                ? "This content is well-optimized for AI search engines."
+                ? "Acest conținut este bine optimizat pentru motoarele de căutare AI."
                 : score >= 40
-                  ? "Some improvements needed to rank well in AI-powered search."
-                  : "Significant optimization needed for AI search visibility."}
+                  ? "Sunt necesare unele îmbunătățiri pentru a se clasa bine în căutarea AI."
+                  : "Optimizare semnificativă necesară pentru vizibilitatea în căutarea AI."}
             </p>
           </div>
         </div>
