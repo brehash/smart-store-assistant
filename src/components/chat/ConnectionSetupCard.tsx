@@ -158,7 +158,7 @@ export function ConnectionSetupCard({ onComplete }: ConnectionSetupCardProps) {
               </p>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
-                  Back
+                   Înapoi
                 </Button>
                 <Button
                   onClick={() => setStep(3)}
