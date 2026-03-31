@@ -637,7 +637,7 @@ export async function executeTool(
         body,
         apiPrefix: "wp/v2",
       });
-      return { result: data, requestUri: `POST /wp-json/wp/v2/pages` };
+      return { result: stripResultForAI("create_page", data), requestUri: `POST /wp-json/wp/v2/pages` };
     }
     case "update_page": {
       const { page_id, ...rest } = args;
