@@ -283,7 +283,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
               <Search className="h-5 w-5" />
             </button>
           </TooltipTrigger>
-          <TooltipContent side="right">Search</TooltipContent>
+          <TooltipContent side="right">Căutare</TooltipContent>
         </Tooltip>
 
         {/* Package Slips */}
