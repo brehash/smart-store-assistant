@@ -670,7 +670,7 @@ export async function executeTool(
         body,
         apiPrefix: "wp/v2",
       });
-      return { result: data, requestUri: `POST /wp-json/wp/v2/posts` };
+      return { result: stripResultForAI("create_post", data), requestUri: `POST /wp-json/wp/v2/posts` };
     }
     case "update_post": {
       const { post_id, ...rest } = args;
