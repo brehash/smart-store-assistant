@@ -209,7 +209,7 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
         <CardContent className="flex items-center gap-3 py-4">
           <CheckCircle2 className="h-5 w-5 text-[hsl(var(--success))] shrink-0" />
           <div>
-            <p className="font-medium text-sm">Order #{data.resolved.orderNumber} created</p>
+            <p className="font-medium text-sm">Comanda #{data.resolved.orderNumber} creată</p>
             <p className="text-xs text-muted-foreground">Total: {data.resolved.total}</p>
           </div>
         </CardContent>
