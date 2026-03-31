@@ -738,7 +738,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
           </div>
           <div className="flex gap-2 justify-end pt-2">
             <Button onClick={handleTestColeteOnline} variant="outline" disabled={testingColete || !coleteClientId || !coleteClientSecret}>
-              {testingColete ? "Testing…" : "Test Connection"}
+              {testingColete ? "Se testează…" : "Testează conexiunea"}
               {coleteTestResult === "success" && <CheckCircle2 className="ml-1.5 h-4 w-4 text-emerald-500" />}
               {coleteTestResult === "error" && <XCircle className="ml-1.5 h-4 w-4 text-destructive" />}
             </Button>
