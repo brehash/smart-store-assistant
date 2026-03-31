@@ -554,8 +554,8 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
       </Card>
       <Card className="border-destructive/30">
         <CardHeader>
-          <CardTitle className="text-destructive text-base">Danger Zone</CardTitle>
-          <CardDescription>Irreversible actions — proceed with caution</CardDescription>
+          <CardTitle className="text-destructive text-base">Zonă periculoasă</CardTitle>
+          <CardDescription>Acțiuni ireversibile — procedează cu atenție</CardDescription>
         </CardHeader>
         <CardContent>
           <AlertDialog>
