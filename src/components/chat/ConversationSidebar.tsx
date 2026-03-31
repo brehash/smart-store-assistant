@@ -466,7 +466,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
             </div>
             <div className="space-y-0.5">
               {visibleRecents.length === 0 && (
-                <p className="px-3 py-2 text-[11px] text-sidebar-foreground/30">No chats yet</p>
+                <p className="px-3 py-2 text-[11px] text-sidebar-foreground/30">Niciun chat încă</p>
               )}
               {visibleRecents.map(renderConversation)}
               {ungroupedConversations.length > recentsLimit && (
