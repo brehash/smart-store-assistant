@@ -583,7 +583,7 @@ export async function executeTool(
           body: { note: args.note },
         });
       }
-      return { result: data, requestUri: `PUT /wp-json/wc/v3/${endpoint}` };
+      return { result: stripResultForAI("update_order", data), requestUri: `PUT /wp-json/wc/v3/${endpoint}` };
     }
     case "delete_order": {
       const endpoint = `orders/${args.order_id}`;
