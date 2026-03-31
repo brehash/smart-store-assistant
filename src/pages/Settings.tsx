@@ -373,7 +373,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
             <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" />
           </div>
           <Button onClick={handlePasswordChange} disabled={changingPassword || !newPassword} size="sm">
-            {changingPassword ? "Updating…" : "Update Password"}
+            {changingPassword ? "Se actualizează…" : "Actualizează parola"}
           </Button>
         </CardContent>
       </Card>
