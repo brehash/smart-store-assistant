@@ -613,7 +613,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
                   <span>{creditBalance.monthly_allowance}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Last refill</span>
+                  <span className="text-muted-foreground">Ultima reîncărcare</span>
                   <span>{new Date(creditBalance.last_refill_at).toLocaleDateString()}</span>
                 </div>
               </div>
