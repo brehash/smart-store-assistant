@@ -530,7 +530,7 @@ export default function Index() {
         } as any);
         if (assistantMsgError) {
           console.error("Failed to save assistant message:", assistantMsgError);
-          toast({ title: "Warning", description: "AI response may not be saved. Please check your connection.", variant: "destructive" });
+          toast({ title: "Atenție", description: "Răspunsul AI s-ar putea să nu fie salvat. Verifică conexiunea.", variant: "destructive" });
         }
       },
       onError: async (error) => {
