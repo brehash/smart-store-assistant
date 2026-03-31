@@ -444,7 +444,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
           {existingConnection && (
             <Badge variant="outline" className="w-fit mt-2 gap-1">
               <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-              Connected{storeName ? ` — ${storeName}` : ""}
+              Conectat{storeName ? ` — ${storeName}` : ""}
             </Badge>
           )}
         </CardHeader>
