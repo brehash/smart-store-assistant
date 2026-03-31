@@ -437,8 +437,8 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
           <div className="flex items-center gap-3">
             <div className="rounded-lg bg-primary/10 p-2"><Store className="h-5 w-5 text-primary" /></div>
             <div>
-              <CardTitle>WooCommerce Connection</CardTitle>
-              <CardDescription>Connect your WooCommerce store to enable AI management</CardDescription>
+              <CardTitle>Conexiune WooCommerce</CardTitle>
+              <CardDescription>Conectează magazinul WooCommerce pentru gestionare AI</CardDescription>
             </div>
           </div>
           {existingConnection && (
