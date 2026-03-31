@@ -471,7 +471,7 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
                     <Input className="h-8 text-sm" value={shipping.postcode} onChange={(e) => setShipping((s) => ({ ...s, postcode: e.target.value }))} disabled={isDisabled} />
                   </div>
                   <div>
-                    <Label className="text-xs">Country</Label>
+                    <Label className="text-xs">Țară</Label>
                     <Input className="h-8 text-sm" value={shipping.country} onChange={(e) => setShipping((s) => ({ ...s, country: e.target.value }))} disabled={isDisabled} />
                   </div>
                 </div>
