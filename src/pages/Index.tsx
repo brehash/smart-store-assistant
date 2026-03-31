@@ -731,7 +731,7 @@ export default function Index() {
     if (!user) return;
     const { data } = await supabase
       .from("conversations")
-      .insert({ user_id: user.id, title: "New Conversation", view_id: targetViewId })
+      .insert({ user_id: user.id, title: "Conversație nouă", view_id: targetViewId })
       .select()
       .single();
     if (data) {
