@@ -704,8 +704,8 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
   const renderIntegrations = () => (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold">Integrations</h2>
-        <p className="text-sm text-muted-foreground">Connect third-party services to automate your workflow</p>
+          <h2 className="text-lg font-semibold">Integrări</h2>
+          <p className="text-sm text-muted-foreground">Conectează servicii terțe pentru a-ți automatiza fluxul de lucru</p>
       </div>
       <Card>
         <CardHeader>
