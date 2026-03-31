@@ -570,9 +570,9 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>Anulează</AlertDialogCancel>
                 <AlertDialogAction onClick={handleDeleteAccount} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                  Delete Account
+                  Șterge contul
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
