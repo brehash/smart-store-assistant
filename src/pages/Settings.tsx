@@ -294,8 +294,8 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
     if (newPassword !== confirmPassword) { toast({ title: "Eroare", description: "Parolele nu se potrivesc.", variant: "destructive" }); return; }
     setChangingPassword(true);
     const { error } = await supabase.auth.updateUser({ password: newPassword });
-    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
-    else { toast({ title: "Password updated" }); setNewPassword(""); setConfirmPassword(""); }
+    if (error) { toast({ title: "Eroare", description: error.message, variant: "destructive" }); }
+    else { toast({ title: "Parolă actualizată" }); setNewPassword(""); setConfirmPassword(""); }
     setChangingPassword(false);
   };
 
