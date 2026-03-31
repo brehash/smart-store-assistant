@@ -493,7 +493,7 @@ export default function PackageSlips() {
                   disabled={packedIds.size === orders.length}
                 >
                   <CheckCircle2 className="h-3 w-3 mr-1" />
-                  Mark All ({unpackedOrders.length})
+                  Marchează toate ({unpackedOrders.length})
                 </Button>
               )}
             </div>
