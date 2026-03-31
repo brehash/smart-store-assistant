@@ -658,7 +658,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
         updated_at: new Date().toISOString(),
       };
       await supabase.from("woo_integrations").upsert(payload as any, { onConflict: "user_id,integration_key" });
-      toast({ title: "Saved!", description: "Colete Online integration updated." });
+      toast({ title: "Salvat!", description: "Integrarea Colete Online a fost actualizată." });
     } catch {
       toast({ title: "Error", description: "Failed to save integration.", variant: "destructive" });
     } finally {
