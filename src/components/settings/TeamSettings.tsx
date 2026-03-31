@@ -162,7 +162,7 @@ export function TeamSettings() {
       });
       const result = await resp.json();
       if (!resp.ok) throw new Error(result.error);
-      toast({ title: "Team deleted" });
+      toast({ title: "Echipă ștearsă" });
       fetchTeam();
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
