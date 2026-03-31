@@ -743,7 +743,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
               {coleteTestResult === "error" && <XCircle className="ml-1.5 h-4 w-4 text-destructive" />}
             </Button>
             <Button onClick={handleSaveIntegration} disabled={savingIntegration} className="gap-1.5">
-              <Save className="h-4 w-4" /> {savingIntegration ? "Saving…" : "Save Integration"}
+              <Save className="h-4 w-4" /> {savingIntegration ? "Se salvează…" : "Salvează integrarea"}
             </Button>
           </div>
         </CardContent>
