@@ -509,8 +509,8 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
             <div className="flex items-center gap-3">
               <div className="rounded-lg bg-primary/10 p-2"><ListChecks className="h-5 w-5 text-primary" /></div>
               <div>
-                <CardTitle>Active Plugins</CardTitle>
-                <CardDescription>Select which active plugins to track</CardDescription>
+                <CardTitle>Plugin-uri active</CardTitle>
+                <CardDescription>Selectează ce plugin-uri active să fie urmărite</CardDescription>
               </div>
             </div>
           </CardHeader>
