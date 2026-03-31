@@ -92,9 +92,9 @@ export function ConnectionSetupCard({ onComplete }: ConnectionSetupCardProps) {
           <div className="mx-auto rounded-2xl bg-primary/10 p-4 mb-3">
             <Store className="h-8 w-8 text-primary" />
           </div>
-          <CardTitle className="text-xl">Connect Your Store</CardTitle>
+          <CardTitle className="text-xl">Conectează-ți magazinul</CardTitle>
           <CardDescription>
-            Set up your WooCommerce connection to get started
+            Configurează conexiunea WooCommerce pentru a începe
           </CardDescription>
           {/* Step indicator */}
           <div className="flex items-center justify-center gap-2 pt-3">
