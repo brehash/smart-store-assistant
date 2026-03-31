@@ -415,7 +415,7 @@ export default function PackageSlips() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <Package className="h-4 w-4 text-primary" />
-        <h1 className="text-sm font-semibold">Package Slips</h1>
+        <h1 className="text-sm font-semibold">Fișe ambalare</h1>
       </div>
 
       {/* Config bar — stacked on mobile */}
