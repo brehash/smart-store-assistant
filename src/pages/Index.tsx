@@ -778,7 +778,7 @@ export default function Index() {
               onClick={() => topupModalEnabled && setCreditsModalOpen(true)}
               className={`ml-auto text-xs font-medium text-muted-foreground tabular-nums bg-muted px-2 py-1 rounded-full ${topupModalEnabled ? "hover:bg-accent cursor-pointer" : ""} transition-colors`}
             >
-              {creditBalance} credit{creditBalance !== 1 ? "s" : ""}
+              {creditBalance} credit{creditBalance !== 1 ? "e" : ""}
             </button>
           )}
         </div>
