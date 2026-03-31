@@ -332,7 +332,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
           </div>
           <div className="space-y-2">
             <Label>Nume afișat</Label>
-            <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Your name" />
+            <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Numele tău" />
           </div>
           <div className="space-y-2">
             <Label>Registered</Label>
