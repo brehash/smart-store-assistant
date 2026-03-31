@@ -462,7 +462,7 @@ export default function PackageSlips() {
           {orders.length > 0 && (
             <Button size="sm" variant="ghost" className="h-8 text-xs text-destructive" onClick={clearSession}>
               <Trash2 className="h-3 w-3 mr-1" />
-              Clear Session
+              Golește sesiunea
             </Button>
           )}
         </div>
