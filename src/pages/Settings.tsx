@@ -274,7 +274,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
       for (const row of upserts) {
         await supabase.from("woo_cache" as any).upsert(row as any, { onConflict: "user_id,cache_key" });
       }
-      toast({ title: "Cache refreshed", description: `${allProducts.length} products, ${paymentMethods.length} payment methods, ${allStatuses.length} statuses cached.` });
+      toast({ title: "Cache reîmprospătat", description: `${allProducts.length} produse, ${paymentMethods.length} metode de plată, ${allStatuses.length} statusuri în cache.` });
     } catch (err) {
       toast({ title: "Cache refresh failed", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
     } finally {
