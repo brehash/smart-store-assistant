@@ -554,7 +554,7 @@ export default function PackageSlips() {
                   })}
                   {pickList.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center text-xs text-muted-foreground py-4">No items</TableCell>
+                      <TableCell colSpan={3} className="text-center text-xs text-muted-foreground py-4">Niciun articol</TableCell>
                     </TableRow>
                   )}
                 </TableBody>
