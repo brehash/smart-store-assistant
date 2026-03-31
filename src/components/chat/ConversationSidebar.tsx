@@ -237,7 +237,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={(e) => { e.stopPropagation(); handleDelete(c.id); }}>
-                  <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+                  <Trash2 className="h-3.5 w-3.5 mr-2" /> Șterge
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
