@@ -383,7 +383,7 @@ export function TeamSettings() {
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" className="gap-1.5">
-                  <Trash2 className="h-4 w-4" /> Delete Team
+                  <Trash2 className="h-4 w-4" /> Șterge echipa
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
