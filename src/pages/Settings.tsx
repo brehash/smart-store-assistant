@@ -331,7 +331,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
             <Input value={user?.email || ""} disabled className="bg-muted" />
           </div>
           <div className="space-y-2">
-            <Label>Display Name</Label>
+            <Label>Nume afișat</Label>
             <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Your name" />
           </div>
           <div className="space-y-2">
