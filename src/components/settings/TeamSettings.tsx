@@ -172,7 +172,7 @@ export function TeamSettings() {
   if (loading) {
     return (
       <div className="flex items-center gap-2 p-6 text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" /> Loading team…
+        <Loader2 className="h-4 w-4 animate-spin" /> Se încarcă echipa…
       </div>
     );
   }
