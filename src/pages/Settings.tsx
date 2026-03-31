@@ -560,7 +560,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
         <CardContent>
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button variant="destructive">Delete Account</Button>
+              <Button variant="destructive">Șterge contul</Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
