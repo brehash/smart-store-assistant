@@ -76,7 +76,7 @@ export async function executeTool(
         method: "POST",
         body: { line_items: args.line_items, customer_id: args.customer_id || 0, status: args.status || "processing" },
       });
-      return { result: data, requestUri: `POST /wp-json/wc/v3/${endpoint}` };
+      return { result: stripResultForAI("create_order", data), requestUri: `POST /wp-json/wc/v3/${endpoint}` };
     }
     case "update_order_status": {
       const endpoint = `orders/${args.order_id}`;
