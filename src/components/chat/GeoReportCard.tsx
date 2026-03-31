@@ -158,7 +158,7 @@ export function GeoReportCard({ data }: { data: GeoReportData }) {
         {/* Category breakdown */}
         {data.categories && data.categories.length > 0 && (
           <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Categories</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Categorii</p>
             {data.categories.map((cat) => {
               const pct = Math.round((cat.score / cat.maxScore) * 100);
               return (
