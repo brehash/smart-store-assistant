@@ -34,12 +34,12 @@ interface OrderStatus { slug: string; name: string; total: number; }
 
 const TABS: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
   { id: "general", label: "General", icon: Settings },
-  { id: "appearance", label: "Appearance", icon: Palette },
-  { id: "connection", label: "Connection", icon: Store },
-  { id: "integrations", label: "Integrations", icon: Plug },
-  { id: "team", label: "Team", icon: Users },
-  { id: "credits", label: "Credits", icon: Coins },
-  { id: "account", label: "Account", icon: User },
+  { id: "appearance", label: "Aspect", icon: Palette },
+  { id: "connection", label: "Conexiune", icon: Store },
+  { id: "integrations", label: "Integrări", icon: Plug },
+  { id: "team", label: "Echipă", icon: Users },
+  { id: "credits", label: "Credite", icon: Coins },
+  { id: "account", label: "Cont", icon: User },
 ];
 
 /* ------------------------------------------------------------------ */
