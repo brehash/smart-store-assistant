@@ -190,8 +190,8 @@ export function TeamSettings() {
             <div className="flex items-center gap-3">
               <div className="rounded-lg bg-primary/10 p-2"><Users className="h-5 w-5 text-primary" /></div>
               <div>
-                <CardTitle className="text-base">Create a Team</CardTitle>
-                <CardDescription>Start a team to invite members and share credits</CardDescription>
+                <CardTitle className="text-base">Creează o echipă</CardTitle>
+                <CardDescription>Începe o echipă pentru a invita membri și a partaja credite</CardDescription>
               </div>
             </div>
           </CardHeader>
