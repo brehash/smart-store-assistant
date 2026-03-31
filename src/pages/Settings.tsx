@@ -605,7 +605,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
             ) : creditBalance ? (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Available credits</span>
+                  <span className="text-muted-foreground">Credite disponibile</span>
                   <span className="font-semibold text-lg">{creditBalance.balance}</span>
                 </div>
                 <div className="flex justify-between text-sm">
