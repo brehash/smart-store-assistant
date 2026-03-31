@@ -335,7 +335,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
             <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Numele tău" />
           </div>
           <div className="space-y-2">
-            <Label>Registered</Label>
+            <Label>Înregistrat</Label>
             <Input value={createdAt} disabled className="bg-muted" />
           </div>
         </CardContent>
