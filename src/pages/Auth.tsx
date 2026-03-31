@@ -114,10 +114,10 @@ export default function Auth() {
   };
 
   const features = [
-    { icon: Store, label: "WooCommerce Integration", desc: "Manage your store with natural language" },
-    { icon: Sparkles, label: "AI-Powered", desc: "Smart product search & order creation" },
-    { icon: BarChart3, label: "Analytics", desc: "Sales insights & visual charts" },
-    { icon: Brain, label: "Learns Your Style", desc: "Remembers your product aliases" },
+    { icon: Store, label: "Integrare WooCommerce", desc: "Gestionează magazinul cu limbaj natural" },
+    { icon: Sparkles, label: "Bazat pe AI", desc: "Căutare inteligentă de produse & creare comenzi" },
+    { icon: BarChart3, label: "Analize", desc: "Rapoarte de vânzări & grafice vizuale" },
+    { icon: Brain, label: "Învață stilul tău", desc: "Memorează aliasurile tale de produse" },
   ];
 
   return (
