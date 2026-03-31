@@ -708,7 +708,7 @@ export default function PackageSlips() {
                 setConfirmAll(false);
               }}
             >
-              Confirm All
+              Confirmă toate
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
