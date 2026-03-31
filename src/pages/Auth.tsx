@@ -201,7 +201,7 @@ export default function Auth() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
+                    <Label htmlFor="password">Parolă</Label>
                     <Input
                       id="password"
                       type="password"
