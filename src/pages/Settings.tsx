@@ -487,7 +487,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
           </CardHeader>
           <CardContent>
             {loadingStatuses ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading…</div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Se încarcă…</div>
             ) : (
               <div className="grid grid-cols-2 gap-2">
                 {orderStatuses.map((status) => (
