@@ -564,9 +564,9 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogTitle>Ești absolut sigur?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This action cannot be undone. This will permanently delete your account and remove all data.
+                  Această acțiune nu poate fi anulată. Contul tău va fi șters permanent împreună cu toate datele.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
