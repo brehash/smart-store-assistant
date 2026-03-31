@@ -217,7 +217,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
                 </DropdownMenuItem>
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>
-                    <ArrowRight className="h-3.5 w-3.5 mr-2" /> Move to view
+                    <ArrowRight className="h-3.5 w-3.5 mr-2" /> Mută în vedere
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent>
                     {c.view_id && (
