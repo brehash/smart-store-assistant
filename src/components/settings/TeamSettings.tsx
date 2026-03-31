@@ -197,7 +197,7 @@ export function TeamSettings() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>Team Name</Label>
+              <Label>Numele echipei</Label>
               <Input
                 value={teamName}
                 onChange={(e) => setTeamName(e.target.value)}
