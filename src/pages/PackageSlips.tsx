@@ -473,7 +473,7 @@ export default function PackageSlips() {
         {orders.length === 0 && !loading && (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-2 p-4">
             <Package className="h-10 w-10" />
-            <p className="text-xs">Select statuses and load orders to begin</p>
+            <p className="text-xs">Selectează statusuri și încarcă comenzi pentru a începe</p>
           </div>
         )}
 
