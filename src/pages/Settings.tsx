@@ -586,8 +586,8 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-lg font-semibold">Credits</h2>
-          <p className="text-sm text-muted-foreground">Your credit balance and top-up options</p>
+          <h2 className="text-lg font-semibold">Credite</h2>
+          <p className="text-sm text-muted-foreground">Soldul tău de credite și opțiuni de încărcare</p>
         </div>
 
         <Card>
