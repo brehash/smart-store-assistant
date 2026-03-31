@@ -236,7 +236,7 @@ export function TeamSettings() {
               </div>
             </div>
             <Badge variant={isOwner ? "default" : "secondary"}>
-              {isOwner ? <><Crown className="h-3 w-3 mr-1" />Owner</> : "Member"}
+              {isOwner ? <><Crown className="h-3 w-3 mr-1" />Proprietar</> : "Membru"}
             </Badge>
           </div>
         </CardHeader>
