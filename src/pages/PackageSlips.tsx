@@ -504,7 +504,7 @@ export default function PackageSlips() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-8 px-2"></TableHead>
-                    <TableHead className="text-xs px-2">Product</TableHead>
+                    <TableHead className="text-xs px-2">Produs</TableHead>
                     <TableHead className="text-xs px-2 text-right w-16">Qty</TableHead>
                   </TableRow>
                 </TableHeader>
