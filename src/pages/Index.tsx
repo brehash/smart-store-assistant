@@ -323,7 +323,7 @@ export default function Index() {
     if (!user) return null;
     const { data } = await supabase
       .from("conversations")
-      .insert({ user_id: user.id, title: "New Conversation" })
+      .insert({ user_id: user.id, title: "Conversație nouă" })
       .select()
       .single();
     if (data) { skipLoadRef.current = true; setConversationId(data.id); setMessages([]); return data.id; }
