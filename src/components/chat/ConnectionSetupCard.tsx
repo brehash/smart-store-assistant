@@ -211,9 +211,9 @@ export function ConnectionSetupCard({ onComplete }: ConnectionSetupCardProps) {
                 {testResult === "success" ? (
                   <Button onClick={handleSave} disabled={saving} className="flex-1 gap-2">
                     {saving ? (
-                      <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</>
+                      <><Loader2 className="h-4 w-4 animate-spin" /> Se salvează...</>
                     ) : (
-                      <>Save & Continue</>
+                      <>Salvează & Continuă</>
                     )}
                   </Button>
                 ) : (
