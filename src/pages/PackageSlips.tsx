@@ -443,7 +443,7 @@ export default function PackageSlips() {
             <label className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">După ambalare</label>
             <Select value={targetStatus} onValueChange={handleTargetChange}>
               <SelectTrigger className="w-36 h-8 text-xs">
-                <SelectValue placeholder="Select status" />
+                <SelectValue placeholder="Selectează status" />
               </SelectTrigger>
               <SelectContent>
                 {allStatuses.map((s) => (
