@@ -232,9 +232,9 @@ export function ConnectionSetupCard({ onComplete }: ConnectionSetupCardProps) {
           {step === 4 && (
             <div className="text-center py-4">
               <CheckCircle2 className="h-12 w-12 text-emerald-500 mx-auto mb-3" />
-              <p className="font-semibold text-lg">Connected!</p>
+              <p className="font-semibold text-lg">Conectat!</p>
               <p className="text-sm text-muted-foreground">
-                Your store {storeName} is ready. Setting up...
+                Magazinul {storeName} este gata. Se configurează...
               </p>
             </div>
           )}
