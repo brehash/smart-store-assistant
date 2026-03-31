@@ -87,9 +87,9 @@ export function WebhookSetupCard({ onComplete, onDismiss }: WebhookSetupCardProp
               <Bell className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <CardTitle className="text-base">Enable Real-time Notifications</CardTitle>
+              <CardTitle className="text-base">Activează notificările în timp real</CardTitle>
               <CardDescription>
-                Create webhooks to receive instant notifications about store events
+                Creează webhook-uri pentru a primi notificări instantanee despre evenimentele din magazin
               </CardDescription>
             </div>
           </div>
