@@ -20,7 +20,7 @@ export function DebugPanel({ logs }: { logs: DebugEntry[] }) {
         className="flex w-full items-center gap-2 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
       >
         <Bug className="h-3.5 w-3.5" />
-        <span>API Responses ({logs.length})</span>
+        <span>Răspunsuri API ({logs.length})</span>
         {open ? <ChevronDown className="h-3.5 w-3.5 ml-auto" /> : <ChevronRight className="h-3.5 w-3.5 ml-auto" />}
       </button>
 
