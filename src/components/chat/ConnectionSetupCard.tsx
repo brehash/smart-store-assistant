@@ -219,9 +219,9 @@ export function ConnectionSetupCard({ onComplete }: ConnectionSetupCardProps) {
                 ) : (
                   <Button onClick={handleTest} disabled={testing} className="flex-1 gap-2">
                     {testing ? (
-                      <><Loader2 className="h-4 w-4 animate-spin" /> Testing...</>
+                      <><Loader2 className="h-4 w-4 animate-spin" /> Se testează...</>
                     ) : (
-                      <>Test Connection</>
+                      <>Testează conexiunea</>
                     )}
                   </Button>
                 )}
