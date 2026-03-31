@@ -606,7 +606,7 @@ export async function executeTool(
       if (args.status) body.status = args.status;
       const data = await callWooProxy(supabaseUrl, authHeader, { endpoint: "products", method: "POST", body });
       return {
-        result: data,
+        result: stripResultForAI("create_product", data),
         richContent: data?.id ? { type: "products", data: [data] } : undefined,
         requestUri: `POST /wp-json/wc/v3/products`,
       };
