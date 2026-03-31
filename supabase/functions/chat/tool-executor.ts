@@ -85,7 +85,7 @@ export async function executeTool(
         method: "PUT",
         body: { status: args.status },
       });
-      return { result: data, requestUri: `PUT /wp-json/wc/v3/${endpoint}` };
+      return { result: stripResultForAI("update_order_status", data), requestUri: `PUT /wp-json/wc/v3/${endpoint}` };
     }
     case "get_sales_report": {
       const params = new URLSearchParams();
