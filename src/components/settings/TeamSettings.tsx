@@ -108,7 +108,7 @@ export function TeamSettings() {
       });
       const result = await resp.json();
       if (!resp.ok) throw new Error(result.error);
-      toast({ title: "Member removed" });
+      toast({ title: "Membru eliminat" });
       fetchTeam();
     } catch (e: any) {
       toast({ title: "Error", description: e.message, variant: "destructive" });
