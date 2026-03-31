@@ -338,7 +338,7 @@ export default function PackageSlips() {
   // Mark single order as packed
   const markAsPacked = async (orderId: number) => {
     if (!targetStatus) {
-      toast({ title: "Select a target status first", variant: "destructive" });
+      toast({ title: "Selectează mai întâi un status țintă", variant: "destructive" });
       return;
     }
     setUpdatingIds((prev) => new Set(prev).add(orderId));
