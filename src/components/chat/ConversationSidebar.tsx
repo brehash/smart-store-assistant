@@ -222,7 +222,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
                   <DropdownMenuSubContent>
                     {c.view_id && (
                       <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleMoveToView(c.id, null); }}>
-                        <X className="h-3.5 w-3.5 mr-2" /> Remove from view
+                        <X className="h-3.5 w-3.5 mr-2" /> Elimină din vedere
                       </DropdownMenuItem>
                     )}
                     {views.map((v) => (
