@@ -369,7 +369,7 @@ export function TeamSettings() {
               />
               <Button onClick={handleInvite} disabled={inviting || !inviteEmail.trim()} className="gap-1.5">
                 <Send className="h-4 w-4" />
-                {inviting ? "Sending…" : "Invite"}
+                {inviting ? "Se trimite…" : "Invită"}
               </Button>
             </div>
           </CardContent>
