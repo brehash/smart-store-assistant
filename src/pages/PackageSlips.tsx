@@ -276,7 +276,7 @@ export default function PackageSlips() {
         localStorage.removeItem(lsPacked);
       } catch {}
     }
-    toast({ title: "Session cleared" });
+    toast({ title: "Sesiune golită" });
   };
 
   // Realtime: auto-add new orders from webhook events
