@@ -695,7 +695,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
       }
     } catch {
       setColeteTestResult("error");
-      toast({ title: "Connection failed", description: "Could not reach Colete Online.", variant: "destructive" });
+      toast({ title: "Conexiune eșuată", description: "Nu s-a putut contacta Colete Online.", variant: "destructive" });
     } finally {
       setTestingColete(false);
     }
