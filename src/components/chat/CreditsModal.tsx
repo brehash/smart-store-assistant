@@ -58,7 +58,7 @@ export function CreditsModal({ open, onOpenChange, currentBalance, currentPlanId
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Coins className="h-5 w-5 text-primary" />
-            Credits & Plans
+            Credite & Planuri
           </DialogTitle>
         </DialogHeader>
 
