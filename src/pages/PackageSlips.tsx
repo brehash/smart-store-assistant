@@ -481,8 +481,8 @@ export default function PackageSlips() {
           <Tabs defaultValue="picklist" className="flex flex-col h-full">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-3 py-2 border-b border-border">
               <TabsList className="h-8">
-                <TabsTrigger value="picklist" className="text-xs h-7 px-3">Pick List</TabsTrigger>
-                <TabsTrigger value="slips" className="text-xs h-7 px-3">Slips ({orders.length})</TabsTrigger>
+                <TabsTrigger value="picklist" className="text-xs h-7 px-3">Listă preluare</TabsTrigger>
+                <TabsTrigger value="slips" className="text-xs h-7 px-3">Fișe ({orders.length})</TabsTrigger>
               </TabsList>
               {targetStatus && (
                 <Button
