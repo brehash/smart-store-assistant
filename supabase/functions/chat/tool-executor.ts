@@ -48,7 +48,7 @@ export async function executeTool(
       const endpoint = `products/${args.product_id}`;
       const data = await callWooProxy(supabaseUrl, authHeader, { endpoint });
       return {
-        result: data,
+        result: stripResultForAI("get_product", data),
         richContent: { type: "products", data: [data] },
         requestUri: `GET /wp-json/wc/v3/${endpoint}`,
       };
