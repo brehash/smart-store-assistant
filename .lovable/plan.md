@@ -1,52 +1,58 @@
 
 
-# Optimize Tool Results for AI — Strip Unnecessary Data
+# Scale Colete Online Tracker for 200+ Integrations
 
 ## Problem
-Most tools in `tool-executor.ts` return **raw WooCommerce/WordPress API responses** directly as `result`. These full objects contain massive amounts of irrelevant data (images arrays, HTML descriptions, `_links`, `meta_data`, `related_ids`, rendered content, etc.) that get sent to the AI as tool results, wasting tokens and slowing responses.
+The current cron job processes ALL integrations sequentially in a single edge function invocation. At 200 sites, it will timeout (~60s limit) long before finishing. Each site requires: 1 auth call + paginated order fetches + per-order status checks + updates.
 
-The existing `truncateForAI` in `utils.ts` only kicks in when results exceed 3000 chars, and even then only handles a few tools. Many tools have no stripping at all.
+## Solution: Fan-out Architecture
 
-## Analysis — What's bloated
+Split into two functions: an **orchestrator** that dispatches work, and a **worker** that processes one integration at a time.
 
-| Tool | Issue | Estimated waste |
-|------|-------|----------------|
-| `search_products` | Full product objects: images[], description HTML, meta_data[], _links, related_ids, tags, attributes | ~80% of payload |
-| `get_product` | Same as above for single product | ~70% |
-| `search_orders` | Full order objects: line_items with full product data, meta_data[], _links, payment details, fee_lines, tax_lines, shipping_lines, refunds | ~75% |
-| `create_order` / `update_order` / `update_order_status` | Returns full updated order object back to AI | ~90% unnecessary |
-| `delete_order` / `delete_product` | Returns full deleted object | ~95% unnecessary |
-| `create_product` / `update_product` | Returns full product object | ~80% unnecessary |
-| `create_page/post`, `update_page/post`, `delete_page/post` | Returns full WP object with rendered HTML content | ~85% unnecessary |
-| `check_shipping_status` | Already handled well in truncateForAI |  |
+```text
+pg_cron (every 6h)
+  └─▶ colete-online-tracker (orchestrator)
+        ├─▶ fetch all enabled integrations
+        ├─▶ invoke worker for integration #1
+        ├─▶ invoke worker for integration #2
+        ├─▶ ...
+        └─▶ invoke worker for integration #200
+              └─▶ each worker:
+                    auth → fetch orders → check statuses → update
+                    → write own cron_job_log row
+```
 
-## Solution — Add `stripResultForAI` in `utils.ts`
+### File 1: `supabase/functions/colete-online-tracker/index.ts` (orchestrator)
+- Fetch all enabled `colete_online` integrations
+- For each integration, fire an async `fetch()` to the worker function (fire-and-forget using `Promise.allSettled` with concurrency limit of 10)
+- Log a summary row: how many workers dispatched
+- No order processing in this function anymore
+- Keeps the "test" action as-is
 
-Create a new function that **proactively strips** tool results to only AI-relevant fields, applied in `tool-executor.ts` on the `result` property before it's returned. The `richContent` remains untouched (UI needs full data).
+### File 2: `supabase/functions/colete-online-worker/index.ts` (new worker)
+- Accepts `{ integration_id }` in the request body
+- Processes exactly ONE integration: auth → fetch orders → check statuses → update completed
+- Writes its own `cron_job_logs` row with per-user details
+- Has full 60s to process one site's orders
+- Add concurrency-safe order pagination (process up to 200 orders max per run to stay within timeout)
 
-### File: `supabase/functions/chat/utils.ts`
-Add `stripResultForAI(toolName, data)` function with per-tool field whitelists:
+### Additional improvements in the worker
+- **Parallel status checks**: batch Colete Online status requests using `Promise.allSettled` (groups of 5) instead of sequential
+- **Early exit**: skip orders already checked within the last 2 hours (add a lightweight `last_checked_at` field to avoid redundant API calls — or track via metadata)
+- **Rate limit safety**: add 100ms delay between WooCommerce update calls
 
-**Products** → keep: `id, name, sku, price, regular_price, sale_price, stock_quantity, stock_status, status, total_sales, categories[].name, short_description (first 200 chars)`
+### Database: no changes needed
+The existing `cron_job_logs` table works — each worker writes its own row. The orchestrator writes a dispatch summary row.
 
-**Orders** → keep: `id, number, status, total, currency, date_created, billing.{first_name, last_name, email, phone}, shipping.{city, state, country}, line_items[].{name, quantity, total, product_id}, payment_method_title`
+### Cron schedule update
+The pg_cron job URL stays the same (points to the orchestrator). No schedule change needed.
 
-**CRUD write results** → return only confirmation: `{id, status, name/number, message: "success"}`
+## Estimated capacity
+- 200 integrations × ~10 orders each = ~2000 status checks
+- With 10 concurrent workers, each handling 1 site in ~15-30s → total ~5 minutes
+- Well within limits since each individual function call has its own 60s timeout
 
-**Pages/Posts** → keep: `id, title (rendered), status, link, slug`
-
-### File: `supabase/functions/chat/tool-executor.ts`
-Wrap each tool's `result` through the strip function. The `richContent.data` stays full for UI rendering.
-
-### File: `supabase/functions/chat/utils.ts` — `truncateForAI`
-Update existing truncation to work with already-stripped data (mostly simplifying it since data will be pre-stripped).
-
-## Estimated impact
-- **50-70% token reduction** on tool-heavy conversations
-- Faster AI response times (less input to process)
-- `richContent` unaffected — UI still gets full data for tables, sliders, charts
-
-## Files to modify
-1. `supabase/functions/chat/utils.ts` — add `stripResultForAI` function
-2. `supabase/functions/chat/tool-executor.ts` — apply stripping to `result` in each tool case
+## Files to create/modify
+1. `supabase/functions/colete-online-tracker/index.ts` — refactor to orchestrator
+2. `supabase/functions/colete-online-worker/index.ts` — new worker function
 
