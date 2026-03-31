@@ -388,9 +388,9 @@ export function TeamSettings() {
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Delete team?</AlertDialogTitle>
+                  <AlertDialogTitle>Ștergi echipa?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will remove all members and unlink shared credits. This cannot be undone.
+                    Toți membrii vor fi eliminați și creditele partajate vor fi deconectate. Acțiunea nu poate fi anulată.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
