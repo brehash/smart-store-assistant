@@ -366,8 +366,8 @@ export function OrderFormCard({ data, orderStatuses, allOrderStatuses, paymentMe
 
         {/* Coupon / Voucher */}
         <div>
-          <Label className="text-xs font-medium mb-1.5 block">Voucher / Coupon (optional)</Label>
-          <Input placeholder="Enter coupon code..." value={couponCode} onChange={(e) => setCouponCode(e.target.value)} className="h-9 text-sm" disabled={isDisabled} />
+          <Label className="text-xs font-medium mb-1.5 block">Voucher / Cupon (opțional)</Label>
+          <Input placeholder="Introdu codul cuponului..." value={couponCode} onChange={(e) => setCouponCode(e.target.value)} className="h-9 text-sm" disabled={isDisabled} />
         </div>
 
         {/* Note */}
