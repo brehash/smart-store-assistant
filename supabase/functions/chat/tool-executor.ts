@@ -656,7 +656,7 @@ export async function executeTool(
         method: "DELETE",
         apiPrefix: "wp/v2",
       });
-      return { result: data, requestUri: `DELETE /wp-json/wp/v2/pages/${args.page_id}` };
+      return { result: stripResultForAI("delete_page", data), requestUri: `DELETE /wp-json/wp/v2/pages/${args.page_id}` };
     }
     // ── CRUD: Posts (WordPress) ──
     case "create_post": {
