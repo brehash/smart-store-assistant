@@ -441,7 +441,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
                           onClick={() => onNewInView?.(view.id)}
                           className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-[11px] text-sidebar-foreground/40 hover:text-sidebar-foreground/70 hover:bg-sidebar-accent/30 transition-colors"
                         >
-                          <Plus className="h-3 w-3" /> New Chat
+                          <Plus className="h-3 w-3" /> Chat nou
                         </button>
                       </div>
                     )}
