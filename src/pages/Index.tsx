@@ -669,7 +669,7 @@ export default function Index() {
       },
       onError: (error) => {
         setIsStreaming(false);
-        toast({ title: "Error", description: error, variant: "destructive" });
+        toast({ title: "Eroare", description: error, variant: "destructive" });
       },
     });
   };
