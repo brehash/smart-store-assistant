@@ -609,7 +609,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
                   <span className="font-semibold text-lg">{creditBalance.balance}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Monthly allowance</span>
+                  <span className="text-muted-foreground">Alocație lunară</span>
                   <span>{creditBalance.monthly_allowance}</span>
                 </div>
                 <div className="flex justify-between text-sm">
