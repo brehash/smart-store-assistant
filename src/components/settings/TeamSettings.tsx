@@ -60,7 +60,7 @@ export function TeamSettings() {
         body: { name: teamName.trim() },
       });
       if (error) throw error;
-      toast({ title: "Team created!", description: `"${teamName}" is ready.` });
+      toast({ title: "Echipă creată!", description: `„${teamName}" este gata.` });
       setTeamName("");
       fetchTeam();
     } catch (e: any) {
