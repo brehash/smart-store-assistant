@@ -537,8 +537,8 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
   const renderAccount = () => (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold">Account</h2>
-        <p className="text-sm text-muted-foreground">Account information and management</p>
+        <h2 className="text-lg font-semibold">Cont</h2>
+        <p className="text-sm text-muted-foreground">Informații și gestionare cont</p>
       </div>
       <Card>
         <CardContent className="pt-6 space-y-3">
