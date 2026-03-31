@@ -276,7 +276,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
       }
       toast({ title: "Cache reîmprospătat", description: `${allProducts.length} produse, ${paymentMethods.length} metode de plată, ${allStatuses.length} statusuri în cache.` });
     } catch (err) {
-      toast({ title: "Cache refresh failed", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
+      toast({ title: "Reîmprospătare eșuată", description: err instanceof Error ? err.message : "Eroare necunoscută", variant: "destructive" });
     } finally {
       setRefreshingCache(false);
     }
