@@ -336,7 +336,7 @@ export function TeamSettings() {
                     onClick={() => handleCancelInvitation(inv.id)}
                     className="text-destructive hover:text-destructive text-xs"
                   >
-                    Cancel
+                    Anulează
                   </Button>
                 )}
               </div>
