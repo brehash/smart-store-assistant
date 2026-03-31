@@ -291,7 +291,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
 
   const handlePasswordChange = async () => {
     if (newPassword.length < 6) { toast({ title: "Eroare", description: "Parola trebuie să aibă cel puțin 6 caractere.", variant: "destructive" }); return; }
-    if (newPassword !== confirmPassword) { toast({ title: "Error", description: "Passwords do not match.", variant: "destructive" }); return; }
+    if (newPassword !== confirmPassword) { toast({ title: "Eroare", description: "Parolele nu se potrivesc.", variant: "destructive" }); return; }
     setChangingPassword(true);
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
