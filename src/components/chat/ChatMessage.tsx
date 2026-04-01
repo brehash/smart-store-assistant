@@ -54,12 +54,13 @@ interface ChatMessageProps {
   onApproval?: (approval: ApprovalRequest, action: "approve" | "skip" | "edit", editedText?: string) => void;
   onQuestionAnswer?: (question: QuestionRequest, answer: string) => void;
   onOrderCreated?: (data: OrderFormData, result: { orderNumber: string; orderId: number; total: string }) => void;
+  onSendMessage?: (message: string) => void;
 }
 
 export function ChatMessage({
   role, content, richContents, isStreaming,
   pipeline, approvals, questions, orderForms, debugLogs, reasoningLogs, tokenUsage, creditUsage,
-  orderStatuses, allOrderStatuses, paymentMethods, cachedProducts, onApproval, onQuestionAnswer, onOrderCreated,
+  orderStatuses, allOrderStatuses, paymentMethods, cachedProducts, onApproval, onQuestionAnswer, onOrderCreated, onSendMessage,
 }: ChatMessageProps) {
   const isUser = role === "user";
 
@@ -159,7 +160,7 @@ export function ChatMessage({
             {rc.type === "chart" && <ChatChart chartData={rc.data} />}
             {rc.type === "dashboard" && <DashboardView data={rc.data} />}
             {rc.type === "shipping" && <ShippingTimeline data={rc.data} />}
-            {rc.type === "geo_report" && <GeoReportCard data={rc.data} />}
+            {rc.type === "geo_report" && <GeoReportCard data={rc.data} onAction={onSendMessage} />}
           </div>
         ))}
 

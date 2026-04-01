@@ -93,7 +93,30 @@ function PriorityBadge({ priority }: { priority: string }) {
   return <Badge variant={variant} className="text-[10px] px-1.5 py-0">{priority}</Badge>;
 }
 
-export function GeoReportCard({ data }: { data: GeoReportData }) {
+function deriveActions(data: GeoReportData): { label: string; message: string }[] {
+  if (!data.recommendations?.length || !data.entityName || !data.entityId) return [];
+
+  const cats = new Set<string>();
+  for (const rec of data.recommendations) {
+    const t = `${rec.text} ${rec.category}`.toLowerCase();
+    if (t.includes("meta") && t.includes("descri")) cats.add("meta_desc");
+    if (t.includes("faq") || t.includes("json-ld") || t.includes("structured") || t.includes("schema")) cats.add("jsonld_faq");
+    if (t.includes("descri") && !t.includes("meta") || t.includes("content") || t.includes("conținut")) cats.add("description");
+  }
+
+  const eName = data.entityName;
+  const eId = data.entityId;
+  const eType = data.entityType || "product";
+  const actions: { label: string; message: string }[] = [];
+
+  if (cats.has("meta_desc")) actions.push({ label: "Optimizează Meta Description", message: `Generează meta description optimizată pentru ${eType} "${eName}" (ID: ${eId})` });
+  if (cats.has("jsonld_faq")) actions.push({ label: "Generează JSON-LD & FAQ", message: `Generează JSON-LD și FAQ schema pentru ${eType} "${eName}" (ID: ${eId})` });
+  if (cats.has("description")) actions.push({ label: "Optimizează Descrierea", message: `Optimizează descrierea pentru ${eType} "${eName}" (ID: ${eId})` });
+
+  return actions;
+}
+
+export function GeoReportCard({ data, onAction }: { data: GeoReportData; onAction?: (message: string) => void }) {
   if (data.mode === "bulk" && data.items?.length) {
     return (
       <Card className="w-full">
@@ -240,6 +263,29 @@ export function GeoReportCard({ data }: { data: GeoReportData }) {
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+        {/* Action buttons — single audit only */}
+        {!isGeneration && data.mode !== "bulk" && onAction && data.entityName && data.entityId && (
+          <div className="space-y-2 pt-1">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Ce vrei să optimizezi?</p>
+            <div className="flex flex-wrap gap-2">
+              {deriveActions(data).map((action) => (
+                <button
+                  key={action.label}
+                  onClick={() => onAction(action.message)}
+                  className="rounded-full border border-border bg-card px-3 py-1.5 text-xs hover:bg-accent transition-colors"
+                >
+                  {action.label}
+                </button>
+              ))}
+              <button
+                onClick={() => onAction(`Generează conținut GEO complet pentru ${data.entityType || "product"} "${data.entityName}" (ID: ${data.entityId})`)}
+                className="rounded-full bg-primary text-primary-foreground px-3 py-1.5 text-xs hover:bg-primary/90 transition-colors font-medium"
+              >
+                🚀 Generează tot
+              </button>
+            </div>
           </div>
         )}
       </CardContent>

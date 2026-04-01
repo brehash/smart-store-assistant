@@ -843,10 +843,11 @@ export default function Index() {
                    allOrderStatuses={cachedAllStatuses}
                    paymentMethods={cachedPaymentMethods}
                    cachedProducts={cachedProducts}
-                   onApproval={handleApproval}
-                   onQuestionAnswer={handleQuestionAnswer}
-                   onOrderCreated={handleOrderCreated}
-                 />
+                    onApproval={handleApproval}
+                    onQuestionAnswer={handleQuestionAnswer}
+                    onOrderCreated={handleOrderCreated}
+                    onSendMessage={handleSend}
+                  />
               ))}
             </div>
           )}
