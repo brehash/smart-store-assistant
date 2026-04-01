@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, WRITE_TOOLS } from "./types.ts";
 import type { SemanticStep } from "./types.ts";
 import { TOOLS } from "./tools.ts";
-import { selectToolsForIntent, isShippingIntent } from "./intent.ts";
+import { selectToolsForIntent, isShippingIntent, GEO_INTENT_RE } from "./intent.ts";
 import {
   coerceMessageContent,
   sanitizeAiHistory,
@@ -255,6 +255,7 @@ serve(async (req) => {
           let semanticIdx = 0;
           const emittedRichTypes = new Set<string>();
           let geoFlowActive = false;
+          if (GEO_INTENT_RE.test(lastUserMsg)) geoFlowActive = true;
           const GEO_FLOW_TOOLS = new Set(["audit_geo", "generate_geo_content", "bulk_geo_audit"]);
           const totalUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
 

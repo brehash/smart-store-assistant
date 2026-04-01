@@ -950,6 +950,11 @@ export async function executeTool(
     }
     case "generate_geo_content": {
       const { entity_id, entity_type } = args;
+
+      if (!entity_id || entity_id === 0) {
+        return { result: { error: "No valid entity_id provided. Search for the product first to get its ID." } };
+      }
+
       let entityData: any;
       if (entity_type === "product") {
         entityData = await callWooProxy(supabaseUrl, authHeader, { endpoint: `products/${entity_id}` });
@@ -964,6 +969,9 @@ export async function executeTool(
       }
 
       const entityName = entityData.name || entityData.title?.rendered || entityData.title || "Unknown";
+      if (entityName === "Unknown") {
+        return { result: { error: `Could not determine name for ${entity_type} #${entity_id}. The entity may not exist.` } };
+      }
       const currentDesc = entityData.description || entityData.content?.rendered || "";
 
       const { data: connData2 } = await supabase
@@ -976,6 +984,12 @@ export async function executeTool(
       const hasYoast = activePlugins.some(p => p.includes("wordpress-seo"));
       const hasRankMath = activePlugins.some(p => p.includes("seo-by-rank-math"));
 
+      const seoPluginNote = hasYoast
+        ? '\nNote: This store uses Yoast SEO. Include meta_fields: [{key: "_yoast_wpseo_metadesc", value: "..."}, {key: "_yoast_wpseo_title", value: "..."}]'
+        : hasRankMath
+        ? '\nNote: This store uses RankMath. Include meta_fields: [{key: "rank_math_description", value: "..."}, {key: "rank_math_title", value: "..."}]'
+        : '\nNote: No SEO plugin detected. JSON-LD is already embedded in the description. Return empty meta_fields array.';
+
       const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
       const userOpenAIKey = Deno.env.get("OPENAI_API_KEY") || null;
       const useOpenAI = !!userOpenAIKey;
@@ -985,25 +999,28 @@ export async function executeTool(
       const geoAiAuth = useOpenAI ? `Bearer ${userOpenAIKey}` : `Bearer ${LOVABLE_API_KEY}`;
       const geoModel = useOpenAI ? "gpt-5.4-mini" : "google/gemini-3-flash-preview";
 
-      const geoPrompt = `You are a GEO (Generative Engine Optimization) expert. Optimize this ${entity_type} for AI search engines.
+      const geoPrompt = `You are a GEO (Generative Engine Optimization) expert.
 
-Entity: "${entityName}" (${entity_type} #${entity_id})
-Current description:
+=== PRODUCT TO OPTIMIZE ===
+Name: "${entityName}"
+Type: ${entity_type}, ID: ${entity_id}
+Current description (first 3000 chars):
 ${currentDesc.slice(0, 3000)}
 
-SEO Plugin: ${hasYoast ? "Yoast SEO" : hasRankMath ? "RankMath" : "None detected"}
+=== YOUR TASK ===
+Generate optimized content ONLY about the product "${entityName}". Do NOT generate content about SEO plugins, WordPress tools, or anything other than this specific product.
 
-Generate an optimized version with:
+Generate:
 1. "optimized_description": Full HTML description that includes:
-   - Citation-worthy, detailed content (800+ chars)
-   - A visible FAQ section using <details> and <summary> tags (3-5 relevant FAQs)
+   - Citation-worthy, detailed content about "${entityName}" (800+ chars)
+   - A visible FAQ section using <details> and <summary> tags (3-5 relevant FAQs about this product)
    - An inline <script type="application/ld+json"> block with FAQPage schema at the end
-2. "meta_description": A 150-160 char meta description optimized for AI search
-3. "short_description": An optimized short description (50-100 chars)
-4. "meta_fields": Array of {key, value} for SEO plugin meta fields:
-${hasYoast ? '   - {key: "_yoast_wpseo_metadesc", value: "..."}\n   - {key: "_yoast_wpseo_title", value: "..."}' : hasRankMath ? '   - {key: "rank_math_description", value: "..."}\n   - {key: "rank_math_title", value: "..."}' : '   - Empty array (no SEO plugin detected, JSON-LD is already in description)'}
+2. "meta_description": A 150-160 char meta description about "${entityName}" optimized for AI search
+3. "short_description": An optimized short description of "${entityName}" (50-100 chars)
+4. "meta_fields": Array of {key, value} for SEO plugin meta fields (see note below)
+${seoPluginNote}
 
-Maintain the original language of the content. If the content is in Romanian, write in Romanian.`;
+CRITICAL: All content must be about "${entityName}". Maintain the original language. If the content is in Romanian, write in Romanian.`;
 
       const geoResp = await fetch(geoAiUrl, {
         method: "POST",
@@ -1068,7 +1085,7 @@ Maintain the original language of the content. If the content is in Romanian, wr
           meta_description: geoOutput.meta_description,
           meta_fields: geoOutput.meta_fields,
           seo_plugin: hasYoast ? "yoast" : hasRankMath ? "rankmath" : "none",
-          _instruction: `IMPORTANT: Now call update_${entity_type} with id ${entity_id} to apply these changes. Pass description, short_description, and meta_data/meta fields. Briefly summarize the generated content before calling the update tool.`,
+          _instruction: `The preview card is already displayed to the user. Do NOT output JSON, raw data, or tool results as text. Simply confirm briefly in natural language (e.g. "Am generat conținut GEO optimizat pentru ${entityName}") then IMMEDIATELY call update_${entity_type} with id ${entity_id}, passing description, short_description, and meta_data/meta fields from this result.`,
         },
         richContent: {
           type: "geo_report",
