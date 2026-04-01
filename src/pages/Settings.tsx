@@ -143,6 +143,8 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
         const cfg = (data.config as any) || {};
         setColeteClientId(cfg.client_id || "");
         setColeteClientSecret(cfg.client_secret || "");
+        setColeteDeliveredStatus(cfg.delivered_status || "completed");
+        setColeteReturnedStatus(cfg.returned_status || "refuzata");
       }
       setIntegrationLoaded(true);
     });
