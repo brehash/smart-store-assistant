@@ -266,7 +266,7 @@ export function GeoReportCard({ data, onAction }: { data: GeoReportData; onActio
           </div>
         )}
         {/* Action buttons — single audit only */}
-        {!isGeneration && data.mode !== "bulk" && onAction && data.entityName && data.entityId && (
+        {!isGeneration && data.mode !== "bulk" && onAction && data.entityName && data.entityId != null && (
           <div className="space-y-2 pt-1">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Ce vrei să optimizezi?</p>
             <div className="flex flex-wrap gap-2">
