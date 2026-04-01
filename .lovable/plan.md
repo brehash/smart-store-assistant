@@ -1,40 +1,25 @@
 
 
-# Interactive GEO Audit Actions
+# Fix GEO Audit Action Buttons Not Rendering
 
-## What changes
+## Root Cause
 
-After a GEO audit displays the score and recommendations, the card will show clickable action buttons derived from the recommendations. The user clicks a button (e.g. "Generate JSON-LD & FAQ", "Optimize Meta Description") and that action is sent as a chat message, triggering the corresponding GEO generation flow.
+Two issues prevent the buttons from appearing:
 
-## Design
+1. **Falsy `entityId` check** — Line 269 in `GeoReportCard.tsx` uses `data.entityId` as a truthy check. When the product ID is `0` (or any falsy value), the entire action buttons section is hidden. Same issue in `deriveActions` (line 97).
 
-The `GeoReportCard` will receive an `onAction` callback. Below the recommendations list, a row of action buttons appears — each mapped from a recommendation. The buttons send a pre-formatted message like `"Generează JSON-LD și FAQ pentru [product] #[id]"` back to the chat input.
+2. **No `entityId` in data from backend** — The session replay shows `#0`, meaning the `entity_id` from the backend might not be correctly passed through to the richContent data.
 
-## Files to modify
+## Fix (2 files)
 
 ### 1. `src/components/chat/GeoReportCard.tsx`
-- Add `onAction?: (message: string) => void` prop to `GeoReportCard`
-- Add `GeoReportData.entityId` (already exists) usage
-- After the recommendations section, render a "Ce vrei să optimizezi?" section with buttons:
-  - Map each recommendation to an actionable button
-  - Add a "Generează tot" (Generate All) primary button that triggers full GEO content generation
-  - Each button calls `onAction` with a natural-language message like `"Generează meta description optimizată pentru [entityName] #[entityId]"` or `"Generează JSON-LD, FAQ și meta description pentru [entityName] #[entityId]"`
-  - Buttons are disabled when no `onAction` is provided
-  - Show only for `mode === "single"` audit results (not bulk, not generation previews)
 
-### 2. `src/components/chat/ChatMessage.tsx`
-- Add `onSendMessage?: (message: string) => void` prop
-- Pass it to `GeoReportCard` as `onAction`
+- **Line 97**: Change `!data.entityId` to `data.entityId == null` so `0` doesn't block it
+- **Line 269**: Change `data.entityId` to `data.entityId != null` — same fix for the render guard
 
-### 3. `src/pages/Index.tsx`
-- Pass the existing `handleSend` (or a wrapper) as `onSendMessage` to `ChatMessage`
+### 2. `supabase/functions/chat/tool-executor.ts`
 
-### Action mapping logic (in GeoReportCard)
-Group recommendations into predefined action categories:
-- "meta description" recs → button: "Optimizează Meta Description"
-- "FAQ" / "structured data" / "JSON-LD" recs → button: "Generează JSON-LD & FAQ"  
-- "description" / "content" recs → button: "Optimizează Descrierea"
-- Always show: "Generează tot" → triggers `generate_geo_content` for the full entity
+- **Line 954**: The `generate_geo_content` handler rejects `entity_id === 0` — verify the `audit_geo` handler properly resolves the product ID before building the report. If the product search returns an ID, it should be correctly threaded into `reportData.entityId`.
 
-Each button sends a message like: `"Generează [action] pentru produsul [entityName] (ID: [entityId])"`
+These are minimal one-line fixes that unblock the existing button rendering logic.
 
