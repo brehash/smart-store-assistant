@@ -1,54 +1,52 @@
 
 
-# Nested Collapsible Cron Logs with Multi-Open Support
+# Add Return Shipment Detection + Configurable Order Status Mapping
 
 ## Problem
+1. The cron worker only detects delivered shipments (codes 20800, 30500) but not returned ones (24300, 9512).
+2. The WooCommerce status to set on delivery/return is hardcoded to "completed" — users can't choose which status to apply.
 
-1. Orchestrator and worker logs are flat — no nesting. You can't see which workers belong to which orchestrator.
-2. Only one row can be expanded at a time (`expandedId` is a single string).
+## Changes
 
-## Fix — `src/components/admin/CronJobLogs.tsx`
+### 1. Settings UI — `src/pages/Settings.tsx`
 
-### 1. Allow multiple rows open simultaneously
+Add two dropdowns to the Colete Online integration card (below Client Secret), populated from the existing `orderStatuses` list already fetched for the connection tab:
 
-Replace `expandedId: string | null` with `expandedIds: Set<string>`. Toggle by adding/removing from the set.
+- **Status la livrare** (Delivered status) — default: `completed`
+- **Status la retur** (Returned status) — default: `refuzata` or user's choice
 
-### 2. Group orchestrator + workers together
-
-Logs appear to come in pairs: an orchestrator dispatches workers, and worker logs have the same timestamp. Group them by matching `created_at` proximity (within ~60s) or by the `integration_id` in the orchestrator's details matching worker details.
-
-**Simpler approach**: Keep the flat list but nest workers inside orchestrators visually:
-- When an orchestrator row is expanded, find all worker logs from the same time window (within 5 minutes before the orchestrator's `created_at`).
-- Render those workers as collapsible sub-rows inside the orchestrator's expanded content, each with its own expand/collapse toggle.
-- Hide those worker rows from the top-level list to avoid duplication.
-
-### 3. Implementation details
-
-**State change:**
-```typescript
-const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-const toggleExpand = (id: string) => {
-  setExpandedIds(prev => {
-    const next = new Set(prev);
-    next.has(id) ? next.delete(id) : next.add(id);
-    return next;
-  });
-};
+Store these in the integration config alongside `client_id`/`client_secret`:
+```json
+{
+  "client_id": "...",
+  "client_secret": "...",
+  "delivered_status": "completed",
+  "returned_status": "refuzata"
+}
 ```
 
-**Grouping logic:**
-- Sort logs by `created_at` desc.
-- For each orchestrator, find worker logs whose `created_at` falls within a window (orchestrator time ± 5 min). Collect their IDs into a `childWorkerIds` set.
-- Top-level render: skip logs whose IDs are in `childWorkerIds`.
-- Inside orchestrator expanded view: replace the dispatch table with collapsible worker rows, each rendering the existing worker Card detail view.
+New state vars: `coleteDeliveredStatus`, `coleteReturnedStatus`. Load from config on mount, save via existing `handleSaveIntegration`. The dropdowns reuse the `orderStatuses` array (fetched when a WooCommerce connection exists).
 
-**Orchestrator expanded content:**
-- Each dispatched integration becomes a collapsible row showing worker summary (store name, scanned, completed, errors).
-- Expanding a worker row shows the full order table and error details (reusing existing Card content).
+### 2. Worker Edge Function — `supabase/functions/colete-online-worker/index.ts`
 
-### Files
+- Read `config.delivered_status` (default `"completed"`) and `config.returned_status` (default `"refuzata"`) from the integration config.
+- Expand delivery detection to also check for return codes:
+  ```
+  isDelivered = history.some(h => h.code === 20800 || h.code === 30500)
+  isReturned = history.some(h => h.code === 24300 || h.code === 9512)
+  ```
+- When `isReturned`, update WooCommerce order to `returned_status` instead of `delivered_status`.
+- Add `ordersReturned` counter to logging, and log action as `"returned"`.
+
+### 3. CronJobLogs UI — `src/components/admin/CronJobLogs.tsx`
+
+- Display the new `orders_returned` summary field in the worker detail cards.
+
+## Files
 
 | File | Change |
 |------|--------|
-| `src/components/admin/CronJobLogs.tsx` | Multi-expand state, group workers under orchestrators, nested collapsibles |
+| `src/pages/Settings.tsx` | Add delivered/returned status dropdowns to integration card, persist in config |
+| `supabase/functions/colete-online-worker/index.ts` | Detect return codes 24300/9512, use configurable statuses |
+| `src/components/admin/CronJobLogs.tsx` | Show returned orders count |
 
