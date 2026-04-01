@@ -1,80 +1,47 @@
 
 
-# Chat UX Enhancements — 5 Features
+# Two Features: Admin Impersonation + Cron Log Display Fix
 
-## 1. Preferences-Aware Product Search
-
-**Problem**: Preferences/aliases are injected into the system prompt (`prefsContext`) but the AI doesn't proactively use them when searching products. The user says "pasta neagra" but the search_products tool gets the literal text instead of resolving the alias first.
-
-**Fix** (backend only — `supabase/functions/chat/prompts.ts`):
-- Add an explicit instruction in the system prompt telling the AI: "Before calling search_products, check if any of the user's saved preferences/aliases match the query. If so, use the mapped product name or ID from the alias instead of the raw user text."
-- This is a prompt engineering fix — no schema or UI changes needed.
-
-## 2. Stop Response Button
-
-**Files**: `ChatInput.tsx`, `Index.tsx`, `chat-stream.ts`
-
-- When `isStreaming` is true, replace the Send button with a Stop button (Square icon)
-- Add an `AbortController` in `Index.tsx` passed into `streamChat`
-- In `chat-stream.ts`, accept an `AbortSignal` and pass it to the `fetch` call
-- On stop: cancel the reader, call `onDone` to persist the partial response, set `isStreaming = false`
-
-## 3. User Message Actions (Copy & Edit+Resend)
-
-**File**: `ChatMessage.tsx`
-
-- For user messages, on hover show small icon buttons: Copy (clipboard icon) and Edit (pencil icon)
-- **Copy**: copies `content` to clipboard with a toast
-- **Edit**: replaces the message bubble with an editable textarea pre-filled with content. On submit:
-  - Call `onEditAndResend(messageIndex, newText)` which truncates messages to that index and re-sends
-- New prop: `onEditAndResend?: (newText: string) => void`
-- `Index.tsx`: wire `onEditAndResend` — slice messages to before that user message, then call `handleSend(newText)`
-
-## 4. Assistant Message Action Bar (Copy, Thumbs, Retry)
-
-**Files**: `ChatMessage.tsx`, `Index.tsx`, new migration for feedback table
-
-### UI
-- After the token/credit usage badge on assistant messages (non-streaming), render a row of small icon buttons:
-  - **Copy** — copies assistant content to clipboard
-  - **Thumbs Up / Thumbs Down** — toggles feedback state, highlighted when active
-  - **Retry** (refresh icon) — removes this assistant message and re-sends the preceding user message
-
-### Database
-- New `message_feedback` table:
-  ```sql
-  CREATE TABLE public.message_feedback (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    message_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    rating text NOT NULL CHECK (rating IN ('up', 'down')),
-    created_at timestamptz DEFAULT now(),
-    UNIQUE (message_id, user_id)
-  );
-  ALTER TABLE public.message_feedback ENABLE ROW LEVEL SECURITY;
-  -- RLS: users manage own feedback, admins can read all
-  ```
-
-### Props
-- `onRetry?: () => void` — Index.tsx removes last assistant message and re-calls handleSend with the previous user message
-- `onFeedback?: (rating: "up" | "down") => void` — upserts to message_feedback table
-- `messageId?: string` — needed for feedback persistence
-
-## 5. Plan Mode
-
-**Files**: `ChatInput.tsx`, `Index.tsx`, `chat-stream.ts`, `supabase/functions/chat/index.ts`, `supabase/functions/chat/prompts.ts`
+## 1. Admin User Impersonation
 
 ### Concept
-A toggle in the chat input area (e.g. a "Plan" chip/button next to the textarea) that when active:
-- Prepends `[PLAN MODE]` to the message sent to the backend
-- Backend detects this prefix and uses a plan-specific system prompt addition: "The user is in PLAN MODE. Analyze their request and produce a structured plan with numbered steps. Do NOT execute any tools. Only outline what you would do, what tools you'd call, and what the expected outcome is. Ask clarifying questions if needed."
-- The response renders normally as markdown (the plan is text)
-- After reviewing, the user can click "Execute Plan" which sends the plan text back with `[EXECUTE PLAN]` prefix, triggering normal tool execution
+Admins can click "Impersonate" on any user in the admin panel. This generates a temporary session for that user via `serviceClient.auth.admin.generateLink`, allowing the admin to see the app exactly as that user sees it. A floating banner shows who they're impersonating with a "Stop" button to return to their admin session.
 
-### UI
-- Toggle button in `ChatInput.tsx` (e.g. `Lightbulb` icon or "Plan" text chip)
-- When plan mode is on, the textarea placeholder changes to "Descrie ce vrei să faci..."
-- State managed in `Index.tsx`, passed to `ChatInput`
+### Backend — `supabase/functions/admin/index.ts`
+Add route `POST /users/:id/impersonate`:
+- Use `serviceClient.auth.admin.generateLink({ type: 'magiclink', email })` to get a token
+- Return the token/link properties so the frontend can sign in as that user
+
+### Frontend — `src/pages/Admin.tsx` / `src/components/admin/UsersTable.tsx`
+- Add "Impersonate" button (Eye icon) per user row
+- On click: save current admin session to `sessionStorage`, call the impersonate endpoint, use `supabase.auth.signInWithOtp` or `verifyOtp` with the returned token
+- Redirect to `/` as the impersonated user
+
+### Frontend — `src/pages/Index.tsx` or `src/App.tsx`
+- On mount, check `sessionStorage` for saved admin session
+- If present, show a floating banner: "Impersonating [user] — Stop"
+- "Stop" restores the admin session from storage and navigates back to `/admin`
+
+### Frontend — `src/components/admin/ImpersonationBanner.tsx` (new)
+- Fixed top banner with user info and stop button
+- Calls `supabase.auth.setSession()` with saved admin tokens to restore
+
+## 2. Cron Job Log Display Fix
+
+### Problem
+The latest orchestrator log format (after fan-out refactor) no longer has `orders_scanned` in the summary — it has `workers_dispatched` / `workers_failed`. But the CronJobLogs UI expects `orders_scanned`. This makes the latest run appear to have "scanned 0" when it actually dispatched workers that did the scanning.
+
+The actual last run was **successful** — the worker log shows 17 orders scanned, 14 with AWB. The only real error was on March 30 (HTTP 429 rate limiting from Colete Online API).
+
+### Fix — `src/components/admin/CronJobLogs.tsx`
+- Update the `CronLog` summary interface to include optional `workers_dispatched`, `workers_failed` fields
+- In the UI, when rendering orchestrator logs (identified by having `workers_dispatched` in summary), show "Workers: X dispatched, Y failed" instead of "Orders scanned: 0"
+- Link orchestrator logs to their corresponding worker logs visually (same timestamp group)
+
+### Fix — `src/components/admin/CronJobLogs.tsx` (summary display)
+- Show orchestrator-specific stats when `summary.workers_dispatched` exists
+- Show worker-specific stats when `summary.orders_scanned` exists
+- This handles both old-format (single log) and new-format (orchestrator + worker) entries
 
 ---
 
@@ -82,11 +49,9 @@ A toggle in the chat input area (e.g. a "Plan" chip/button next to the textarea)
 
 | File | Changes |
 |------|---------|
-| `supabase/functions/chat/prompts.ts` | Add preference-aware search instruction |
-| `src/components/chat/ChatInput.tsx` | Stop button, plan mode toggle |
-| `src/pages/Index.tsx` | AbortController, edit+resend, retry, feedback handlers, plan mode state |
-| `src/components/chat/ChatMessage.tsx` | User hover actions, assistant action bar |
-| `src/lib/chat-stream.ts` | Accept AbortSignal |
-| `supabase/functions/chat/index.ts` | Detect `[PLAN MODE]` / `[EXECUTE PLAN]` prefixes |
-| Migration | `message_feedback` table |
+| `supabase/functions/admin/index.ts` | Add `POST /users/:id/impersonate` route |
+| `src/components/admin/UsersTable.tsx` | Add impersonate button |
+| `src/components/admin/ImpersonationBanner.tsx` | New — floating banner component |
+| `src/App.tsx` | Render ImpersonationBanner when impersonating |
+| `src/components/admin/CronJobLogs.tsx` | Handle orchestrator vs worker log formats |
 
