@@ -121,7 +121,9 @@ serve(async (req) => {
     const accessToken = tokenData.access_token;
 
     // 4. Fetch non-completed orders from WooCommerce (paginated, max MAX_ORDERS)
-    const excludeStatuses = ["completed", "cancelled", "refunded", "failed", "trash", "refuzata"];
+    const deliveredStatus = config.delivered_status || "completed";
+    const returnedStatus = config.returned_status || "refuzata";
+    const excludeStatuses = ["completed", "cancelled", "refunded", "failed", "trash", deliveredStatus, returnedStatus].filter((v, i, a) => a.indexOf(v) === i);
     const baseUrl = conn.store_url.replace(/\/+$/, "");
     const ck = conn.consumer_key;
     const cs = conn.consumer_secret;
