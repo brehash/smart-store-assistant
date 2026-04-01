@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { corsHeaders, WRITE_TOOLS } from "./types.ts";
 import type { SemanticStep } from "./types.ts";
 import { TOOLS } from "./tools.ts";
-import { selectToolsForIntent, isShippingIntent } from "./intent.ts";
+import { selectToolsForIntent, isShippingIntent, GEO_INTENT_RE } from "./intent.ts";
 import {
   coerceMessageContent,
   sanitizeAiHistory,
