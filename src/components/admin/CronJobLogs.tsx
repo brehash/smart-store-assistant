@@ -19,7 +19,7 @@ interface CheckedOrder {
   wooStatus: string;
   shippingStatus: string | null;
   shippingCode: number | null;
-  action: "completed" | "in_transit" | "no_history" | "error";
+  action: "completed" | "returned" | "in_transit" | "no_history" | "error";
 }
 
 interface WorkerDetail {
