@@ -167,6 +167,7 @@ export function CronJobLogs({ accessToken }: { accessToken: string }) {
             <TableBody>
               {logs.map((log) => {
                 const isExpanded = expandedId === log.id;
+                const isOrchestrator = log.summary.workers_dispatched != null;
                 return (
                   <Collapsible key={log.id} open={isExpanded} onOpenChange={() => setExpandedId(isExpanded ? null : log.id)} asChild>
                     <>
@@ -183,14 +184,29 @@ export function CronJobLogs({ accessToken }: { accessToken: string }) {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-sm">{formatDuration(log.duration_ms)}</TableCell>
-                          <TableCell className="text-right text-sm">{log.summary.orders_scanned ?? 0}</TableCell>
-                          <TableCell className="text-right text-sm">{log.summary.orders_completed ?? 0}</TableCell>
-                          <TableCell className="text-right text-sm">{log.summary.errors ?? 0}</TableCell>
+                          <TableCell className="text-right text-sm">
+                            <Badge variant="outline" className="text-[10px]">
+                              {isOrchestrator ? "orchestrator" : "worker"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right text-sm">
+                            {isOrchestrator
+                              ? `${log.summary.workers_dispatched} dispatched`
+                              : log.summary.orders_scanned ?? 0}
+                          </TableCell>
+                          <TableCell className="text-right text-sm">
+                            {isOrchestrator
+                              ? `${(log.summary.workers_dispatched ?? 0) - (log.summary.workers_failed ?? 0)} ok`
+                              : log.summary.orders_completed ?? 0}
+                          </TableCell>
+                          <TableCell className="text-right text-sm">
+                            {isOrchestrator ? log.summary.workers_failed ?? 0 : log.summary.errors ?? 0}
+                          </TableCell>
                         </TableRow>
                       </CollapsibleTrigger>
                       <CollapsibleContent asChild>
                         <tr>
-                          <td colSpan={7} className="p-0">
+                          <td colSpan={8} className="p-0">
                             <div className="bg-muted/30 p-4 space-y-3">
                               {log.summary.fatal_error && (
                                 <Card className="border-destructive">
