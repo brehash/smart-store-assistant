@@ -1076,16 +1076,14 @@ CRITICAL: All content must be about "${entityName}". Maintain the original langu
 
       return {
         result: {
-          optimized: true,
+          status: "generated",
           entityName,
           entity_type,
           entity_id,
-          description: geoOutput.optimized_description,
-          short_description: geoOutput.short_description,
-          meta_description: geoOutput.meta_description,
-          meta_fields: geoOutput.meta_fields,
           seo_plugin: hasYoast ? "yoast" : hasRankMath ? "rankmath" : "none",
-          _instruction: `The preview card is already displayed to the user. Do NOT output JSON, raw data, or tool results as text. Simply confirm briefly in natural language (e.g. "Am generat conținut GEO optimizat pentru ${entityName}") then IMMEDIATELY call update_${entity_type} with id ${entity_id}, passing description, short_description, and meta_data/meta fields from this result.`,
+          generated_fields: ["description", "short_description", "meta_description",
+                             ...(geoOutput.meta_fields?.length ? ["meta_fields"] : [])],
+          _instruction: `The preview card already shows the generated content to the user. Do NOT output JSON or raw data. Confirm briefly in natural language, then IMMEDIATELY call update_${entity_type} with id ${entity_id}. Use these exact values:\n- description: ${JSON.stringify(geoOutput.optimized_description)}\n- short_description: ${JSON.stringify(geoOutput.short_description)}\n- meta_data: ${JSON.stringify(geoOutput.meta_fields || [])}`,
         },
         richContent: {
           type: "geo_report",
