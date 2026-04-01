@@ -255,6 +255,7 @@ serve(async (req) => {
           let semanticIdx = 0;
           const emittedRichTypes = new Set<string>();
           let geoFlowActive = false;
+          if (GEO_INTENT_RE.test(lastUserMsg)) geoFlowActive = true;
           const GEO_FLOW_TOOLS = new Set(["audit_geo", "generate_geo_content", "bulk_geo_audit"]);
           const totalUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
 

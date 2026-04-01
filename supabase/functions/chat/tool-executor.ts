@@ -1085,7 +1085,7 @@ CRITICAL: All content must be about "${entityName}". Maintain the original langu
           meta_description: geoOutput.meta_description,
           meta_fields: geoOutput.meta_fields,
           seo_plugin: hasYoast ? "yoast" : hasRankMath ? "rankmath" : "none",
-          _instruction: `IMPORTANT: Now call update_${entity_type} with id ${entity_id} to apply these changes. Pass description, short_description, and meta_data/meta fields. Briefly summarize the generated content before calling the update tool.`,
+          _instruction: `The preview card is already displayed to the user. Do NOT output JSON, raw data, or tool results as text. Simply confirm briefly in natural language (e.g. "Am generat conținut GEO optimizat pentru ${entityName}") then IMMEDIATELY call update_${entity_type} with id ${entity_id}, passing description, short_description, and meta_data/meta fields from this result.`,
         },
         richContent: {
           type: "geo_report",
