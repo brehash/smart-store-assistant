@@ -58,10 +58,11 @@ interface CronLog {
 function WorkerDetailCard({ detail }: { detail: WorkerDetail }) {
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-3 gap-2 text-xs">
+      <div className="grid grid-cols-4 gap-2 text-xs">
         <div><span className="text-muted-foreground">Scanned:</span> {detail.ordersScanned}</div>
         <div><span className="text-muted-foreground">With AWB:</span> {detail.ordersWithAwb}</div>
         <div><span className="text-muted-foreground">Completed:</span> {detail.ordersCompleted}</div>
+        <div><span className="text-muted-foreground">Returned:</span> {detail.ordersReturned ?? 0}</div>
       </div>
       {detail.checkedOrders && detail.checkedOrders.length > 0 && (
         <div>
