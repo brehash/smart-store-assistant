@@ -43,9 +43,10 @@ interface ConversationSidebarProps {
   onToggle: () => void;
   onOpenSettings: () => void;
   newOrderCount?: number;
+  onDeleteConversation?: (id: string) => void;
 }
 
-export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, onViewIdChange, collapsed, onToggle, onOpenSettings, newOrderCount = 0 }: ConversationSidebarProps) {
+export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, onViewIdChange, collapsed, onToggle, onOpenSettings, newOrderCount = 0, onDeleteConversation }: ConversationSidebarProps) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -145,6 +146,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
   const handleDelete = async (id: string) => {
     await supabase.from("conversations").delete().eq("id", id);
     setConversations((prev) => prev.filter((c) => c.id !== id));
+    onDeleteConversation?.(id);
     if (activeId === id) onNew();
   };
 
@@ -190,8 +192,10 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
 
   const handleDeleteView = async (e: React.MouseEvent, viewId: string) => {
     e.stopPropagation();
-    await supabase.from("conversations").delete().in("id", conversations.filter((c) => c.view_id === viewId).map((c) => c.id));
+    const idsToDelete = conversations.filter((c) => c.view_id === viewId).map((c) => c.id);
+    await supabase.from("conversations").delete().in("id", idsToDelete);
     await supabase.from("views").delete().eq("id", viewId);
+    idsToDelete.forEach((id) => onDeleteConversation?.(id));
     setViews((prev) => prev.filter((v) => v.id !== viewId));
     setConversations((prev) => prev.filter((c) => c.view_id !== viewId));
   };

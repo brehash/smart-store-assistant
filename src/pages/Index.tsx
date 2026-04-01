@@ -83,6 +83,7 @@ export default function Index() {
   const [planMode, setPlanMode] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const messagesCacheRef = useRef<Map<string, Message[]>>(new Map());
   // Fetch credit balance and app settings on mount
   useEffect(() => {
     if (!user) return;
@@ -360,9 +361,45 @@ export default function Index() {
     return () => document.removeEventListener("visibilitychange", handleVisibility);
   }, [isStreaming, toast]);
 
+  const parseMessages = (data: any[]): Message[] =>
+    data.map((m) => {
+      const meta = (m as any).metadata as any;
+      let richContents: RichContent[] = [];
+      if (m.rich_content) {
+        if (Array.isArray(m.rich_content)) {
+          richContents = m.rich_content as unknown as RichContent[];
+        } else {
+          richContents = [m.rich_content as unknown as RichContent];
+        }
+      }
+      return {
+        id: m.id,
+        role: m.role as "user" | "assistant",
+        content: m.content,
+        richContents,
+        pipeline: meta?.pipeline || null,
+        debugLogs: meta?.debugLogs || [],
+        approvals: meta?.approvals || [],
+        questions: meta?.questions || [],
+        orderForms: meta?.orderForms || [],
+        reasoningLogs: meta?.reasoningLogs || [],
+        tokenUsage: (m as any).token_usage || undefined,
+      };
+    });
+
   useEffect(() => {
     if (!conversationId || !user) return;
     if (skipLoadRef.current) { skipLoadRef.current = false; return; }
+
+    // Serve from cache instantly if available
+    const cached = messagesCacheRef.current.get(conversationId);
+    if (cached) {
+      setMessages(cached);
+      setLoadingMessages(false);
+      scrollToBottom();
+      return;
+    }
+
     setLoadingMessages(true);
     const load = async () => {
       const { data } = await supabase
@@ -371,37 +408,26 @@ export default function Index() {
         .eq("conversation_id", conversationId)
         .order("created_at", { ascending: true });
       if (data) {
-        setMessages(data.map((m) => {
-          const meta = (m as any).metadata as any;
-          // Normalize rich_content: could be a single object or an array
-          let richContents: RichContent[] = [];
-          if (m.rich_content) {
-            if (Array.isArray(m.rich_content)) {
-              richContents = m.rich_content as unknown as RichContent[];
-            } else {
-              richContents = [m.rich_content as unknown as RichContent];
-            }
-          }
-          return {
-            id: m.id,
-            role: m.role as "user" | "assistant",
-            content: m.content,
-            richContents,
-            pipeline: meta?.pipeline || null,
-            debugLogs: meta?.debugLogs || [],
-            approvals: meta?.approvals || [],
-            questions: meta?.questions || [],
-            orderForms: meta?.orderForms || [],
-            reasoningLogs: meta?.reasoningLogs || [],
-            tokenUsage: (m as any).token_usage || undefined,
-          };
-        }));
+        const parsed = parseMessages(data);
+        messagesCacheRef.current.set(conversationId, parsed);
+        setMessages(parsed);
         scrollToBottom();
       }
       setLoadingMessages(false);
     };
     load();
   }, [conversationId, user, scrollToBottom]);
+
+  // Keep cache in sync when messages change (after streaming completes)
+  useEffect(() => {
+    if (conversationId && messages.length > 0 && !isStreaming) {
+      messagesCacheRef.current.set(conversationId, messages);
+    }
+  }, [conversationId, messages, isStreaming]);
+
+  const handleDeleteFromCache = useCallback((id: string) => {
+    messagesCacheRef.current.delete(id);
+  }, []);
 
   const createConversation = async () => {
     if (!user) return null;
@@ -893,6 +919,7 @@ export default function Index() {
           onToggle={handleToggleSidebar}
           onOpenSettings={handleOpenSettings}
           newOrderCount={newOrderCount}
+          onDeleteConversation={handleDeleteFromCache}
         />
       </div>
 
