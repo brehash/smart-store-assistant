@@ -83,6 +83,7 @@ export default function Index() {
   const [planMode, setPlanMode] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const messagesCacheRef = useRef<Map<string, Message[]>>(new Map());
   // Fetch credit balance and app settings on mount
   useEffect(() => {
     if (!user) return;
