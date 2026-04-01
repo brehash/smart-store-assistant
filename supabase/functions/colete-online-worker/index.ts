@@ -64,7 +64,7 @@ serve(async (req) => {
 
     const userId = integration.user_id;
     userLog.userId = userId;
-    const config = integration.config as { client_id?: string; client_secret?: string };
+    const config = integration.config as { client_id?: string; client_secret?: string; delivered_status?: string; returned_status?: string };
 
     if (!config.client_id || !config.client_secret) {
       userLog.authStatus = "missing_credentials";
