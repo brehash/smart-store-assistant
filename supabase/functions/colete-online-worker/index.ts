@@ -290,6 +290,7 @@ async function writeLog(supabase: any, integrationId: string, userLog: any, star
       orders_scanned: userLog.ordersScanned,
       orders_with_awb: userLog.ordersWithAwb,
       orders_completed: userLog.ordersCompleted,
+      orders_returned: userLog.ordersReturned,
       errors: userLog.errors.length,
     },
     details: [userLog],

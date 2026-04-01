@@ -385,7 +385,7 @@ export function CronJobLogs({ accessToken }: { accessToken: string }) {
                                                     </Badge>
                                                     {firstDetail && (
                                                       <span className="text-xs text-muted-foreground">
-                                                        {firstDetail.ordersScanned} scanned · {firstDetail.ordersCompleted} completed
+                                                        {firstDetail.ordersScanned} scanned · {firstDetail.ordersCompleted} completed{(firstDetail.ordersReturned ?? 0) > 0 ? ` · ${firstDetail.ordersReturned} returned` : ""}
                                                       </span>
                                                     )}
                                                   </div>

@@ -740,6 +740,34 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
               <button type="button" onClick={() => setShowColeteSecret(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">{showColeteSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
             </div>
           </div>
+          {orderStatuses.length > 0 && (
+            <>
+              <div className="space-y-2">
+                <Label>Status la livrare</Label>
+                <Select value={coleteDeliveredStatus} onValueChange={setColeteDeliveredStatus}>
+                  <SelectTrigger><SelectValue placeholder="Selectează status" /></SelectTrigger>
+                  <SelectContent>
+                    {orderStatuses.map((s) => (
+                      <SelectItem key={s.slug} value={s.slug}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Statusul WooCommerce setat automat când comanda este livrată</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Status la retur</Label>
+                <Select value={coleteReturnedStatus} onValueChange={setColeteReturnedStatus}>
+                  <SelectTrigger><SelectValue placeholder="Selectează status" /></SelectTrigger>
+                  <SelectContent>
+                    {orderStatuses.map((s) => (
+                      <SelectItem key={s.slug} value={s.slug}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Statusul WooCommerce setat automat când expedierea este returnată</p>
+              </div>
+            </>
+          )}
           <div className="flex gap-2 justify-end pt-2">
             <Button onClick={handleTestColeteOnline} variant="outline" disabled={testingColete || !coleteClientId || !coleteClientSecret}>
               {testingColete ? "Se testează…" : "Testează conexiunea"}
