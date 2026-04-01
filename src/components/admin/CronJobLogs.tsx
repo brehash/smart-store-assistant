@@ -283,7 +283,7 @@ export function CronJobLogs({ accessToken }: { accessToken: string }) {
                                           </div>
                                         </div>
                                       )}
-                                      {detail.errors.length > 0 && (
+                                      {Array.isArray(detail.errors) && detail.errors.length > 0 && (
                                         <div>
                                           <p className="text-xs font-medium text-destructive mb-1">Errors:</p>
                                           <div className="space-y-1">
