@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { useQuery } from "@tanstack/react-query";
 
 interface Stats {
   total_users: number;
@@ -15,23 +16,19 @@ interface Props {
 }
 
 export function UsageStats({ accessToken }: Props) {
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const resp = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin/stats`,
-          { headers: { Authorization: `Bearer ${accessToken}` } }
-        );
-        if (resp.ok) setStats(await resp.json());
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [accessToken]);
+  const { data: stats, isLoading: loading } = useQuery({
+    queryKey: ["admin", "stats"],
+    queryFn: async () => {
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin/stats`,
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+      if (resp.ok) return resp.json() as Promise<Stats>;
+      return null;
+    },
+    enabled: !!accessToken,
+    staleTime: 5 * 60 * 1000,
+  });
 
   if (loading) {
     return (

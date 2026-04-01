@@ -94,12 +94,10 @@ export function CronJobLogs({ accessToken }: { accessToken: string }) {
       }
     } catch (e) {
       toast.error("Failed to trigger cron job");
-    } finally {
+  } finally {
       setRunning(false);
     }
   };
-
-  useEffect(() => { fetchLogs(); }, [accessToken]);
 
   const statusIcon = (status: string) => {
     switch (status) {
