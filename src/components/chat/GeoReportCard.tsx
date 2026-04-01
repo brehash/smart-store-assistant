@@ -94,7 +94,7 @@ function PriorityBadge({ priority }: { priority: string }) {
 }
 
 function deriveActions(data: GeoReportData): { label: string; message: string }[] {
-  if (!data.recommendations?.length || !data.entityName || !data.entityId) return [];
+  if (!data.recommendations?.length || !data.entityName || data.entityId == null) return [];
 
   const cats = new Set<string>();
   for (const rec of data.recommendations) {
