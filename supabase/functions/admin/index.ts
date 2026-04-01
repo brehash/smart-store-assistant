@@ -450,6 +450,39 @@ serve(async (req) => {
       });
     }
 
+    // Route: POST /users/:id/impersonate
+    const impersonateMatch = path.match(/^users\/([^/]+)\/impersonate$/);
+    if (req.method === "POST" && impersonateMatch) {
+      const targetUserId = impersonateMatch[1];
+
+      // Get target user's email
+      const { data: targetAuth, error: targetErr } = await serviceClient.auth.admin.getUserById(targetUserId);
+      if (targetErr || !targetAuth?.user?.email) {
+        return new Response(JSON.stringify({ error: "User not found" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Generate a magic link for the target user
+      const { data: linkData, error: linkErr } = await serviceClient.auth.admin.generateLink({
+        type: "magiclink",
+        email: targetAuth.user.email,
+      });
+      if (linkErr || !linkData) {
+        return new Response(JSON.stringify({ error: linkErr?.message || "Failed to generate link" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({
+        token_hash: linkData.properties?.hashed_token,
+        email: targetAuth.user.email,
+        display_name: targetAuth.user.user_metadata?.full_name || targetAuth.user.email,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ error: "Not found" }), {
       status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

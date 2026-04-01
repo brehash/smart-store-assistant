@@ -173,7 +173,16 @@ export function UsersTable({ users, loading, onSelectUser, onRefresh, accessToke
                     </Badge>
                   ))}
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right flex gap-1 justify-end">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => handleImpersonate(user, e)}
+                    title="Impersonate user"
+                    disabled={impersonating === user.user_id}
+                  >
+                    {impersonating === user.user_id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+                  </Button>
                   <Button variant="ghost" size="icon" onClick={(e) => toggleAdmin(user, e)} title={user.roles.includes("admin") ? "Remove admin" : "Make admin"}>
                     {user.roles.includes("admin") ? <ShieldOff className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
                   </Button>
