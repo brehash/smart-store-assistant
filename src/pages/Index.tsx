@@ -113,23 +113,9 @@ export default function Index() {
         .eq("is_active", true)
         .maybeSingle();
 
-      // If query errored (e.g. RLS recursion, stale auth), refresh session and retry once
+      // If query errored, don't retry auth — just use conversations as safety net
       if (connError && !ownConn) {
-        console.warn("Connection check failed, retrying after session refresh:", connError.message);
-        await supabase.auth.refreshSession();
-        const { data: retryConn } = await supabase
-          .from("woo_connections")
-          .select("id, order_statuses")
-          .eq("user_id", user.id)
-          .eq("is_active", true)
-          .maybeSingle();
-        if (retryConn) {
-          setHasConnection(true);
-          setCachedSelectedStatuses((retryConn as any).order_statuses || []);
-          fetchCachedData(user.id);
-          return;
-        }
-        // If still failing, check conversations as safety net
+        console.warn("Connection check error:", connError.message);
         const { count } = await supabase
           .from("conversations")
           .select("id", { count: "exact", head: true })
