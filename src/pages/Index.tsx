@@ -336,6 +336,7 @@ export default function Index() {
   useEffect(() => {
     if (!conversationId || !user) return;
     if (skipLoadRef.current) { skipLoadRef.current = false; return; }
+    setLoadingMessages(true);
     const load = async () => {
       const { data } = await supabase
         .from("messages")
