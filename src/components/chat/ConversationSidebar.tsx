@@ -58,7 +58,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
   const [editingConvId, setEditingConvId] = useState<string | null>(null);
   const [editingConvTitle, setEditingConvTitle] = useState("");
   const [viewsLimit, setViewsLimit] = useState(5);
-  const [recentsLimit, setRecentsLimit] = useState(10);
+  const [recentsLimit, setRecentsLimit] = useState(30);
   const [hoveredConvId, setHoveredConvId] = useState<string | null>(null);
   const [openMenuConvId, setOpenMenuConvId] = useState<string | null>(null);
 
