@@ -158,7 +158,8 @@ export function CronJobLogs({ accessToken }: { accessToken: string }) {
                 <TableHead>Time</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Duration</TableHead>
-                <TableHead className="text-right">Scanned</TableHead>
+                <TableHead className="text-right">Type</TableHead>
+                <TableHead className="text-right">Scanned / Dispatched</TableHead>
                 <TableHead className="text-right">Completed</TableHead>
                 <TableHead className="text-right">Errors</TableHead>
               </TableRow>
