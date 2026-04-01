@@ -81,6 +81,7 @@ export default function Index() {
   const [cachedProducts, setCachedProducts] = useState<any[]>([]);
   const [newOrderCount, setNewOrderCount] = useState(0);
   const [planMode, setPlanMode] = useState(false);
+  const [loadingMessages, setLoadingMessages] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   // Fetch credit balance and app settings on mount
   useEffect(() => {
@@ -335,6 +336,7 @@ export default function Index() {
   useEffect(() => {
     if (!conversationId || !user) return;
     if (skipLoadRef.current) { skipLoadRef.current = false; return; }
+    setLoadingMessages(true);
     const load = async () => {
       const { data } = await supabase
         .from("messages")
@@ -369,6 +371,7 @@ export default function Index() {
         }));
         scrollToBottom();
       }
+      setLoadingMessages(false);
     };
     load();
   }, [conversationId, user, scrollToBottom]);
@@ -888,7 +891,19 @@ export default function Index() {
         </div>
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin">
-          {hasConnection === false && messages.length === 0 ? (
+          {loadingMessages ? (
+            <div className="mx-auto max-w-3xl py-4 space-y-6 px-4">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className={`flex gap-3 ${i % 2 === 0 ? "justify-end" : ""}`}>
+                  <div className={`space-y-2 ${i % 2 === 0 ? "max-w-[70%]" : "max-w-[80%]"}`}>
+                    <div className={`h-4 rounded-full bg-muted animate-pulse ${i % 2 === 0 ? "w-48" : "w-64"}`} />
+                    <div className={`h-4 rounded-full bg-muted animate-pulse ${i % 2 === 0 ? "w-32" : "w-56"}`} />
+                    {i % 2 !== 0 && <div className="h-4 rounded-full bg-muted animate-pulse w-40" />}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : hasConnection === false && messages.length === 0 ? (
             <ConnectionSetupCard onComplete={() => {
               setHasConnection(true);
               setShowWebhookSetup(true);
