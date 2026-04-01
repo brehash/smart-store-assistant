@@ -54,6 +54,7 @@ interface ChatMessageProps {
   onApproval?: (approval: ApprovalRequest, action: "approve" | "skip" | "edit", editedText?: string) => void;
   onQuestionAnswer?: (question: QuestionRequest, answer: string) => void;
   onOrderCreated?: (data: OrderFormData, result: { orderNumber: string; orderId: number; total: string }) => void;
+  onSendMessage?: (message: string) => void;
 }
 
 export function ChatMessage({
