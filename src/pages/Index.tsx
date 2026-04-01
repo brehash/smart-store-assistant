@@ -384,10 +384,11 @@ export default function Index() {
     let tokenUsage: TokenUsage | null = null;
     let creditUsage: CreditUsage | null = null;
     await streamChat({
-      messages: [...messages, userMsg].map((m) => ({ role: m.role, content: m.content })),
+      messages: [...messages, { role: "user" as const, content: effectiveInput }].map((m) => ({ role: m.role, content: m.content })),
       conversationId: convId,
       accessToken: session.access_token,
       viewId,
+      signal: controller.signal,
       onDelta: (chunk) => {
         assistantContent += chunk;
         streamAliveRef.current = true;
