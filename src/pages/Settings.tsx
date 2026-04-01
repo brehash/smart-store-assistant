@@ -658,7 +658,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
         user_id: user.id,
         integration_key: "colete_online",
         is_enabled: coleteOnlineEnabled,
-        config: { client_id: coleteClientId, client_secret: coleteClientSecret },
+        config: { client_id: coleteClientId, client_secret: coleteClientSecret, delivered_status: coleteDeliveredStatus, returned_status: coleteReturnedStatus },
         updated_at: new Date().toISOString(),
       };
       await supabase.from("woo_integrations").upsert(payload as any, { onConflict: "user_id,integration_key" });
