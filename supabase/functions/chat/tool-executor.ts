@@ -1053,6 +1053,10 @@ Maintain the original language of the content. If the content is in Romanian, wr
         return { result: { error: "Failed to parse AI output" } };
       }
 
+      const hasJsonLdGenerated = geoOutput.optimized_description?.includes("application/ld+json");
+      const hasFaqGenerated = geoOutput.optimized_description?.includes("<details");
+      const hasMetaFields = geoOutput.meta_fields?.length > 0;
+
       return {
         result: {
           optimized: true,
@@ -1064,7 +1068,33 @@ Maintain the original language of the content. If the content is in Romanian, wr
           meta_description: geoOutput.meta_description,
           meta_fields: geoOutput.meta_fields,
           seo_plugin: hasYoast ? "yoast" : hasRankMath ? "rankmath" : "none",
+          _instruction: `IMPORTANT: Now call update_${entity_type} with id ${entity_id} to apply these changes. Pass description, short_description, and meta_data/meta fields. Do NOT output the generated content as text.`,
         },
+        richContent: {
+          type: "geo_report",
+          data: {
+            mode: "single" as const,
+            entityName,
+            entityType: entity_type,
+            entityId: entity_id,
+            score: -1,
+            generationSummary: {
+              jsonLd: hasJsonLdGenerated,
+              faqSchema: hasFaqGenerated,
+              metaDescription: !!geoOutput.meta_description,
+              seoPlugin: hasYoast ? "Yoast SEO" : hasRankMath ? "RankMath" : "None",
+              metaFieldsCount: geoOutput.meta_fields?.length || 0,
+            },
+            categories: [
+              { name: "JSON-LD Schema", score: hasJsonLdGenerated ? 20 : 0, maxScore: 20, details: hasJsonLdGenerated ? "✓ Generated" : "✗ Missing" },
+              { name: "FAQ Section", score: hasFaqGenerated ? 20 : 0, maxScore: 20, details: hasFaqGenerated ? "✓ Generated" : "✗ Missing" },
+              { name: "Meta Description", score: geoOutput.meta_description ? 20 : 0, maxScore: 20, details: geoOutput.meta_description ? "✓ Generated" : "✗ Missing" },
+              { name: "SEO Plugin Meta", score: hasMetaFields ? 20 : 0, maxScore: 20, details: hasMetaFields ? `✓ ${geoOutput.meta_fields.length} fields` : "✗ No plugin" },
+            ],
+            recommendations: [],
+          },
+        },
+        requestUri: `GET /wp-json/${entity_type === "product" ? "wc/v3" : "wp/v2"}/${entity_type}s/${entity_id}`,
       };
     }
     case "bulk_geo_audit": {

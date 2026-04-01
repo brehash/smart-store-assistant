@@ -17,7 +17,6 @@ export const WRITE_TOOLS = new Set([
   "create_post",
   "update_post",
   "delete_post",
-  "generate_geo_content",
 ]);
 
 export const corsHeaders = {
