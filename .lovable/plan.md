@@ -1,61 +1,72 @@
 
 
-# Fix: Owner Seeing "Connect Website" Card
+# Fix: Owner Still Seeing "Connect Website" Card
 
 ## Root Cause
 
-The `checkConnection` flow in `Index.tsx` has two paths:
-1. Check `woo_connections` for `user.id` with `is_active = true`
-2. If not found, check `team_members` for `user.id`
+The `checkConnection` query at line 109-114 silently returns `null` when the auth session has stale/expired tokens (e.g., after stopping impersonation, or after a long idle period). Supabase RLS queries don't throw errors on auth failure — they just return empty results. The code then falls through all checks and sets `hasConnection(false)`.
 
-The team owner is NOT in `team_members` (only invited members are). So if the owner's `woo_connections` query fails silently (e.g. after impersonation session restore with stale tokens, or any transient auth issue), the flow falls through to `setHasConnection(false)` and the ConnectionSetupCard appears.
+The DB confirms the connection exists (`is_active: true`, user_id matches). The query itself is correct — the problem is transient auth failures causing silent empty results.
 
-Additionally, after impersonation: `stopImpersonation()` calls `setSession()` with saved tokens that may be expired after 1 hour, causing all subsequent queries to silently return empty results.
+## Fix Strategy
 
-## Fix — `src/pages/Index.tsx`
+Make the connection check more resilient by adding error detection and a simple guard:
 
-1. **Add team owner check**: After the `team_members` check fails, also check if the user owns a team that has a connection. Query `teams` where `owner_id = user.id`, then check if that team has any `woo_connections`:
+### 1. `src/pages/Index.tsx` — Add error checking to the connection query
+
+Instead of ignoring query errors, check for them. If the query returns an error, don't set `hasConnection(false)` — keep it as `null` (loading) and retry after a session refresh:
 
 ```typescript
-// No own connection, not a team member — check if user OWNS a team
-const { data: ownedTeam } = await supabase
-  .from("teams")
-  .select("id")
-  .eq("owner_id", user.id)
+const { data: ownConn, error: connError } = await supabase
+  .from("woo_connections")
+  .select("id, order_statuses")
+  .eq("user_id", user.id)
+  .eq("is_active", true)
   .maybeSingle();
 
-if (ownedTeam) {
-  // Owner has a team but their woo_connections query might have failed
-  // Re-check without is_active filter as fallback
-  const { data: anyConn } = await supabase
+if (connError) {
+  // Auth might be stale — refresh and retry once
+  await supabase.auth.refreshSession();
+  const { data: retryConn } = await supabase
     .from("woo_connections")
-    .select("id")
+    .select("id, order_statuses")
     .eq("user_id", user.id)
+    .eq("is_active", true)
     .maybeSingle();
-  if (anyConn) {
+  if (retryConn) {
     setHasConnection(true);
+    setCachedSelectedStatuses(retryConn.order_statuses || []);
     fetchCachedData(user.id);
     return;
   }
 }
 ```
 
-2. **Don't show ConnectionSetupCard when conversations exist**: If the sidebar shows conversations, the user clearly has used the app before. Add a guard: only show ConnectionSetupCard when `hasConnection === false` AND there are no conversations loaded. This prevents the card from flashing even if the connection check transiently fails.
+### 2. `src/pages/Index.tsx` — Never show ConnectionSetupCard if conversations exist
 
-3. **Improve session restoration after impersonation**: In `ImpersonationBanner.stopImpersonation()`, after `setSession()`, call `supabase.auth.refreshSession()` to ensure the tokens are valid before navigating.
+The existing guard `messages.length === 0` only checks the currently loaded messages array. Add a check against the conversation list: if the user has ANY conversations in the database, they clearly had a working connection before and should never see the setup card.
 
-## Fix — `src/components/admin/ImpersonationBanner.tsx`
-
-Add `refreshSession()` after restoring the admin session:
 ```typescript
-await supabase.auth.setSession({ access_token, refresh_token });
-await supabase.auth.refreshSession(); // ensure fresh tokens
+// Before setting hasConnection(false), check if user has any conversations
+const { count } = await supabase
+  .from("conversations")
+  .select("id", { count: "exact", head: true })
+  .eq("user_id", user.id);
+
+if (count && count > 0) {
+  setHasConnection(true);
+  fetchCachedData(user.id);
+  return;
+}
+
+setHasConnection(false);
 ```
+
+This is the ultimate safety net — if you've ever chatted, you had a connection.
 
 ## Files
 
 | File | Changes |
 |------|---------|
-| `src/pages/Index.tsx` | Add team-owner fallback check; guard ConnectionSetupCard with conversation count |
-| `src/components/admin/ImpersonationBanner.tsx` | Refresh session after restore |
+| `src/pages/Index.tsx` | Add error handling + session refresh retry on connection query; add conversation-count safety net before showing setup card |
 
