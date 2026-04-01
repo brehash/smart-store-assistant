@@ -682,11 +682,12 @@ serve(async (req) => {
 
                 if (GEO_FLOW_TOOLS.has(toolName)) geoFlowActive = true;
 
-                if (richContent && !emittedRichTypes.has(richContent.type)) {
+                const richKey = `${tc.id}:${richContent?.type}`;
+                if (richContent && !emittedRichTypes.has(richKey)) {
                   const suppress = richContent.type === "products" && geoFlowActive;
                   if (!suppress) {
                     sendSSE({ type: "rich_content", contentType: richContent.type, data: richContent.data });
-                    emittedRichTypes.add(richContent.type);
+                    emittedRichTypes.add(richKey);
                   }
                 }
 
