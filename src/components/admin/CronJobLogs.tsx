@@ -29,6 +29,7 @@ interface WorkerDetail {
   ordersScanned: number;
   ordersWithAwb: number;
   ordersCompleted: number;
+  ordersReturned?: number;
   checkedOrders?: CheckedOrder[];
   completedOrders?: Array<{ orderId: number; awb: string; uniqueId: string }>;
   errors: Array<{ step: string; orderId?: number; awb?: string; error: string }>;
