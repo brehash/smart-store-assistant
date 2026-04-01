@@ -99,6 +99,11 @@ function WorkerDetailCard({ detail }: { detail: WorkerDetail }) {
                           <CheckCircle2 className="h-3 w-3" /> Completed
                         </span>
                       )}
+                      {o.action === "returned" && (
+                        <span className="inline-flex items-center gap-1 text-orange-500">
+                          <Undo2 className="h-3 w-3" /> Returned
+                        </span>
+                      )}
                       {o.action === "in_transit" && (
                         <span className="inline-flex items-center gap-1 text-amber-500">
                           <Truck className="h-3 w-3" /> In Transit
