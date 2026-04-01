@@ -9,7 +9,7 @@ import {
 import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { RefreshCw, Play, ChevronDown, ChevronRight, Clock, CheckCircle2, XCircle, MinusCircle, Truck, AlertTriangle } from "lucide-react";
+import { RefreshCw, Play, ChevronDown, ChevronRight, Clock, CheckCircle2, XCircle, MinusCircle, Truck, AlertTriangle, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface CheckedOrder {
@@ -19,7 +19,7 @@ interface CheckedOrder {
   wooStatus: string;
   shippingStatus: string | null;
   shippingCode: number | null;
-  action: "completed" | "in_transit" | "no_history" | "error";
+  action: "completed" | "returned" | "in_transit" | "no_history" | "error";
 }
 
 interface WorkerDetail {
@@ -29,6 +29,7 @@ interface WorkerDetail {
   ordersScanned: number;
   ordersWithAwb: number;
   ordersCompleted: number;
+  ordersReturned?: number;
   checkedOrders?: CheckedOrder[];
   completedOrders?: Array<{ orderId: number; awb: string; uniqueId: string }>;
   errors: Array<{ step: string; orderId?: number; awb?: string; error: string }>;
@@ -42,6 +43,7 @@ interface CronLog {
     integrations_checked?: number;
     orders_scanned?: number;
     orders_completed?: number;
+    orders_returned?: number;
     errors?: number;
     fatal_error?: string;
     workers_dispatched?: number;
@@ -56,10 +58,11 @@ interface CronLog {
 function WorkerDetailCard({ detail }: { detail: WorkerDetail }) {
   return (
     <div className="space-y-2">
-      <div className="grid grid-cols-3 gap-2 text-xs">
+      <div className="grid grid-cols-4 gap-2 text-xs">
         <div><span className="text-muted-foreground">Scanned:</span> {detail.ordersScanned}</div>
         <div><span className="text-muted-foreground">With AWB:</span> {detail.ordersWithAwb}</div>
         <div><span className="text-muted-foreground">Completed:</span> {detail.ordersCompleted}</div>
+        <div><span className="text-muted-foreground">Returned:</span> {detail.ordersReturned ?? 0}</div>
       </div>
       {detail.checkedOrders && detail.checkedOrders.length > 0 && (
         <div>
@@ -94,6 +97,11 @@ function WorkerDetailCard({ detail }: { detail: WorkerDetail }) {
                       {o.action === "completed" && (
                         <span className="inline-flex items-center gap-1 text-green-600">
                           <CheckCircle2 className="h-3 w-3" /> Completed
+                        </span>
+                      )}
+                      {o.action === "returned" && (
+                        <span className="inline-flex items-center gap-1 text-orange-500">
+                          <Undo2 className="h-3 w-3" /> Returned
                         </span>
                       )}
                       {o.action === "in_transit" && (
@@ -377,7 +385,7 @@ export function CronJobLogs({ accessToken }: { accessToken: string }) {
                                                     </Badge>
                                                     {firstDetail && (
                                                       <span className="text-xs text-muted-foreground">
-                                                        {firstDetail.ordersScanned} scanned · {firstDetail.ordersCompleted} completed
+                                                        {firstDetail.ordersScanned} scanned · {firstDetail.ordersCompleted} completed{(firstDetail.ordersReturned ?? 0) > 0 ? ` · ${firstDetail.ordersReturned} returned` : ""}
                                                       </span>
                                                     )}
                                                   </div>

@@ -91,6 +91,8 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
   const [coleteOnlineEnabled, setColeteOnlineEnabled] = useState(false);
   const [coleteClientId, setColeteClientId] = useState("");
   const [coleteClientSecret, setColeteClientSecret] = useState("");
+  const [coleteDeliveredStatus, setColeteDeliveredStatus] = useState("completed");
+  const [coleteReturnedStatus, setColeteReturnedStatus] = useState("refuzata");
   const [savingIntegration, setSavingIntegration] = useState(false);
   const [testingColete, setTestingColete] = useState(false);
   const [coleteTestResult, setColeteTestResult] = useState<"success" | "error" | null>(null);
@@ -141,6 +143,8 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
         const cfg = (data.config as any) || {};
         setColeteClientId(cfg.client_id || "");
         setColeteClientSecret(cfg.client_secret || "");
+        setColeteDeliveredStatus(cfg.delivered_status || "completed");
+        setColeteReturnedStatus(cfg.returned_status || "refuzata");
       }
       setIntegrationLoaded(true);
     });
@@ -654,7 +658,7 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
         user_id: user.id,
         integration_key: "colete_online",
         is_enabled: coleteOnlineEnabled,
-        config: { client_id: coleteClientId, client_secret: coleteClientSecret },
+        config: { client_id: coleteClientId, client_secret: coleteClientSecret, delivered_status: coleteDeliveredStatus, returned_status: coleteReturnedStatus },
         updated_at: new Date().toISOString(),
       };
       await supabase.from("woo_integrations").upsert(payload as any, { onConflict: "user_id,integration_key" });
@@ -736,6 +740,34 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
               <button type="button" onClick={() => setShowColeteSecret(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">{showColeteSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>
             </div>
           </div>
+          {orderStatuses.length > 0 && (
+            <>
+              <div className="space-y-2">
+                <Label>Status la livrare</Label>
+                <Select value={coleteDeliveredStatus} onValueChange={setColeteDeliveredStatus}>
+                  <SelectTrigger><SelectValue placeholder="Selectează status" /></SelectTrigger>
+                  <SelectContent>
+                    {orderStatuses.map((s) => (
+                      <SelectItem key={s.slug} value={s.slug}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Statusul WooCommerce setat automat când comanda este livrată</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Status la retur</Label>
+                <Select value={coleteReturnedStatus} onValueChange={setColeteReturnedStatus}>
+                  <SelectTrigger><SelectValue placeholder="Selectează status" /></SelectTrigger>
+                  <SelectContent>
+                    {orderStatuses.map((s) => (
+                      <SelectItem key={s.slug} value={s.slug}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Statusul WooCommerce setat automat când expedierea este returnată</p>
+              </div>
+            </>
+          )}
           <div className="flex gap-2 justify-end pt-2">
             <Button onClick={handleTestColeteOnline} variant="outline" disabled={testingColete || !coleteClientId || !coleteClientSecret}>
               {testingColete ? "Se testează…" : "Testează conexiunea"}

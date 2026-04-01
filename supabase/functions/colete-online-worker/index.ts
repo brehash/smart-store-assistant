@@ -30,6 +30,7 @@ serve(async (req) => {
     ordersScanned: 0,
     ordersWithAwb: 0,
     ordersCompleted: 0,
+    ordersReturned: 0,
     checkedOrders: [],
     errors: [],
   };
@@ -63,7 +64,7 @@ serve(async (req) => {
 
     const userId = integration.user_id;
     userLog.userId = userId;
-    const config = integration.config as { client_id?: string; client_secret?: string };
+    const config = integration.config as { client_id?: string; client_secret?: string; delivered_status?: string; returned_status?: string };
 
     if (!config.client_id || !config.client_secret) {
       userLog.authStatus = "missing_credentials";
@@ -120,7 +121,9 @@ serve(async (req) => {
     const accessToken = tokenData.access_token;
 
     // 4. Fetch non-completed orders from WooCommerce (paginated, max MAX_ORDERS)
-    const excludeStatuses = ["completed", "cancelled", "refunded", "failed", "trash", "refuzata"];
+    const deliveredStatus = config.delivered_status || "completed";
+    const returnedStatus = config.returned_status || "refuzata";
+    const excludeStatuses = ["completed", "cancelled", "refunded", "failed", "trash", deliveredStatus, returnedStatus].filter((v, i, a) => a.indexOf(v) === i);
     const baseUrl = conn.store_url.replace(/\/+$/, "");
     const ck = conn.consumer_key;
     const cs = conn.consumer_secret;
@@ -194,8 +197,9 @@ serve(async (req) => {
           const latestStatus = latest?.status || latest?.description || null;
           const latestCode = latest?.code ?? latest?.status_id ?? null;
           const isDelivered = history.some((h: any) => h.code === 20800 || h.code === 30500);
+          const isReturned = history.some((h: any) => h.code === 24300 || h.code === 9512);
 
-          return { order, uniqueId, awb, delivered: isDelivered, error: null, latestStatus, latestCode };
+          return { order, uniqueId, awb, delivered: isDelivered, returned: isReturned, error: null, latestStatus, latestCode };
         })
       );
 
@@ -205,7 +209,7 @@ serve(async (req) => {
           userLog.errors.push({ step: "check_status", error: String(r.reason) });
           continue;
         }
-        const { order, uniqueId, awb, delivered, error, latestStatus, latestCode, noHistory } = r.value as any;
+        const { order, uniqueId, awb, delivered, returned, error, latestStatus, latestCode, noHistory } = r.value as any;
 
         if (error) {
           userLog.errors.push({ step: "check_status", orderId: order.id, awb, error });
@@ -218,27 +222,32 @@ serve(async (req) => {
           continue;
         }
 
-        if (delivered) {
-          // Update WooCommerce order to completed
+        if (delivered || returned) {
+          const targetStatus = returned ? returnedStatus : deliveredStatus;
+          const actionLabel = returned ? "returned" : "completed";
+
           const updateUrl = `${baseUrl}/wp-json/wc/v3/orders/${order.id}?consumer_key=${ck}&consumer_secret=${cs}`;
           const updateResp = await fetch(updateUrl, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ status: "completed" }),
+            body: JSON.stringify({ status: targetStatus }),
           });
 
           if (updateResp.ok) {
-            await updateResp.text(); // consume body
-            userLog.ordersCompleted++;
-            userLog.checkedOrders.push({ orderId: order.id, awb, uniqueId, wooStatus: order.status, shippingStatus: latestStatus, shippingCode: latestCode, action: "completed" });
-            console.log(`Order #${order.id} (AWB: ${awb}) marked as completed`);
+            await updateResp.text();
+            if (returned) {
+              userLog.ordersReturned++;
+            } else {
+              userLog.ordersCompleted++;
+            }
+            userLog.checkedOrders.push({ orderId: order.id, awb, uniqueId, wooStatus: order.status, shippingStatus: latestStatus, shippingCode: latestCode, action: actionLabel });
+            console.log(`Order #${order.id} (AWB: ${awb}) marked as ${actionLabel} (${targetStatus})`);
           } else {
             const errText = await updateResp.text();
             userLog.errors.push({ step: "update_order", orderId: order.id, awb, error: `HTTP ${updateResp.status}` });
             userLog.checkedOrders.push({ orderId: order.id, awb, uniqueId, wooStatus: order.status, shippingStatus: latestStatus, shippingCode: latestCode, action: "error" });
           }
 
-          // Rate limit safety
           await delay(WOO_UPDATE_DELAY_MS);
         } else {
           userLog.checkedOrders.push({ orderId: order.id, awb, uniqueId, wooStatus: order.status, shippingStatus: latestStatus, shippingCode: latestCode, action: "in_transit" });
@@ -281,6 +290,7 @@ async function writeLog(supabase: any, integrationId: string, userLog: any, star
       orders_scanned: userLog.ordersScanned,
       orders_with_awb: userLog.ordersWithAwb,
       orders_completed: userLog.ordersCompleted,
+      orders_returned: userLog.ordersReturned,
       errors: userLog.errors.length,
     },
     details: [userLog],
