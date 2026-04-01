@@ -62,25 +62,67 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
   const [hoveredConvId, setHoveredConvId] = useState<string | null>(null);
   const [openMenuConvId, setOpenMenuConvId] = useState<string | null>(null);
 
+  // Load from sessionStorage cache on mount, then fetch fresh data
   useEffect(() => {
     if (!user) return;
+
+    // Restore from cache immediately for instant UI
+    const cachedConvs = sessionStorage.getItem("sidebar_conversations");
+    if (cachedConvs) {
+      try { setConversations(JSON.parse(cachedConvs)); } catch { /* ignore */ }
+    }
+    const cachedViews = sessionStorage.getItem("sidebar_views");
+    if (cachedViews) {
+      try { setViews(JSON.parse(cachedViews)); } catch { /* ignore */ }
+    }
+
     const load = async () => {
       const [convRes, viewRes] = await Promise.all([
         supabase
           .from("conversations")
           .select("id, title, updated_at, view_id, pinned")
           .eq("user_id", user.id)
-          .order("updated_at", { ascending: false }),
+          .order("updated_at", { ascending: false })
+          .limit(30),
         supabase
           .from("views")
           .select("*")
           .eq("user_id", user.id)
           .order("updated_at", { ascending: false }),
       ]);
-      if (convRes.data) setConversations(convRes.data as unknown as Conversation[]);
-      if (viewRes.data) setViews(viewRes.data as unknown as View[]);
+      if (convRes.data) {
+        const data = convRes.data as unknown as Conversation[];
+        setConversations(data);
+        sessionStorage.setItem("sidebar_conversations", JSON.stringify(data));
+      }
+      if (viewRes.data) {
+        const data = viewRes.data as unknown as View[];
+        setViews(data);
+        sessionStorage.setItem("sidebar_views", JSON.stringify(data));
+      }
     };
     load();
+  }, [user]);
+
+  // When activeId changes to a conversation not in the list, prepend it
+  useEffect(() => {
+    if (!user || !activeId) return;
+    if (conversations.some((c) => c.id === activeId)) return;
+    const fetchNew = async () => {
+      const { data } = await supabase
+        .from("conversations")
+        .select("id, title, updated_at, view_id, pinned")
+        .eq("id", activeId)
+        .single();
+      if (data) {
+        setConversations((prev) => {
+          const updated = [data as unknown as Conversation, ...prev];
+          sessionStorage.setItem("sidebar_conversations", JSON.stringify(updated));
+          return updated;
+        });
+      }
+    };
+    fetchNew();
   }, [user, activeId]);
 
   const filteredConversations = useMemo(() => {
