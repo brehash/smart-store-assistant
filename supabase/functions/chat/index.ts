@@ -254,6 +254,8 @@ serve(async (req) => {
           let semanticSteps: SemanticStep[] = [];
           let semanticIdx = 0;
           const emittedRichTypes = new Set<string>();
+          let geoFlowActive = false;
+          const GEO_FLOW_TOOLS = new Set(["audit_geo", "generate_geo_content", "bulk_geo_audit"]);
           const totalUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
 
           // ── Order-creation intent detection ──
