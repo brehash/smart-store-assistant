@@ -26,7 +26,7 @@ export const INTENT_GROUPS: Record<string, { regex: RegExp; tools: string[] }> =
   },
   GEO: {
     regex: GEO_INTENT_RE,
-    tools: ["audit_geo", "generate_geo_content", "bulk_geo_audit"],
+    tools: ["audit_geo", "generate_geo_content", "bulk_geo_audit", "search_products", "get_product"],
   },
 };
 
