@@ -253,6 +253,30 @@ export type Database = {
         }
         Relationships: []
       }
+      message_feedback: {
+        Row: {
+          created_at: string | null
+          id: string
+          message_id: string
+          rating: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message_id: string
+          rating: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message_id?: string
+          rating?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       message_limits: {
         Row: {
           created_at: string | null
