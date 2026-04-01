@@ -919,6 +919,7 @@ export default function Index() {
           onToggle={handleToggleSidebar}
           onOpenSettings={handleOpenSettings}
           newOrderCount={newOrderCount}
+          onDeleteConversation={handleDeleteFromCache}
         />
       </div>
 
