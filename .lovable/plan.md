@@ -1,68 +1,40 @@
 
 
-# Fix GEO Tool — Stop JSON Dumping
+# Interactive GEO Audit Actions
 
-## Root Cause
+## What changes
 
-The problem is a **data flow issue**, not a UI rendering bug. Here's what happens:
+After a GEO audit displays the score and recommendations, the card will show clickable action buttons derived from the recommendations. The user clicks a button (e.g. "Generate JSON-LD & FAQ", "Optimize Meta Description") and that action is sent as a chat message, triggering the corresponding GEO generation flow.
 
-1. `generate_geo_content` returns the full generated HTML content (description, short_description, meta_description, meta_fields) in `result`
-2. `truncateForAI` in `utils.ts` **preserves all of it** (lines 269-286) — including the massive HTML description
-3. This entire blob gets serialized as the tool result content sent back to the LLM
-4. The LLM sees thousands of chars of HTML/JSON and dumps it into chat text instead of following the `_instruction`
+## Design
 
-The `richContent` path works fine — the card IS emitted via SSE. But the AI also sees the full data and echoes it.
-
-## Fix (2 files)
-
-### 1. `supabase/functions/chat/tool-executor.ts` (~line 1077)
-
-Split the return: send only a **minimal summary** in `result` (what the AI sees), keep full data only in `richContent` (what the UI renders).
-
-```typescript
-return {
-  result: {
-    status: "generated",
-    entityName,
-    entity_type,
-    entity_id,
-    seo_plugin: hasYoast ? "yoast" : hasRankMath ? "rankmath" : "none",
-    generated_fields: ["description", "short_description", "meta_description", 
-                       ...(geoOutput.meta_fields?.length ? ["meta_fields"] : [])],
-    _instruction: `The preview card already shows the generated content. Do NOT output JSON or raw data. Confirm briefly, then IMMEDIATELY call update_${entity_type} with id ${entity_id}. Use these exact values: description="${geoOutput.optimized_description}", short_description="${geoOutput.short_description}", meta_data=${JSON.stringify(geoOutput.meta_fields || [])}`,
-  },
-  richContent: { /* unchanged — keeps full preview data */ },
-};
-```
-
-The key change: the `description` and `short_description` HTML are moved OUT of `result` and INTO `_instruction` as inline parameters for the `update_product` call. The AI gets a clean, small result with explicit instructions on what to pass.
-
-### 2. `supabase/functions/chat/utils.ts` (~line 269)
-
-Simplify the `generate_geo_content` truncation to return only the minimal fields, since the heavy data is no longer in `result`:
-
-```typescript
-if (toolName === "generate_geo_content") {
-  return {
-    status: result.status,
-    entityName: result.entityName,
-    entity_type: result.entity_type,
-    entity_id: result.entity_id,
-    generated_fields: result.generated_fields,
-    _instruction: result._instruction,
-  };
-}
-```
-
-This removes `description`, `short_description`, `meta_description`, and `meta_fields` from the AI-visible result entirely. The `_instruction` already contains the values needed for the chained `update_product` call.
-
-## Why this works
-
-- The AI sees: `{status: "generated", entityName: "50gr pasta neagra", entity_type: "product", entity_id: 123, generated_fields: [...], _instruction: "call update_product with..."}`
-- The user sees: the rich GeoReportCard with preview badges and meta description
-- No JSON dump because there's no JSON to dump — the heavy content is only in `_instruction` which the AI treats as a directive, not displayable content
+The `GeoReportCard` will receive an `onAction` callback. Below the recommendations list, a row of action buttons appears — each mapped from a recommendation. The buttons send a pre-formatted message like `"Generează JSON-LD și FAQ pentru [product] #[id]"` back to the chat input.
 
 ## Files to modify
-1. **`supabase/functions/chat/tool-executor.ts`** — Move generated content from `result` to `_instruction` inline params
-2. **`supabase/functions/chat/utils.ts`** — Strip `generate_geo_content` truncation to minimal fields only
+
+### 1. `src/components/chat/GeoReportCard.tsx`
+- Add `onAction?: (message: string) => void` prop to `GeoReportCard`
+- Add `GeoReportData.entityId` (already exists) usage
+- After the recommendations section, render a "Ce vrei să optimizezi?" section with buttons:
+  - Map each recommendation to an actionable button
+  - Add a "Generează tot" (Generate All) primary button that triggers full GEO content generation
+  - Each button calls `onAction` with a natural-language message like `"Generează meta description optimizată pentru [entityName] #[entityId]"` or `"Generează JSON-LD, FAQ și meta description pentru [entityName] #[entityId]"`
+  - Buttons are disabled when no `onAction` is provided
+  - Show only for `mode === "single"` audit results (not bulk, not generation previews)
+
+### 2. `src/components/chat/ChatMessage.tsx`
+- Add `onSendMessage?: (message: string) => void` prop
+- Pass it to `GeoReportCard` as `onAction`
+
+### 3. `src/pages/Index.tsx`
+- Pass the existing `handleSend` (or a wrapper) as `onSendMessage` to `ChatMessage`
+
+### Action mapping logic (in GeoReportCard)
+Group recommendations into predefined action categories:
+- "meta description" recs → button: "Optimizează Meta Description"
+- "FAQ" / "structured data" / "JSON-LD" recs → button: "Generează JSON-LD & FAQ"  
+- "description" / "content" recs → button: "Optimizează Descrierea"
+- Always show: "Generează tot" → triggers `generate_geo_content` for the full entity
+
+Each button sends a message like: `"Generează [action] pentru produsul [entityName] (ID: [entityId])"`
 
