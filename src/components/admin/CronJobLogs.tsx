@@ -31,6 +31,9 @@ interface CronLog {
     orders_completed?: number;
     errors?: number;
     fatal_error?: string;
+    workers_dispatched?: number;
+    workers_failed?: number;
+    total_integrations?: number;
   };
   details: Array<{
     userId: string;
