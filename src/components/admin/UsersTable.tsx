@@ -45,6 +45,50 @@ export function UsersTable({ users, loading, onSelectUser, onRefresh, accessToke
     onRefresh();
   };
 
+  const handleImpersonate = async (user: AdminUser, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setImpersonating(user.user_id);
+    try {
+      // Save current admin session
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      if (!currentSession) return;
+      saveAdminSession(currentSession.access_token, currentSession.refresh_token);
+
+      // Get impersonation token
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin/users/${user.user_id}/impersonate`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        }
+      );
+      const data = await resp.json();
+      if (!resp.ok) {
+        toast({ title: "Error", description: data.error || "Failed to impersonate", variant: "destructive" });
+        return;
+      }
+
+      // Sign in as the target user using the magic link token
+      const { error: otpErr } = await supabase.auth.verifyOtp({
+        type: "magiclink",
+        token_hash: data.token_hash,
+      });
+      if (otpErr) {
+        toast({ title: "Error", description: otpErr.message, variant: "destructive" });
+        sessionStorage.removeItem("admin_session");
+        return;
+      }
+
+      startImpersonation(data.display_name || user.display_name || "Unknown");
+      navigate("/");
+    } catch {
+      toast({ title: "Error", description: "Network error", variant: "destructive" });
+      sessionStorage.removeItem("admin_session");
+    } finally {
+      setImpersonating(null);
+    }
+  };
+
   const handleCreate = async () => {
     if (!newEmail || !newPassword) return;
     setCreating(true);
