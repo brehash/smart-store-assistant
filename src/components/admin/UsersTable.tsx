@@ -6,8 +6,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { RefreshCw, Shield, ShieldOff, UserPlus, Loader2 } from "lucide-react";
+import { RefreshCw, Shield, ShieldOff, UserPlus, Loader2, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { saveAdminSession, startImpersonation } from "./ImpersonationBanner";
 import type { AdminUser } from "@/pages/Admin";
 
 interface Props {
@@ -20,8 +23,10 @@ interface Props {
 
 export function UsersTable({ users, loading, onSelectUser, onRefresh, accessToken }: Props) {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [impersonating, setImpersonating] = useState<string | null>(null);
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newDisplayName, setNewDisplayName] = useState("");
@@ -38,6 +43,50 @@ export function UsersTable({ users, loading, onSelectUser, onRefresh, accessToke
       }
     );
     onRefresh();
+  };
+
+  const handleImpersonate = async (user: AdminUser, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setImpersonating(user.user_id);
+    try {
+      // Save current admin session
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      if (!currentSession) return;
+      saveAdminSession(currentSession.access_token, currentSession.refresh_token);
+
+      // Get impersonation token
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin/users/${user.user_id}/impersonate`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+        }
+      );
+      const data = await resp.json();
+      if (!resp.ok) {
+        toast({ title: "Error", description: data.error || "Failed to impersonate", variant: "destructive" });
+        return;
+      }
+
+      // Sign in as the target user using the magic link token
+      const { error: otpErr } = await supabase.auth.verifyOtp({
+        type: "magiclink",
+        token_hash: data.token_hash,
+      });
+      if (otpErr) {
+        toast({ title: "Error", description: otpErr.message, variant: "destructive" });
+        sessionStorage.removeItem("admin_session");
+        return;
+      }
+
+      startImpersonation(data.display_name || user.display_name || "Unknown");
+      navigate("/");
+    } catch {
+      toast({ title: "Error", description: "Network error", variant: "destructive" });
+      sessionStorage.removeItem("admin_session");
+    } finally {
+      setImpersonating(null);
+    }
   };
 
   const handleCreate = async () => {
@@ -124,7 +173,16 @@ export function UsersTable({ users, loading, onSelectUser, onRefresh, accessToke
                     </Badge>
                   ))}
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right flex gap-1 justify-end">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => handleImpersonate(user, e)}
+                    title="Impersonate user"
+                    disabled={impersonating === user.user_id}
+                  >
+                    {impersonating === user.user_id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+                  </Button>
                   <Button variant="ghost" size="icon" onClick={(e) => toggleAdmin(user, e)} title={user.roles.includes("admin") ? "Remove admin" : "Make admin"}>
                     {user.roles.includes("admin") ? <ShieldOff className="h-4 w-4" /> : <Shield className="h-4 w-4" />}
                   </Button>
