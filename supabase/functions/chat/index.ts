@@ -525,6 +525,9 @@ serve(async (req) => {
 
               if (semanticIdx === 0 && planSent) semanticIdx = 0;
 
+              // Pre-scan: detect GEO tools in this batch to suppress product sliders
+              if (toolCalls.some((t: any) => GEO_FLOW_TOOLS.has(t.function?.name))) geoFlowActive = true;
+
               for (const tc of toolCalls) {
                 let args: any;
                 try {
