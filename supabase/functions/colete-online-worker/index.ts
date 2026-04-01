@@ -209,7 +209,7 @@ serve(async (req) => {
           userLog.errors.push({ step: "check_status", error: String(r.reason) });
           continue;
         }
-        const { order, uniqueId, awb, delivered, error, latestStatus, latestCode, noHistory } = r.value as any;
+        const { order, uniqueId, awb, delivered, returned, error, latestStatus, latestCode, noHistory } = r.value as any;
 
         if (error) {
           userLog.errors.push({ step: "check_status", orderId: order.id, awb, error });
@@ -222,27 +222,32 @@ serve(async (req) => {
           continue;
         }
 
-        if (delivered) {
-          // Update WooCommerce order to completed
+        if (delivered || returned) {
+          const targetStatus = returned ? returnedStatus : deliveredStatus;
+          const actionLabel = returned ? "returned" : "completed";
+
           const updateUrl = `${baseUrl}/wp-json/wc/v3/orders/${order.id}?consumer_key=${ck}&consumer_secret=${cs}`;
           const updateResp = await fetch(updateUrl, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ status: "completed" }),
+            body: JSON.stringify({ status: targetStatus }),
           });
 
           if (updateResp.ok) {
-            await updateResp.text(); // consume body
-            userLog.ordersCompleted++;
-            userLog.checkedOrders.push({ orderId: order.id, awb, uniqueId, wooStatus: order.status, shippingStatus: latestStatus, shippingCode: latestCode, action: "completed" });
-            console.log(`Order #${order.id} (AWB: ${awb}) marked as completed`);
+            await updateResp.text();
+            if (returned) {
+              userLog.ordersReturned++;
+            } else {
+              userLog.ordersCompleted++;
+            }
+            userLog.checkedOrders.push({ orderId: order.id, awb, uniqueId, wooStatus: order.status, shippingStatus: latestStatus, shippingCode: latestCode, action: actionLabel });
+            console.log(`Order #${order.id} (AWB: ${awb}) marked as ${actionLabel} (${targetStatus})`);
           } else {
             const errText = await updateResp.text();
             userLog.errors.push({ step: "update_order", orderId: order.id, awb, error: `HTTP ${updateResp.status}` });
             userLog.checkedOrders.push({ orderId: order.id, awb, uniqueId, wooStatus: order.status, shippingStatus: latestStatus, shippingCode: latestCode, action: "error" });
           }
 
-          // Rate limit safety
           await delay(WOO_UPDATE_DELAY_MS);
         } else {
           userLog.checkedOrders.push({ orderId: order.id, awb, uniqueId, wooStatus: order.status, shippingStatus: latestStatus, shippingCode: latestCode, action: "in_transit" });
