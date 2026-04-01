@@ -268,19 +268,11 @@ export function truncateForAI(toolName: string, result: any): any {
     }
     if (toolName === "generate_geo_content") {
       return {
-        optimized: true,
+        status: result.status,
         entityName: result.entityName,
         entity_type: result.entity_type,
         entity_id: result.entity_id,
-        seo_plugin: result.seo_plugin,
-        has_description: !!result.description,
-        has_short_description: !!result.short_description,
-        has_meta_description: !!result.meta_description,
-        meta_fields_count: result.meta_fields?.length || 0,
-        description: result.description,
-        short_description: result.short_description,
-        meta_description: result.meta_description,
-        meta_fields: result.meta_fields,
+        generated_fields: result.generated_fields,
         _instruction: result._instruction,
       };
     }
