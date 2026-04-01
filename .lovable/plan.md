@@ -1,37 +1,54 @@
 
 
-# Fix: Orchestrator Expanded View Shows Empty Details
+# Nested Collapsible Cron Logs with Multi-Open Support
 
 ## Problem
 
-The orchestrator log stores details like:
-```json
-[{ "integration_id": "xxx", "status": "dispatched" }]
-```
-
-But the expanded row template only renders worker-style fields (`storeName`, `authStatus`, `ordersScanned`, etc.), so orchestrator rows expand to show empty/blank cards.
+1. Orchestrator and worker logs are flat — no nesting. You can't see which workers belong to which orchestrator.
+2. Only one row can be expanded at a time (`expandedId` is a single string).
 
 ## Fix — `src/components/admin/CronJobLogs.tsx`
 
-Detect whether the expanded log is an orchestrator or worker and render different content:
+### 1. Allow multiple rows open simultaneously
 
-**Orchestrator expanded view** — show a simple table of dispatched workers:
-| Integration ID | Status |
-|---|---|
-| `abc-123` | dispatched |
+Replace `expandedId: string | null` with `expandedIds: Set<string>`. Toggle by adding/removing from the set.
 
-**Worker expanded view** — keep existing detailed breakdown (orders table, errors, etc.) as-is.
+### 2. Group orchestrator + workers together
 
-### Implementation
+Logs appear to come in pairs: an orchestrator dispatches workers, and worker logs have the same timestamp. Group them by matching `created_at` proximity (within ~60s) or by the `integration_id` in the orchestrator's details matching worker details.
 
-In the `CollapsibleContent` section (line 206-326), wrap the existing detail rendering in an `isOrchestrator` check:
+**Simpler approach**: Keep the flat list but nest workers inside orchestrators visually:
+- When an orchestrator row is expanded, find all worker logs from the same time window (within 5 minutes before the orchestrator's `created_at`).
+- Render those workers as collapsible sub-rows inside the orchestrator's expanded content, each with its own expand/collapse toggle.
+- Hide those worker rows from the top-level list to avoid duplication.
 
-- If `isOrchestrator`: render a simple table with columns "Integration ID" and "Dispatch Status", iterating over `log.details` as `{ integration_id, status, error? }`.
-- If worker: keep the existing card-based breakdown unchanged.
+### 3. Implementation details
 
-### Changes
+**State change:**
+```typescript
+const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+const toggleExpand = (id: string) => {
+  setExpandedIds(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+};
+```
+
+**Grouping logic:**
+- Sort logs by `created_at` desc.
+- For each orchestrator, find worker logs whose `created_at` falls within a window (orchestrator time ± 5 min). Collect their IDs into a `childWorkerIds` set.
+- Top-level render: skip logs whose IDs are in `childWorkerIds`.
+- Inside orchestrator expanded view: replace the dispatch table with collapsible worker rows, each rendering the existing worker Card detail view.
+
+**Orchestrator expanded content:**
+- Each dispatched integration becomes a collapsible row showing worker summary (store name, scanned, completed, errors).
+- Expanding a worker row shows the full order table and error details (reusing existing Card content).
+
+### Files
 
 | File | Change |
 |------|--------|
-| `src/components/admin/CronJobLogs.tsx` | Add orchestrator-specific expanded view with dispatch results table; keep worker view unchanged |
+| `src/components/admin/CronJobLogs.tsx` | Multi-expand state, group workers under orchestrators, nested collapsibles |
 
