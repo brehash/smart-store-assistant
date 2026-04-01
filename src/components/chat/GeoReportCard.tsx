@@ -26,6 +26,15 @@ export interface GeoBulkItem {
   type: string;
 }
 
+export interface GeoPreview {
+  meta_description?: string | null;
+  short_description?: string | null;
+  faqCount?: number;
+  hasJsonLd?: boolean;
+  seoPlugin?: string;
+  metaFieldsCount?: number;
+}
+
 export interface GeoReportData {
   mode?: "single" | "bulk";
   // Single mode
@@ -35,6 +44,7 @@ export interface GeoReportData {
   score?: number;
   categories?: GeoCategory[];
   recommendations?: GeoRecommendation[];
+  preview?: GeoPreview;
   // Bulk mode
   items?: GeoBulkItem[];
   averageScore?: number;
