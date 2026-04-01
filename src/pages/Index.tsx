@@ -345,16 +345,21 @@ export default function Index() {
     });
   };
 
-  const handleSend = async (input: string) => {
+  const handleSend = async (input: string, skipPlanPrefix?: boolean) => {
     if (!user || !session || isStreaming) return;
 
     let convId = conversationId;
     if (!convId) { convId = await createConversation(); if (!convId) return; }
 
+    // Prepend plan mode prefix if active
+    const effectiveInput = planMode && !skipPlanPrefix ? `[PLAN MODE] ${input}` : input;
+
     const userMsg: Message = { role: "user", content: input };
     setMessages((prev) => [...prev, userMsg]);
     setIsStreaming(true);
     streamAliveRef.current = true;
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
     scrollToBottom();
 
     const { error: userMsgError } = await supabase.from("messages").insert({ conversation_id: convId, user_id: user.id, role: "user", content: input });
