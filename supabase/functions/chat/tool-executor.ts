@@ -1068,7 +1068,7 @@ Maintain the original language of the content. If the content is in Romanian, wr
           meta_description: geoOutput.meta_description,
           meta_fields: geoOutput.meta_fields,
           seo_plugin: hasYoast ? "yoast" : hasRankMath ? "rankmath" : "none",
-          _instruction: `IMPORTANT: Now call update_${entity_type} with id ${entity_id} to apply these changes. Pass description, short_description, and meta_data/meta fields. Do NOT output the generated content as text.`,
+          _instruction: `IMPORTANT: Now call update_${entity_type} with id ${entity_id} to apply these changes. Pass description, short_description, and meta_data/meta fields. Briefly summarize the generated content before calling the update tool.`,
         },
         richContent: {
           type: "geo_report",
