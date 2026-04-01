@@ -132,6 +132,8 @@ export default function Index() {
           const dismissed = localStorage.getItem(`webhook-setup-dismissed-${user.id}`);
           if (!dismissed) setShowWebhookSetup(true);
         }
+        // Fetch own cached data
+        fetchCachedData(user.id);
         return;
       }
 
@@ -144,6 +146,25 @@ export default function Index() {
       
       if (membership) {
         setHasConnection(true);
+        // Fetch team owner's cached data via the team's owner_id
+        const { data: team } = await supabase
+          .from("teams")
+          .select("owner_id")
+          .eq("id", membership.team_id)
+          .single();
+        if (team) {
+          // Fetch owner's order statuses
+          const { data: ownerConn } = await supabase
+            .from("woo_connections")
+            .select("order_statuses")
+            .eq("user_id", team.owner_id)
+            .eq("is_active", true)
+            .maybeSingle();
+          if (ownerConn) {
+            setCachedSelectedStatuses((ownerConn as any).order_statuses || []);
+          }
+          fetchCachedData(team.owner_id);
+        }
       } else {
         setHasConnection(false);
         // Retry once after a short delay in case invite acceptance is still in-flight
@@ -153,26 +174,35 @@ export default function Index() {
             .select("team_id")
             .eq("user_id", user.id)
             .maybeSingle();
-          if (retryMembership) setHasConnection(true);
+          if (retryMembership) {
+            setHasConnection(true);
+            const { data: team } = await supabase
+              .from("teams")
+              .select("owner_id")
+              .eq("id", retryMembership.team_id)
+              .single();
+            if (team) fetchCachedData(team.owner_id);
+          }
         }, 2000);
       }
     };
-    checkConnection();
-    // Fetch cached payment methods and order statuses
-    supabase
-      .from("woo_cache" as any)
-      .select("cache_key, data")
-      .eq("user_id", user.id)
-      .in("cache_key", ["payment_methods", "order_statuses", "products"])
-      .then(({ data }: any) => {
-        if (Array.isArray(data)) {
-          for (const row of data) {
-            if (row.cache_key === "payment_methods") setCachedPaymentMethods(row.data || []);
-            if (row.cache_key === "order_statuses") setCachedAllStatuses(row.data || []);
-            if (row.cache_key === "products") setCachedProducts(row.data || []);
-          }
+
+    const fetchCachedData = async (ownerId: string) => {
+      const { data }: any = await supabase
+        .from("woo_cache" as any)
+        .select("cache_key, data")
+        .eq("user_id", ownerId)
+        .in("cache_key", ["payment_methods", "order_statuses", "products"]);
+      if (Array.isArray(data)) {
+        for (const row of data) {
+          if (row.cache_key === "payment_methods") setCachedPaymentMethods(row.data || []);
+          if (row.cache_key === "order_statuses") setCachedAllStatuses(row.data || []);
+          if (row.cache_key === "products") setCachedProducts(row.data || []);
         }
-      });
+      }
+    };
+
+    checkConnection();
   }, [user]);
 
   // Realtime webhook event notifications
