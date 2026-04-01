@@ -1068,7 +1068,7 @@ Maintain the original language of the content. If the content is in Romanian, wr
           meta_description: geoOutput.meta_description,
           meta_fields: geoOutput.meta_fields,
           seo_plugin: hasYoast ? "yoast" : hasRankMath ? "rankmath" : "none",
-          _instruction: `IMPORTANT: Now call update_${entity_type} with id ${entity_id} to apply these changes. Pass description, short_description, and meta_data/meta fields. Do NOT output the generated content as text.`,
+          _instruction: `IMPORTANT: Now call update_${entity_type} with id ${entity_id} to apply these changes. Pass description, short_description, and meta_data/meta fields. Briefly summarize the generated content before calling the update tool.`,
         },
         richContent: {
           type: "geo_report",
@@ -1078,10 +1078,11 @@ Maintain the original language of the content. If the content is in Romanian, wr
             entityType: entity_type,
             entityId: entity_id,
             score: -1,
-            generationSummary: {
-              jsonLd: hasJsonLdGenerated,
-              faqSchema: hasFaqGenerated,
-              metaDescription: !!geoOutput.meta_description,
+            preview: {
+              meta_description: geoOutput.meta_description || null,
+              short_description: geoOutput.short_description || null,
+              faqCount: (geoOutput.optimized_description?.match(/<details/gi) || []).length,
+              hasJsonLd: hasJsonLdGenerated,
               seoPlugin: hasYoast ? "Yoast SEO" : hasRankMath ? "RankMath" : "None",
               metaFieldsCount: geoOutput.meta_fields?.length || 0,
             },

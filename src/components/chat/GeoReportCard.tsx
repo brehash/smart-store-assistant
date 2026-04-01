@@ -26,6 +26,15 @@ export interface GeoBulkItem {
   type: string;
 }
 
+export interface GeoPreview {
+  meta_description?: string | null;
+  short_description?: string | null;
+  faqCount?: number;
+  hasJsonLd?: boolean;
+  seoPlugin?: string;
+  metaFieldsCount?: number;
+}
+
 export interface GeoReportData {
   mode?: "single" | "bulk";
   // Single mode
@@ -35,6 +44,7 @@ export interface GeoReportData {
   score?: number;
   categories?: GeoCategory[];
   recommendations?: GeoRecommendation[];
+  preview?: GeoPreview;
   // Bulk mode
   items?: GeoBulkItem[];
   averageScore?: number;
@@ -126,34 +136,71 @@ export function GeoReportCard({ data }: { data: GeoReportData }) {
     );
   }
 
-  // Single mode
   const score = data.score ?? 0;
+  const isGeneration = score === -1 && data.preview;
+
   return (
     <Card className="w-full">
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <FileSearch className="h-4 w-4" />
-          GEO Audit: {data.entityName || "Unknown"}
+          {isGeneration ? "GEO Content Generated" : "GEO Audit"}: {data.entityName || "Unknown"}
           <Badge variant="outline" className="ml-1 text-[10px]">{data.entityType || "product"}</Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="pt-0 space-y-4">
-        {/* Score circle */}
-        <div className="flex items-center gap-6">
-          <ScoreCircle score={score} />
-          <div className="flex-1 space-y-1.5">
-            <p className="text-sm font-medium">
-              {score >= 70 ? "Bună" : score >= 40 ? "Necesită îmbunătățiri" : "Slabă"} pregătire GEO
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {score >= 70
-                ? "Acest conținut este bine optimizat pentru motoarele de căutare AI."
-                : score >= 40
-                  ? "Sunt necesare unele îmbunătățiri pentru a se clasa bine în căutarea AI."
-                  : "Optimizare semnificativă necesară pentru vizibilitatea în căutarea AI."}
-            </p>
+        {/* Preview for generated content */}
+        {isGeneration && data.preview && (
+          <div className="space-y-3">
+            <div className="flex flex-wrap gap-1.5">
+              {data.preview.hasJsonLd && <Badge variant="secondary" className="text-[10px]">JSON-LD ✓</Badge>}
+              {(data.preview.faqCount ?? 0) > 0 && <Badge variant="secondary" className="text-[10px]">{data.preview.faqCount} FAQs</Badge>}
+              {data.preview.seoPlugin && data.preview.seoPlugin !== "None" && (
+                <Badge variant="secondary" className="text-[10px]">{data.preview.seoPlugin}</Badge>
+              )}
+              {(data.preview.metaFieldsCount ?? 0) > 0 && (
+                <Badge variant="secondary" className="text-[10px]">{data.preview.metaFieldsCount} meta fields</Badge>
+              )}
+            </div>
+
+            {data.preview.meta_description && (
+              <div className="space-y-1">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Meta Description</p>
+                <div className="rounded-md border border-border bg-muted/50 p-2">
+                  <p className="text-xs text-foreground">{data.preview.meta_description}</p>
+                </div>
+              </div>
+            )}
+
+            {data.preview.short_description && (
+              <div className="space-y-1">
+                <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">Short Description</p>
+                <div className="rounded-md border border-border bg-muted/50 p-2">
+                  <p className="text-xs text-foreground">{data.preview.short_description}</p>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
+        )}
+
+        {/* Score circle — only for actual audits */}
+        {!isGeneration && (
+          <div className="flex items-center gap-6">
+            <ScoreCircle score={score} />
+            <div className="flex-1 space-y-1.5">
+              <p className="text-sm font-medium">
+                {score >= 70 ? "Bună" : score >= 40 ? "Necesită îmbunătățiri" : "Slabă"} pregătire GEO
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {score >= 70
+                  ? "Acest conținut este bine optimizat pentru motoarele de căutare AI."
+                  : score >= 40
+                    ? "Sunt necesare unele îmbunătățiri pentru a se clasa bine în căutarea AI."
+                    : "Optimizare semnificativă necesară pentru vizibilitatea în căutarea AI."}
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Category breakdown */}
         {data.categories && data.categories.length > 0 && (
