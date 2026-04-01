@@ -43,9 +43,10 @@ interface ConversationSidebarProps {
   onToggle: () => void;
   onOpenSettings: () => void;
   newOrderCount?: number;
+  onDeleteConversation?: (id: string) => void;
 }
 
-export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, onViewIdChange, collapsed, onToggle, onOpenSettings, newOrderCount = 0 }: ConversationSidebarProps) {
+export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, onViewIdChange, collapsed, onToggle, onOpenSettings, newOrderCount = 0, onDeleteConversation }: ConversationSidebarProps) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
