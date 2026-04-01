@@ -1,45 +1,90 @@
 
 
-# Fix GEO Content Generation — 4 Bugs
+# Fix GEO Product Slider + Cache Sidebar Data
 
-## Issues Found
+## Three Issues
 
-1. **Product #0 / AI asks for ID it already has**: `generate_geo_content` is in `WRITE_TOOLS`, so the AI shows an approval card BEFORE executing the tool. At that point, the AI often hasn't properly resolved the product ID from search results — it passes `entity_id: 0` because it's constructing args prematurely. Root cause: `generate_geo_content` shouldn't be a write tool — it only generates content, doesn't modify anything. The actual write is the subsequent `update_product` call.
+### 1. Product slider showing during GEO audit
+When the user asks for a GEO audit on a product by name, the AI calls `search_products` first (to resolve the ID), then `audit_geo`. The `search_products` tool always returns `richContent: { type: "products" }`, which renders a product slider — unnecessary noise when the goal is a GEO audit.
 
-2. **Approval card + raw JSON dumped as text**: Because `generate_geo_content` is a write tool, the approval flow triggers. But the AI ALSO outputs the generated content's approval structure as raw JSON text in the chat message, because the prompt instructs it to present approval for GEO changes — creating a duplicate approval (one from the system, one from the AI's text output).
+**Fix in `supabase/functions/chat/index.ts`**: Before emitting rich content, check if a GEO tool (`audit_geo`, `generate_geo_content`, `bulk_geo_audit`) has been called or is pending in the current tool call batch. If so, suppress the `products` rich content type. Alternatively, simpler approach: add the GEO intent tools (`search_products`, `get_product`) to the GEO intent group in `intent.ts`, and in `index.ts` track a `geoFlowActive` flag — when any GEO tool executes, skip emitting `products` rich content.
 
-3. **Cards disappear on tab switch**: The GEO report and approval card rich content isn't persisted to message metadata, so it's lost on re-render.
+**Implementation**: In `index.ts` around line 677, before emitting rich content, check if any tool call in the current iteration includes a GEO tool name. If yes, suppress `products` type rich content:
 
-4. **Content not actually applied**: With `entity_id: 0`, the product fetch fails or returns wrong data, so the subsequent `update_product` never applies real changes.
+```typescript
+const geoTools = new Set(["audit_geo", "generate_geo_content", "bulk_geo_audit"]);
+const isGeoFlow = toolCalls.some(tc => geoTools.has(tc.function.name));
 
-## Root Cause
+if (richContent && !emittedRichTypes.has(richContent.type)) {
+  // Don't show product slider when doing GEO work
+  if (richContent.type === "products" && isGeoFlow) {
+    // skip
+  } else {
+    sendSSE({ type: "rich_content", ... });
+    emittedRichTypes.add(richContent.type);
+  }
+}
+```
 
-`generate_geo_content` is incorrectly classified as a `WRITE_TOOL`. It's a **read/generate** operation — it fetches entity data and generates optimized content via AI, but writes nothing. The write happens when the AI subsequently calls `update_product` (which IS correctly a write tool and will trigger its own approval).
+Also add `search_products` and `get_product` to GEO intent tools in `intent.ts` so the AI can find products by name during GEO flows.
 
-## Plan
+### 2. Cache sidebar data with initial limit of 30
+Currently the sidebar re-fetches ALL conversations from the database on every `activeId` change (line 84 dependency). No caching, no pagination limit.
 
-### 1. Remove `generate_geo_content` from WRITE_TOOLS
-**File**: `supabase/functions/chat/types.ts`
-- Remove `"generate_geo_content"` from the `WRITE_TOOLS` set
-- This lets `generate_geo_content` execute immediately (like `audit_geo`), then the AI chains into `update_product` which triggers the real approval
+**Fix in `ConversationSidebar.tsx`**:
+- Add `.limit(30)` to the conversations query for initial load
+- Cache data in `sessionStorage` so switching tabs doesn't trigger re-fetches
+- On mount: load from sessionStorage instantly, then fetch fresh data in background
+- Only re-fetch when `activeId` changes if the new ID isn't in the cached list (new conversation created)
+- Remove `activeId` from the useEffect dependency — use a separate targeted mechanism to handle new conversations
 
-### 2. Add `richContent` to `generate_geo_content` result
-**File**: `supabase/functions/chat/tool-executor.ts`
-- Return a rich content card showing what was generated (SEO meta status, JSON-LD status) — similar to the second screenshot the user showed
-- This gives visual feedback without dumping raw JSON
+**Implementation**:
+```typescript
+const CACHE_KEY = "sidebar_conversations";
+const CACHE_KEY_VIEWS = "sidebar_views";
 
-### 3. Update prompt for GEO tool chaining
-**File**: `supabase/functions/chat/prompts.ts`
-- Add explicit instruction: "After `generate_geo_content` returns optimized content, IMMEDIATELY call `update_product`/`update_page`/`update_post` with the generated `description`, `short_description`, and `meta_data` fields. Do NOT output the generated content as text. The update tool will trigger the approval card automatically."
-- Add: "When the user asks to optimize a product for GEO/SEO and you already have the product from search results or context, use that product's ID directly. Do NOT ask the user for the ID."
+useEffect(() => {
+  if (!user) return;
+  // Load from cache immediately
+  const cached = sessionStorage.getItem(CACHE_KEY);
+  if (cached) setConversations(JSON.parse(cached));
+  const cachedViews = sessionStorage.getItem(CACHE_KEY_VIEWS);
+  if (cachedViews) setViews(JSON.parse(cachedViews));
+  
+  // Fetch fresh (limited to 30)
+  const load = async () => {
+    const [convRes, viewRes] = await Promise.all([
+      supabase.from("conversations")
+        .select("id, title, updated_at, view_id, pinned")
+        .eq("user_id", user.id)
+        .order("updated_at", { ascending: false })
+        .limit(30),
+      supabase.from("views")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("updated_at", { ascending: false }),
+    ]);
+    if (convRes.data) {
+      setConversations(convRes.data);
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify(convRes.data));
+    }
+    if (viewRes.data) {
+      setViews(viewRes.data);
+      sessionStorage.setItem(CACHE_KEY_VIEWS, JSON.stringify(viewRes.data));
+    }
+  };
+  load();
+}, [user]);
+```
 
-### 4. Persist GEO rich content in message metadata
-**File**: `src/pages/Index.tsx` (or wherever SSE messages are processed)
-- Ensure `geo_report` type rich content is saved to message metadata for reload persistence (same pattern used for dashboards, approval states)
+- When `activeId` changes and it's a new conversation not in the list, prepend it optimistically
+- When "load more" is clicked, fetch with offset and append
+
+### 3. Change default recentsLimit from 10 to 30
+Line 61: change `useState(10)` to `useState(30)` to show 30 recent chats by default.
 
 ## Files to modify
-1. `supabase/functions/chat/types.ts` — remove `generate_geo_content` from WRITE_TOOLS
-2. `supabase/functions/chat/tool-executor.ts` — add richContent to generate_geo_content result
-3. `supabase/functions/chat/prompts.ts` — improve GEO chaining instructions
-4. `src/pages/Index.tsx` — persist GEO rich content (if not already handled)
+1. `supabase/functions/chat/index.ts` — suppress `products` rich content during GEO flows
+2. `supabase/functions/chat/intent.ts` — add `search_products`, `get_product` to GEO intent tools
+3. `src/components/chat/ConversationSidebar.tsx` — cache sidebar data in sessionStorage, limit to 30, change recentsLimit default
 
