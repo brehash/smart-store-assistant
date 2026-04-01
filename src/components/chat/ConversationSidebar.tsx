@@ -192,8 +192,10 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
 
   const handleDeleteView = async (e: React.MouseEvent, viewId: string) => {
     e.stopPropagation();
-    await supabase.from("conversations").delete().in("id", conversations.filter((c) => c.view_id === viewId).map((c) => c.id));
+    const idsToDelete = conversations.filter((c) => c.view_id === viewId).map((c) => c.id);
+    await supabase.from("conversations").delete().in("id", idsToDelete);
     await supabase.from("views").delete().eq("id", viewId);
+    idsToDelete.forEach((id) => onDeleteConversation?.(id));
     setViews((prev) => prev.filter((v) => v.id !== viewId));
     setConversations((prev) => prev.filter((c) => c.view_id !== viewId));
   };
