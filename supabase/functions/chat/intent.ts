@@ -1,7 +1,7 @@
 import { TOOLS } from "./tools.ts";
 
 const SHIPPING_INTENT_RE = /(shipping|tracking|delivery|livrare|colet|awb|status.*comand|comand.*status|unde.*comand|unde.*colet|stare.*comand|stare.*colet)/i;
-const GEO_INTENT_RE = /(geo|seo.*ai|optimiz.*ai|optimize.*search|ai.*search|generative.*engine|structured.*data|faq.*schema|json-ld|geo.*audit|audit.*geo|optimizeaz[aă].*seo|audit.*seo)/i;
+export const GEO_INTENT_RE = /(geo|seo.*ai|optimiz.*ai|optimize.*search|ai.*search|generative.*engine|structured.*data|faq.*schema|json-ld|geo.*audit|audit.*geo|optimizeaz[aă].*seo|audit.*seo)/i;
 
 export const INTENT_GROUPS: Record<string, { regex: RegExp; tools: string[] }> = {
   SHIPPING: {
