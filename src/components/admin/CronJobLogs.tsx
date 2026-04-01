@@ -43,6 +43,7 @@ interface CronLog {
     integrations_checked?: number;
     orders_scanned?: number;
     orders_completed?: number;
+    orders_returned?: number;
     errors?: number;
     fatal_error?: string;
     workers_dispatched?: number;
