@@ -910,7 +910,14 @@ export default function Index() {
           )}
         </div>
 
-        <ChatInput onSend={handleSend} disabled={isStreaming} />
+        <ChatInput
+          onSend={handleSend}
+          onStop={handleStop}
+          disabled={isStreaming}
+          isStreaming={isStreaming}
+          planMode={planMode}
+          onPlanModeToggle={() => setPlanMode((p) => !p)}
+        />
       </div>
 
       {/* Settings Modal */}
