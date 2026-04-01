@@ -81,6 +81,7 @@ export default function Index() {
   const [cachedProducts, setCachedProducts] = useState<any[]>([]);
   const [newOrderCount, setNewOrderCount] = useState(0);
   const [planMode, setPlanMode] = useState(false);
+  const [loadingMessages, setLoadingMessages] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   // Fetch credit balance and app settings on mount
   useEffect(() => {
