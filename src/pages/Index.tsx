@@ -429,6 +429,7 @@ export default function Index() {
     messagesCacheRef.current.delete(id);
   }, []);
 
+  const createConversation = async () => {
     if (!user) return null;
     const { data } = await supabase
       .from("conversations")
