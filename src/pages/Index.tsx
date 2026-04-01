@@ -729,6 +729,50 @@ export default function Index() {
     }
   };
 
+  const handleStop = () => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    // isStreaming will be set to false by onDone/onError in streamChat
+  };
+
+  const handleEditAndResend = (messageIndex: number, newText: string) => {
+    // Truncate messages to before the user message at messageIndex
+    setMessages((prev) => prev.slice(0, messageIndex));
+    // Re-send with the new text
+    setTimeout(() => handleSend(newText, true), 50);
+  };
+
+  const handleRetry = (messageIndex: number) => {
+    // Find the preceding user message
+    const prev = messages.slice(0, messageIndex);
+    const lastUserMsg = [...prev].reverse().find((m) => m.role === "user");
+    if (!lastUserMsg) return;
+    // Remove the assistant message at messageIndex
+    setMessages((p) => p.filter((_, i) => i !== messageIndex));
+    // Delete from DB if it has an ID
+    const msg = messages[messageIndex];
+    if (msg?.id) {
+      supabase.from("messages").delete().eq("id", msg.id).then(() => {});
+    }
+    setTimeout(() => handleSend(lastUserMsg.content, true), 50);
+  };
+
+  const handleFeedback = async (messageIndex: number, rating: "up" | "down") => {
+    const msg = messages[messageIndex];
+    if (!msg?.id || !user) return;
+    // Toggle: if same rating, remove feedback
+    const newRating = msg.feedbackRating === rating ? null : rating;
+    setMessages((prev) => prev.map((m, i) => i === messageIndex ? { ...m, feedbackRating: newRating } : m));
+    if (newRating) {
+      await supabase.from("message_feedback" as any).upsert(
+        { message_id: msg.id, user_id: user.id, rating: newRating },
+        { onConflict: "message_id,user_id" }
+      );
+    } else {
+      await (supabase.from("message_feedback" as any) as any).delete().eq("message_id", msg.id).eq("user_id", user.id);
+    }
+  };
+
   const handleNewChat = () => { setConversationId(null); setMessages([]); setViewId(null); setSidebarOpen(false); };
   const handleSelectConversation = (id: string, vId?: string | null) => {
     setConversationId(id);
