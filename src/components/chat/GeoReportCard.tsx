@@ -265,6 +265,29 @@ export function GeoReportCard({ data, onAction }: { data: GeoReportData; onActio
             </ul>
           </div>
         )}
+        {/* Action buttons — single audit only */}
+        {!isGeneration && data.mode !== "bulk" && onAction && data.entityName && data.entityId && (
+          <div className="space-y-2 pt-1">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Ce vrei să optimizezi?</p>
+            <div className="flex flex-wrap gap-2">
+              {deriveActions(data).map((action) => (
+                <button
+                  key={action.label}
+                  onClick={() => onAction(action.message)}
+                  className="rounded-full border border-border bg-card px-3 py-1.5 text-xs hover:bg-accent transition-colors"
+                >
+                  {action.label}
+                </button>
+              ))}
+              <button
+                onClick={() => onAction(`Generează conținut GEO complet pentru ${data.entityType || "product"} "${data.entityName}" (ID: ${data.entityId})`)}
+                className="rounded-full bg-primary text-primary-foreground px-3 py-1.5 text-xs hover:bg-primary/90 transition-colors font-medium"
+              >
+                🚀 Generează tot
+              </button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

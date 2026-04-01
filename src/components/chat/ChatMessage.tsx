@@ -160,7 +160,7 @@ export function ChatMessage({
             {rc.type === "chart" && <ChatChart chartData={rc.data} />}
             {rc.type === "dashboard" && <DashboardView data={rc.data} />}
             {rc.type === "shipping" && <ShippingTimeline data={rc.data} />}
-            {rc.type === "geo_report" && <GeoReportCard data={rc.data} />}
+            {rc.type === "geo_report" && <GeoReportCard data={rc.data} onAction={onSendMessage} />}
           </div>
         ))}
 
