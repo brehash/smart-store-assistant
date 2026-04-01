@@ -166,6 +166,28 @@ export default function Index() {
           fetchCachedData(team.owner_id);
         }
       } else {
+        // Not a team member — check if user OWNS a team (owner is not in team_members)
+        const { data: ownedTeam } = await supabase
+          .from("teams")
+          .select("id")
+          .eq("owner_id", user.id)
+          .maybeSingle();
+
+        if (ownedTeam) {
+          // Owner has a team — re-check connection without is_active filter as fallback
+          const { data: anyConn } = await supabase
+            .from("woo_connections")
+            .select("id, order_statuses")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          if (anyConn) {
+            setHasConnection(true);
+            setCachedSelectedStatuses((anyConn as any).order_statuses || []);
+            fetchCachedData(user.id);
+            return;
+          }
+        }
+
         setHasConnection(false);
         // Retry once after a short delay in case invite acceptance is still in-flight
         setTimeout(async () => {
