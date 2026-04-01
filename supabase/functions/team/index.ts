@@ -463,6 +463,64 @@ Deno.serve(async (req) => {
       return json({ success: true });
     }
 
+    // ── GET: Team member usage stats ──
+    if (req.method === "GET" && path === "usage") {
+      const { data: membership } = await serviceClient
+        .from("team_members")
+        .select("team_id, role")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (!membership || membership.role !== "owner")
+        return json({ error: "Only team owner can view usage" }, 403);
+
+      const { data: members } = await serviceClient
+        .from("team_members")
+        .select("user_id")
+        .eq("team_id", membership.team_id);
+
+      const memberIds = (members || []).map((m: any) => m.user_id);
+      
+      // Get profiles for display names
+      const { data: profiles } = await serviceClient
+        .from("profiles")
+        .select("user_id, display_name")
+        .in("user_id", memberIds);
+
+      // Get message counts for current month
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      
+      const { data: messageCounts } = await serviceClient
+        .from("messages")
+        .select("user_id")
+        .in("user_id", memberIds)
+        .eq("role", "user")
+        .gte("created_at", monthStart);
+
+      // Get credit transactions for current month
+      const { data: creditTxns } = await serviceClient
+        .from("credit_transactions")
+        .select("user_id, amount")
+        .in("user_id", memberIds)
+        .gte("created_at", monthStart);
+
+      const usage = memberIds.map((uid: string) => {
+        const profile = (profiles || []).find((p: any) => p.user_id === uid);
+        const msgCount = (messageCounts || []).filter((m: any) => m.user_id === uid).length;
+        const creditsUsed = (creditTxns || [])
+          .filter((t: any) => t.user_id === uid && t.amount < 0)
+          .reduce((sum: number, t: any) => sum + Math.abs(t.amount), 0);
+        return {
+          user_id: uid,
+          display_name: profile?.display_name || "Unknown",
+          message_count: msgCount,
+          credits_used: creditsUsed,
+        };
+      });
+
+      return json(usage);
+    }
+
     return json({ error: "Not found" }, 404);
   } catch (error: any) {
     console.error("Team function error:", error);

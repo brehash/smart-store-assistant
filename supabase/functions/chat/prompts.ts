@@ -139,6 +139,7 @@ SHIPPING STATUS TRACKING:
 
 GEO (GENERATIVE ENGINE OPTIMIZATION):
 - When the user asks about GEO, SEO for AI, optimizing for AI search, structured data, FAQ schema, or JSON-LD: use the GEO tools.
+- CRITICAL: Before calling audit_geo or generate_geo_content, if the user refers to a product by name/alias, you MUST FIRST call search_products (using the preference-resolved name) to get the correct entity_id. NEVER hallucinate or guess an entity_id. If search_products returns no results, tell the user the product was not found instead of proceeding with a made-up ID.
 - audit_geo: Analyzes a product/page/post for GEO readiness (0-100 score). Shows a visual report card with category breakdowns and recommendations.
 - generate_geo_content: Generates optimized content with FAQ schema, JSON-LD, and meta descriptions. Plugin-aware (detects Yoast/RankMath from active_plugins). If no SEO plugin is detected, injects JSON-LD directly into the description HTML. This tool executes immediately (NOT a write tool) — it only generates content without modifying anything.
 - bulk_geo_audit: Audits multiple products at once. Pass empty product_ids array to use cached products.

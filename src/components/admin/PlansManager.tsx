@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Save } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface TopupPack {
   id: string;
@@ -18,43 +19,44 @@ interface TopupPack {
 
 export function PlansManager({ accessToken }: { accessToken: string }) {
   const { toast } = useToast();
-  const [packs, setPacks] = useState<TopupPack[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [saving, setSaving] = useState<string | null>(null);
   const [edits, setEdits] = useState<Record<string, Partial<TopupPack>>>({});
-  const [topupModalEnabled, setTopupModalEnabled] = useState(true);
   const [savingToggle, setSavingToggle] = useState(false);
 
   const baseUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin`;
 
-  const fetchPacks = async () => {
-    setLoading(true);
-    try {
+  const { data: packs = [], isLoading: loading } = useQuery({
+    queryKey: ["admin", "topup-packs"],
+    queryFn: async () => {
       const resp = await fetch(`${baseUrl}/topup-packs`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
-      if (resp.ok) setPacks(await resp.json());
-    } catch (e) {
-      console.error("Failed to load packs:", e);
-    } finally {
-      setLoading(false);
-    }
-  };
+      if (resp.ok) return resp.json() as Promise<TopupPack[]>;
+      return [];
+    },
+    enabled: !!accessToken,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const fetchSettings = async () => {
-    try {
+  const { data: topupModalEnabled = true } = useQuery({
+    queryKey: ["admin", "settings", "enable_topup_modal"],
+    queryFn: async () => {
       const resp = await fetch(`${baseUrl}/settings`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (resp.ok) {
         const data = await resp.json();
         const setting = data.find((s: any) => s.key === "enable_topup_modal");
-        if (setting) setTopupModalEnabled(setting.value === true || setting.value === "true");
+        if (setting) return setting.value === true || setting.value === "true";
       }
-    } catch { /* ignore */ }
-  };
+      return true;
+    },
+    enabled: !!accessToken,
+    staleTime: 5 * 60 * 1000,
+  });
 
-  useEffect(() => { fetchPacks(); fetchSettings(); }, [accessToken]);
+  const fetchPacks = () => queryClient.invalidateQueries({ queryKey: ["admin", "topup-packs"] });
 
   const getEditValue = (pack: TopupPack, field: keyof TopupPack) => {
     return edits[pack.id]?.[field] ?? pack[field];
@@ -111,7 +113,6 @@ export function PlansManager({ accessToken }: { accessToken: string }) {
 
   const handleToggleModal = async (enabled: boolean) => {
     setSavingToggle(true);
-    setTopupModalEnabled(enabled);
     try {
       const resp = await fetch(`${baseUrl}/settings/enable_topup_modal`, {
         method: "PUT",
@@ -120,6 +121,7 @@ export function PlansManager({ accessToken }: { accessToken: string }) {
       });
       if (resp.ok) {
         toast({ title: enabled ? "Enabled" : "Disabled", description: `Credit top-up modal ${enabled ? "enabled" : "disabled"} for users.` });
+        queryClient.invalidateQueries({ queryKey: ["admin", "settings"] });
       }
     } catch {
       toast({ title: "Error", description: "Failed to update setting.", variant: "destructive" });

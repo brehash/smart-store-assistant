@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +14,7 @@ import {
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
   AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Users, Crown, UserPlus, Trash2, LogOut, Loader2, Mail, Send } from "lucide-react";
+import { Users, Crown, UserPlus, Trash2, LogOut, Loader2, Mail, Send, MessageSquare, Coins } from "lucide-react";
 
 interface TeamData {
   team: any;
@@ -21,35 +22,53 @@ interface TeamData {
   invitations: any[];
   creditBalance: any;
   userRole: string;
+  memberUsage?: Array<{
+    user_id: string;
+    display_name: string;
+    message_count: number;
+    credits_used: number;
+  }>;
 }
 
 export function TeamSettings() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [teamData, setTeamData] = useState<TeamData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [teamName, setTeamName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [creating, setCreating] = useState(false);
   const [inviting, setInviting] = useState(false);
 
-  const fetchTeam = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
+  const { data: teamData, isLoading: loading } = useQuery({
+    queryKey: ["team"],
+    queryFn: async () => {
       const { data, error } = await supabase.functions.invoke("team", {
         method: "GET",
       });
       if (error) throw error;
-      setTeamData(data?.team ? data : null);
-    } catch (e: any) {
-      console.error("Failed to load team:", e);
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
+      return data?.team ? data as TeamData : null;
+    },
+    enabled: !!user,
+    staleTime: 2 * 60 * 1000,
+  });
 
-  useEffect(() => { fetchTeam(); }, [fetchTeam]);
+  // Fetch member usage when team exists and user is owner
+  const { data: memberUsage } = useQuery({
+    queryKey: ["team", "usage"],
+    queryFn: async () => {
+      const session = await supabase.auth.getSession();
+      const token = session.data.session?.access_token;
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/team/usage`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (resp.ok) return resp.json();
+      return [];
+    },
+    enabled: !!user && !!teamData && teamData.userRole === "owner",
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const fetchTeam = () => queryClient.invalidateQueries({ queryKey: ["team"] });
 
   const handleCreateTeam = async () => {
     if (!teamName.trim()) return;
@@ -261,51 +280,64 @@ export function TeamSettings() {
           <CardTitle className="text-base">Membri</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {teamData.members.map((member: any) => (
-            <div key={member.user_id} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
-              <div className="flex items-center gap-3">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                    {(member.display_name || "?")[0].toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <div>
-                  <p className="text-sm font-medium">{member.display_name}</p>
-                  <p className="text-xs text-muted-foreground">{member.email}</p>
+          {teamData.members.map((member: any) => {
+            const usage = memberUsage?.find((u: any) => u.user_id === member.user_id);
+            return (
+              <div key={member.user_id} className="flex items-center justify-between gap-3 rounded-lg border border-border p-3">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-8 w-8">
+                    <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                      {(member.display_name || "?")[0].toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-sm font-medium">{member.display_name}</p>
+                    <p className="text-xs text-muted-foreground">{member.email}</p>
+                    {usage && (
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                          <MessageSquare className="h-3 w-3" /> {usage.message_count} mesaje
+                        </span>
+                        <span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">
+                          <Coins className="h-3 w-3" /> {usage.credits_used} credite
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {member.role === "owner" && (
+                    <Badge variant="outline" className="text-xs gap-1">
+                      <Crown className="h-3 w-3" />Proprietar
+                    </Badge>
+                  )}
+                  {isOwner && member.user_id !== user?.id && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Elimini {member.display_name}?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Va pierde accesul la soldul de credite partajate.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Anulează</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleRemoveMember(member.user_id)}>
+                            Elimină
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                {member.role === "owner" && (
-                  <Badge variant="outline" className="text-xs gap-1">
-                    <Crown className="h-3 w-3" />Proprietar
-                  </Badge>
-                )}
-                {isOwner && member.user_id !== user?.id && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Elimini {member.display_name}?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Va pierde accesul la soldul de credite partajate.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Anulează</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleRemoveMember(member.user_id)}>
-                          Elimină
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </CardContent>
       </Card>
 

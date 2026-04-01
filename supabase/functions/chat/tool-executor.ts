@@ -866,11 +866,17 @@ export async function executeTool(
         entityData = await callWooProxy(supabaseUrl, authHeader, { endpoint: `posts/${entity_id}`, apiPrefix: "wp/v2" });
       }
 
-      if (!entityData || entityData.error) {
-        return { result: { error: `Could not fetch ${entity_type} #${entity_id}: ${entityData?.error || "Not found"}` } };
+      if (!entityData || entityData.error || entityData.data?.status === 404) {
+        return { result: { error: `Product not found: ${entity_type} #${entity_id} does not exist. Please search for the product first using search_products to get the correct ID.` } };
       }
 
-      const entityName = entityData.name || entityData.title?.rendered || entityData.title || "Unknown";
+      // Additional check: if the entity came back but has no meaningful data
+      const entityName = entityData.name || entityData.title?.rendered || entityData.title || "";
+      if (!entityName) {
+        return { result: { error: `Product not found: ${entity_type} #${entity_id} returned empty data. Use search_products first to find the correct ID.` } };
+      }
+
+      // entityName already extracted above
       const description = (entityData.description || entityData.content?.rendered || "").replace(/<[^>]*>/g, "");
       const descLen = description.length;
       const hasHeadings = /<h[2-6]/i.test(entityData.description || entityData.content?.rendered || "");
