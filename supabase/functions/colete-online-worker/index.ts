@@ -197,8 +197,9 @@ serve(async (req) => {
           const latestStatus = latest?.status || latest?.description || null;
           const latestCode = latest?.code ?? latest?.status_id ?? null;
           const isDelivered = history.some((h: any) => h.code === 20800 || h.code === 30500);
+          const isReturned = history.some((h: any) => h.code === 24300 || h.code === 9512);
 
-          return { order, uniqueId, awb, delivered: isDelivered, error: null, latestStatus, latestCode };
+          return { order, uniqueId, awb, delivered: isDelivered, returned: isReturned, error: null, latestStatus, latestCode };
         })
       );
 
