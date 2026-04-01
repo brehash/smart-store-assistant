@@ -48,6 +48,7 @@ export function ImpersonationBanner() {
     if (saved) {
       const { access_token, refresh_token } = JSON.parse(saved);
       await supabase.auth.setSession({ access_token, refresh_token });
+      await supabase.auth.refreshSession();
     }
     sessionStorage.removeItem(STORAGE_KEY);
     sessionStorage.removeItem("admin_session");
