@@ -1,27 +1,37 @@
 
 
-# Fix: Cache Messages Per Conversation
+# Fix: Orchestrator Expanded View Shows Empty Details
 
 ## Problem
 
-Every time a conversation is opened — even one that was already loaded — the app fetches messages from the database again and shows the skeleton preloader. There is no client-side cache.
+The orchestrator log stores details like:
+```json
+[{ "integration_id": "xxx", "status": "dispatched" }]
+```
 
-## Fix — `src/pages/Index.tsx`
+But the expanded row template only renders worker-style fields (`storeName`, `authStatus`, `ordersScanned`, etc.), so orchestrator rows expand to show empty/blank cards.
 
-1. **Add a messages cache ref**: `useRef<Map<string, Message[]>>(new Map())` to store already-fetched messages keyed by `conversationId`.
+## Fix — `src/components/admin/CronJobLogs.tsx`
 
-2. **Update the message-loading `useEffect`** (line 363):
-   - Before fetching, check if the cache has this `conversationId`. If yes, set messages from cache instantly (no `setLoadingMessages(true)`, no fetch).
-   - Only show the preloader and fetch from DB when the conversation is NOT in the cache.
-   - After a successful fetch, store the result in the cache.
+Detect whether the expanded log is an orchestrator or worker and render different content:
 
-3. **Keep cache in sync**: When new messages are added during streaming (user sends a message, assistant replies), update the cache entry for the current `conversationId` alongside `setMessages`. This can be done by updating the cache ref whenever `messages` changes for the active conversation — a simple `useEffect` that writes `messagesCacheRef.current.set(conversationId, messages)` after streaming completes.
+**Orchestrator expanded view** — show a simple table of dispatched workers:
+| Integration ID | Status |
+|---|---|
+| `abc-123` | dispatched |
 
-4. **Invalidate on delete**: When a conversation is deleted from the sidebar, remove its entry from the cache map.
+**Worker expanded view** — keep existing detailed breakdown (orders table, errors, etc.) as-is.
 
-## Files
+### Implementation
 
-| File | Changes |
-|------|---------|
-| `src/pages/Index.tsx` | Add `messagesCacheRef`, check cache before fetch, update cache after fetch/stream, clear on delete |
+In the `CollapsibleContent` section (line 206-326), wrap the existing detail rendering in an `isOrchestrator` check:
+
+- If `isOrchestrator`: render a simple table with columns "Integration ID" and "Dispatch Status", iterating over `log.details` as `{ integration_id, status, error? }`.
+- If worker: keep the existing card-based breakdown unchanged.
+
+### Changes
+
+| File | Change |
+|------|--------|
+| `src/components/admin/CronJobLogs.tsx` | Add orchestrator-specific expanded view with dispatch results table; keep worker view unchanged |
 
