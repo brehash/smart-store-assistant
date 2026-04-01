@@ -46,6 +46,7 @@ interface Message {
   reasoningLogs?: ReasoningEntry[];
   tokenUsage?: TokenUsage;
   creditUsage?: CreditUsage;
+  feedbackRating?: "up" | "down" | null;
 }
 
 export default function Index() {
@@ -79,7 +80,8 @@ export default function Index() {
   const [cachedSelectedStatuses, setCachedSelectedStatuses] = useState<string[]>([]);
   const [cachedProducts, setCachedProducts] = useState<any[]>([]);
   const [newOrderCount, setNewOrderCount] = useState(0);
-
+  const [planMode, setPlanMode] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
   // Fetch credit balance and app settings on mount
   useEffect(() => {
     if (!user) return;
@@ -343,16 +345,21 @@ export default function Index() {
     });
   };
 
-  const handleSend = async (input: string) => {
+  const handleSend = async (input: string, skipPlanPrefix?: boolean) => {
     if (!user || !session || isStreaming) return;
 
     let convId = conversationId;
     if (!convId) { convId = await createConversation(); if (!convId) return; }
 
+    // Prepend plan mode prefix if active
+    const effectiveInput = planMode && !skipPlanPrefix ? `[PLAN MODE] ${input}` : input;
+
     const userMsg: Message = { role: "user", content: input };
     setMessages((prev) => [...prev, userMsg]);
     setIsStreaming(true);
     streamAliveRef.current = true;
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
     scrollToBottom();
 
     const { error: userMsgError } = await supabase.from("messages").insert({ conversation_id: convId, user_id: user.id, role: "user", content: input });
@@ -377,10 +384,11 @@ export default function Index() {
     let tokenUsage: TokenUsage | null = null;
     let creditUsage: CreditUsage | null = null;
     await streamChat({
-      messages: [...messages, userMsg].map((m) => ({ role: m.role, content: m.content })),
+      messages: [...messages, { role: "user" as const, content: effectiveInput }].map((m) => ({ role: m.role, content: m.content })),
       conversationId: convId,
       accessToken: session.access_token,
       viewId,
+      signal: controller.signal,
       onDelta: (chunk) => {
         assistantContent += chunk;
         streamAliveRef.current = true;
@@ -721,6 +729,50 @@ export default function Index() {
     }
   };
 
+  const handleStop = () => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    // isStreaming will be set to false by onDone/onError in streamChat
+  };
+
+  const handleEditAndResend = (messageIndex: number, newText: string) => {
+    // Truncate messages to before the user message at messageIndex
+    setMessages((prev) => prev.slice(0, messageIndex));
+    // Re-send with the new text
+    setTimeout(() => handleSend(newText, true), 50);
+  };
+
+  const handleRetry = (messageIndex: number) => {
+    // Find the preceding user message
+    const prev = messages.slice(0, messageIndex);
+    const lastUserMsg = [...prev].reverse().find((m) => m.role === "user");
+    if (!lastUserMsg) return;
+    // Remove the assistant message at messageIndex
+    setMessages((p) => p.filter((_, i) => i !== messageIndex));
+    // Delete from DB if it has an ID
+    const msg = messages[messageIndex];
+    if (msg?.id) {
+      supabase.from("messages").delete().eq("id", msg.id).then(() => {});
+    }
+    setTimeout(() => handleSend(lastUserMsg.content, true), 50);
+  };
+
+  const handleFeedback = async (messageIndex: number, rating: "up" | "down") => {
+    const msg = messages[messageIndex];
+    if (!msg?.id || !user) return;
+    // Toggle: if same rating, remove feedback
+    const newRating = msg.feedbackRating === rating ? null : rating;
+    setMessages((prev) => prev.map((m, i) => i === messageIndex ? { ...m, feedbackRating: newRating } : m));
+    if (newRating) {
+      await supabase.from("message_feedback" as any).upsert(
+        { message_id: msg.id, user_id: user.id, rating: newRating },
+        { onConflict: "message_id,user_id" }
+      );
+    } else {
+      await (supabase.from("message_feedback" as any) as any).delete().eq("message_id", msg.id).eq("user_id", user.id);
+    }
+  };
+
   const handleNewChat = () => { setConversationId(null); setMessages([]); setViewId(null); setSidebarOpen(false); };
   const handleSelectConversation = (id: string, vId?: string | null) => {
     setConversationId(id);
@@ -843,17 +895,29 @@ export default function Index() {
                    allOrderStatuses={cachedAllStatuses}
                    paymentMethods={cachedPaymentMethods}
                    cachedProducts={cachedProducts}
-                    onApproval={handleApproval}
-                    onQuestionAnswer={handleQuestionAnswer}
-                    onOrderCreated={handleOrderCreated}
-                    onSendMessage={handleSend}
-                  />
+                   messageId={msg.id}
+                   feedbackRating={msg.feedbackRating}
+                   onApproval={handleApproval}
+                   onQuestionAnswer={handleQuestionAnswer}
+                   onOrderCreated={handleOrderCreated}
+                   onSendMessage={handleSend}
+                   onEditAndResend={msg.role === "user" ? (newText) => handleEditAndResend(i, newText) : undefined}
+                   onRetry={msg.role === "assistant" ? () => handleRetry(i) : undefined}
+                   onFeedback={msg.role === "assistant" && msg.id ? (rating) => handleFeedback(i, rating) : undefined}
+                 />
               ))}
             </div>
           )}
         </div>
 
-        <ChatInput onSend={handleSend} disabled={isStreaming} />
+        <ChatInput
+          onSend={handleSend}
+          onStop={handleStop}
+          disabled={isStreaming}
+          isStreaming={isStreaming}
+          planMode={planMode}
+          onPlanModeToggle={() => setPlanMode((p) => !p)}
+        />
       </div>
 
       {/* Settings Modal */}

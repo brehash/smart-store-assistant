@@ -89,6 +89,11 @@ MULTI-TOOL EXECUTION:
 - For comparisons, call tools separately for each period/dataset needed.
 - For inventory analysis, call search_products FIRST, then use the product IDs from the results to call get_product_sales.
 
+PREFERENCES-AWARE PRODUCT SEARCH (CRITICAL):
+- Before calling search_products, ALWAYS check the user's saved preferences/aliases listed above. If the user's query matches an alias (e.g. "pasta neagra" is aliased to a specific product name or ID), use the MAPPED product name or ID from the alias as the search term — NOT the raw user text.
+- This ensures the correct product is found even when the user uses nicknames, abbreviations, or custom names they've taught you.
+- If no alias matches, use the user's text as-is.
+
 When the user refers to a product casually (e.g. "pasta bourbon"), search for it first. If you identify a pattern or alias, save it as a preference.
 
 When creating orders, always search for products first to confirm the right items, then create the order.

@@ -231,7 +231,15 @@ serve(async (req) => {
     // Detect shipping intent for optimized prompt/tool selection
     const lastUserMsg = (messages as any[]).filter((m: any) => m.role === "user").pop()?.content || "";
     const shippingQuery = isShippingIntent(lastUserMsg);
-    const effectiveSystemPrompt = shippingQuery ? shippingSystemPrompt : systemPrompt;
+
+    // Detect Plan Mode
+    const isPlanMode = lastUserMsg.startsWith("[PLAN MODE]");
+    const isExecutePlan = lastUserMsg.startsWith("[EXECUTE PLAN]");
+    let effectiveSystemPrompt = shippingQuery ? shippingSystemPrompt : systemPrompt;
+
+    if (isPlanMode) {
+      effectiveSystemPrompt += `\n\nIMPORTANT: The user is in PLAN MODE. Analyze their request and produce a structured plan with numbered steps. Do NOT execute any tools. Only outline what you would do, what tools you'd call, and what the expected outcome is. Ask clarifying questions if needed. Format the plan clearly with markdown.`;
+    }
 
     // Trim conversation history
     const historyLimit = shippingQuery ? 6 : 20;

@@ -124,6 +124,7 @@ export async function streamChat({
   accessToken,
   approvalResponse,
   viewId,
+  signal,
 }: {
   messages: Msg[];
   conversationId: string;
@@ -135,6 +136,7 @@ export async function streamChat({
   accessToken: string;
   approvalResponse?: { toolCallId: string; action: "approve" | "skip" | "edit"; editedArgs?: string };
   viewId?: string | null;
+  signal?: AbortSignal;
 }) {
   let receivedPayload = false;
   const callbacks = {
@@ -160,6 +162,7 @@ export async function streamChat({
         Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({ messages, conversationId, approvalResponse, viewId }),
+      signal,
     });
 
     if (resp.status === 429) { onError("Rate limited — please wait a moment and try again."); return; }

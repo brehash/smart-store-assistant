@@ -13,6 +13,7 @@ import { ReasoningBubbles, type ReasoningEntry } from "./ReasoningBubbles";
 import { OrderFormCard, type OrderFormData } from "./OrderFormCard";
 import { ShippingTimeline } from "./ShippingTimeline";
 import { GeoReportCard } from "./GeoReportCard";
+import { UserMessageActions, AssistantMessageActions } from "./MessageActions";
 
 export interface RichContent {
   type: "products" | "orders" | "chart" | "confirmation" | "pipeline" | "dashboard" | "shipping" | "geo_report";
@@ -51,21 +52,29 @@ interface ChatMessageProps {
   allOrderStatuses?: { slug: string; name: string }[];
   paymentMethods?: { id: string; title: string }[];
   cachedProducts?: any[];
+  messageId?: string;
+  feedbackRating?: "up" | "down" | null;
   onApproval?: (approval: ApprovalRequest, action: "approve" | "skip" | "edit", editedText?: string) => void;
   onQuestionAnswer?: (question: QuestionRequest, answer: string) => void;
   onOrderCreated?: (data: OrderFormData, result: { orderNumber: string; orderId: number; total: string }) => void;
   onSendMessage?: (message: string) => void;
+  onEditAndResend?: (newText: string) => void;
+  onRetry?: () => void;
+  onFeedback?: (rating: "up" | "down") => void;
 }
 
 export function ChatMessage({
   role, content, richContents, isStreaming,
   pipeline, approvals, questions, orderForms, debugLogs, reasoningLogs, tokenUsage, creditUsage,
-  orderStatuses, allOrderStatuses, paymentMethods, cachedProducts, onApproval, onQuestionAnswer, onOrderCreated, onSendMessage,
+  orderStatuses, allOrderStatuses, paymentMethods, cachedProducts,
+  messageId, feedbackRating,
+  onApproval, onQuestionAnswer, onOrderCreated, onSendMessage,
+  onEditAndResend, onRetry, onFeedback,
 }: ChatMessageProps) {
   const isUser = role === "user";
 
   return (
-    <div className={cn("flex gap-3 px-4 py-4", isUser ? "flex-row-reverse" : "")}>
+    <div className={cn("group flex gap-3 px-4 py-4", isUser ? "flex-row-reverse" : "")}>
       <div
         className={cn(
           "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
@@ -146,6 +155,11 @@ export function ChatMessage({
           </div>
         )}
 
+        {/* User message actions */}
+        {isUser && (
+          <UserMessageActions content={content} onEditAndResend={onEditAndResend} />
+        )}
+
         {/* Rich content */}
         {richContents?.map((rc, i) => (
           <div
@@ -174,6 +188,18 @@ export function ChatMessage({
             {creditUsage && tokenUsage && <> · </>}
             {tokenUsage && <>{tokenUsage.total_tokens.toLocaleString()} tokens</>}
           </span>
+        )}
+
+        {/* Assistant message actions */}
+        {!isUser && content && (
+          <AssistantMessageActions
+            content={content}
+            messageId={messageId}
+            feedbackRating={feedbackRating}
+            onRetry={onRetry}
+            onFeedback={onFeedback}
+            isStreaming={isStreaming}
+          />
         )}
       </div>
     </div>
