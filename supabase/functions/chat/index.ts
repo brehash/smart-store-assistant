@@ -254,6 +254,8 @@ serve(async (req) => {
           let semanticSteps: SemanticStep[] = [];
           let semanticIdx = 0;
           const emittedRichTypes = new Set<string>();
+          let geoFlowActive = false;
+          const GEO_FLOW_TOOLS = new Set(["audit_geo", "generate_geo_content", "bulk_geo_audit"]);
           const totalUsage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
 
           // ── Order-creation intent detection ──
@@ -523,6 +525,9 @@ serve(async (req) => {
 
               if (semanticIdx === 0 && planSent) semanticIdx = 0;
 
+              // Pre-scan: detect GEO tools in this batch to suppress product sliders
+              if (toolCalls.some((t: any) => GEO_FLOW_TOOLS.has(t.function?.name))) geoFlowActive = true;
+
               for (const tc of toolCalls) {
                 let args: any;
                 try {
@@ -674,11 +679,10 @@ serve(async (req) => {
                 const reasoningAfter = generateReasoningAfter(toolName, result);
                 if (reasoningAfter) sendSSE({ type: "reasoning", text: reasoningAfter });
 
+                if (GEO_FLOW_TOOLS.has(toolName)) geoFlowActive = true;
+
                 if (richContent && !emittedRichTypes.has(richContent.type)) {
-                  // Suppress product slider when a GEO tool is in the current batch
-                  const geoToolNames = new Set(["audit_geo", "generate_geo_content", "bulk_geo_audit"]);
-                  const isGeoFlow = toolCalls.some((t: any) => geoToolNames.has(t.function?.name));
-                  const suppress = richContent.type === "products" && isGeoFlow;
+                  const suppress = richContent.type === "products" && geoFlowActive;
                   if (!suppress) {
                     sendSSE({ type: "rich_content", contentType: richContent.type, data: richContent.data });
                     emittedRichTypes.add(richContent.type);
