@@ -46,6 +46,7 @@ interface Message {
   reasoningLogs?: ReasoningEntry[];
   tokenUsage?: TokenUsage;
   creditUsage?: CreditUsage;
+  feedbackRating?: "up" | "down" | null;
 }
 
 export default function Index() {
