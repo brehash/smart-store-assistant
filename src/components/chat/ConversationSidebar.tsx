@@ -146,6 +146,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
   const handleDelete = async (id: string) => {
     await supabase.from("conversations").delete().eq("id", id);
     setConversations((prev) => prev.filter((c) => c.id !== id));
+    onDeleteConversation?.(id);
     if (activeId === id) onNew();
   };
 
