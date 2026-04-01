@@ -6,12 +6,6 @@ import { useNavigate } from "react-router-dom";
 
 const STORAGE_KEY = "admin_impersonation";
 
-interface ImpersonationData {
-  access_token: string;
-  refresh_token: string;
-  display_name: string;
-}
-
 export function saveAdminSession(accessToken: string, refreshToken: string) {
   sessionStorage.setItem(
     "admin_session",
@@ -21,6 +15,8 @@ export function saveAdminSession(accessToken: string, refreshToken: string) {
 
 export function startImpersonation(displayName: string) {
   sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ display_name: displayName }));
+  // Dispatch custom event so the banner re-reads immediately
+  window.dispatchEvent(new CustomEvent("impersonation-start"));
 }
 
 export function isImpersonating(): boolean {
@@ -31,11 +27,20 @@ export function ImpersonationBanner() {
   const [impersonation, setImpersonation] = useState<{ display_name: string } | null>(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const readState = () => {
     const data = sessionStorage.getItem(STORAGE_KEY);
     if (data && sessionStorage.getItem("admin_session")) {
       setImpersonation(JSON.parse(data));
+    } else {
+      setImpersonation(null);
     }
+  };
+
+  useEffect(() => {
+    readState();
+    const handler = () => readState();
+    window.addEventListener("impersonation-start", handler);
+    return () => window.removeEventListener("impersonation-start", handler);
   }, []);
 
   const stopImpersonation = async () => {

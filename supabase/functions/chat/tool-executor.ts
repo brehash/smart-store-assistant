@@ -876,7 +876,7 @@ export async function executeTool(
         return { result: { error: `Product not found: ${entity_type} #${entity_id} returned empty data. Use search_products first to find the correct ID.` } };
       }
 
-      const entityName = entityData.name || entityData.title?.rendered || entityData.title || "Unknown";
+      // entityName already extracted above
       const description = (entityData.description || entityData.content?.rendered || "").replace(/<[^>]*>/g, "");
       const descLen = description.length;
       const hasHeadings = /<h[2-6]/i.test(entityData.description || entityData.content?.rendered || "");
