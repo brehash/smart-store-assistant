@@ -124,6 +124,7 @@ export async function streamChat({
   accessToken,
   approvalResponse,
   viewId,
+  signal,
 }: {
   messages: Msg[];
   conversationId: string;
@@ -135,6 +136,7 @@ export async function streamChat({
   accessToken: string;
   approvalResponse?: { toolCallId: string; action: "approve" | "skip" | "edit"; editedArgs?: string };
   viewId?: string | null;
+  signal?: AbortSignal;
 }) {
   let receivedPayload = false;
   const callbacks = {
