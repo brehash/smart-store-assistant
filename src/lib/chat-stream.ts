@@ -160,6 +160,7 @@ export async function streamChat({
         Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({ messages, conversationId, approvalResponse, viewId }),
+      signal,
     });
 
     if (resp.status === 429) { onError("Rate limited — please wait a moment and try again."); return; }
