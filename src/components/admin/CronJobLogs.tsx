@@ -51,25 +51,25 @@ interface CronLog {
 }
 
 export function CronJobLogs({ accessToken }: { accessToken: string }) {
-  const [logs, setLogs] = useState<CronLog[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [running, setRunning] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const fetchLogs = async () => {
-    setLoading(true);
-    try {
+  const { data: logs = [], isLoading: loading } = useQuery({
+    queryKey: ["admin", "cron-logs"],
+    queryFn: async () => {
       const resp = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin/cron-logs`,
         { headers: { Authorization: `Bearer ${accessToken}` } }
       );
-      if (resp.ok) setLogs(await resp.json());
-    } catch (e) {
-      console.error("Failed to load cron logs:", e);
-    } finally {
-      setLoading(false);
-    }
-  };
+      if (resp.ok) return resp.json() as Promise<CronLog[]>;
+      return [];
+    },
+    enabled: !!accessToken,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const fetchLogs = () => queryClient.invalidateQueries({ queryKey: ["admin", "cron-logs"] });
 
   const runNow = async () => {
     setRunning(true);
