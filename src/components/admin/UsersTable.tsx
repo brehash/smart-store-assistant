@@ -23,8 +23,10 @@ interface Props {
 
 export function UsersTable({ users, loading, onSelectUser, onRefresh, accessToken }: Props) {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [createOpen, setCreateOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [impersonating, setImpersonating] = useState<string | null>(null);
   const [newEmail, setNewEmail] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newDisplayName, setNewDisplayName] = useState("");
