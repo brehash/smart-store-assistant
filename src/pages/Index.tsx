@@ -219,6 +219,17 @@ export default function Index() {
           }
         }
 
+        // Safety net: if user has conversations, they had a connection before
+        const { count: convCount } = await supabase
+          .from("conversations")
+          .select("id", { count: "exact", head: true })
+          .eq("user_id", user.id);
+        if (convCount && convCount > 0) {
+          setHasConnection(true);
+          fetchCachedData(user.id);
+          return;
+        }
+
         setHasConnection(false);
         // Retry once after a short delay in case invite acceptance is still in-flight
         setTimeout(async () => {
