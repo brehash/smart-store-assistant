@@ -676,11 +676,10 @@ serve(async (req) => {
                 const reasoningAfter = generateReasoningAfter(toolName, result);
                 if (reasoningAfter) sendSSE({ type: "reasoning", text: reasoningAfter });
 
+                if (GEO_FLOW_TOOLS.has(toolName)) geoFlowActive = true;
+
                 if (richContent && !emittedRichTypes.has(richContent.type)) {
-                  // Suppress product slider when a GEO tool is in the current batch
-                  const geoToolNames = new Set(["audit_geo", "generate_geo_content", "bulk_geo_audit"]);
-                  const isGeoFlow = toolCalls.some((t: any) => geoToolNames.has(t.function?.name));
-                  const suppress = richContent.type === "products" && isGeoFlow;
+                  const suppress = richContent.type === "products" && geoFlowActive;
                   if (!suppress) {
                     sendSSE({ type: "rich_content", contentType: richContent.type, data: richContent.data });
                     emittedRichTypes.add(richContent.type);
