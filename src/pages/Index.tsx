@@ -418,7 +418,17 @@ export default function Index() {
     load();
   }, [conversationId, user, scrollToBottom]);
 
-  const createConversation = async () => {
+  // Keep cache in sync when messages change (after streaming completes)
+  useEffect(() => {
+    if (conversationId && messages.length > 0 && !isStreaming) {
+      messagesCacheRef.current.set(conversationId, messages);
+    }
+  }, [conversationId, messages, isStreaming]);
+
+  const handleDeleteFromCache = useCallback((id: string) => {
+    messagesCacheRef.current.delete(id);
+  }, []);
+
     if (!user) return null;
     const { data } = await supabase
       .from("conversations")
