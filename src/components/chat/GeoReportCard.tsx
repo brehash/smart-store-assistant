@@ -136,7 +136,7 @@ export function GeoReportCard({ data }: { data: GeoReportData }) {
     );
   }
 
-  // Generation preview mode (score === -1)
+  const score = data.score ?? 0;
   const isGeneration = score === -1 && data.preview;
 
   return (
