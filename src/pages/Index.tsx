@@ -371,6 +371,7 @@ export default function Index() {
         }));
         scrollToBottom();
       }
+      setLoadingMessages(false);
     };
     load();
   }, [conversationId, user, scrollToBottom]);
