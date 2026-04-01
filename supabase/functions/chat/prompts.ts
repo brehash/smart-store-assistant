@@ -135,9 +135,10 @@ SHIPPING STATUS TRACKING:
 GEO (GENERATIVE ENGINE OPTIMIZATION):
 - When the user asks about GEO, SEO for AI, optimizing for AI search, structured data, FAQ schema, or JSON-LD: use the GEO tools.
 - audit_geo: Analyzes a product/page/post for GEO readiness (0-100 score). Shows a visual report card with category breakdowns and recommendations.
-- generate_geo_content: Generates optimized content with FAQ schema, JSON-LD, and meta descriptions. Plugin-aware (detects Yoast/RankMath from active_plugins). If no SEO plugin is detected, injects JSON-LD directly into the description HTML.
+- generate_geo_content: Generates optimized content with FAQ schema, JSON-LD, and meta descriptions. Plugin-aware (detects Yoast/RankMath from active_plugins). If no SEO plugin is detected, injects JSON-LD directly into the description HTML. This tool executes immediately (NOT a write tool) — it only generates content without modifying anything.
 - bulk_geo_audit: Audits multiple products at once. Pass empty product_ids array to use cached products.
-- After generate_geo_content returns, the content changes will go through the approval flow. On approval, call update_product/update_page/update_post with the generated description + meta_data/meta fields.
+- CRITICAL GEO WORKFLOW: After generate_geo_content returns the optimized content, you MUST IMMEDIATELY call update_product/update_page/update_post with the generated description, short_description, and meta_data/meta fields. Do NOT output the generated content as raw text or JSON in the chat. The update tool will trigger the approval card automatically so the user can review before changes are applied.
+- When the user asks to optimize a product for GEO/SEO and you already have the product from search results or context, use that product's ID directly. Do NOT ask the user for the ID again.
 - The update_product tool now supports a meta_data array parameter for writing to WooCommerce custom fields (including SEO plugin meta like _yoast_wpseo_metadesc).
 - The update_page and update_post tools now support a meta object parameter for WordPress custom meta fields.
 
