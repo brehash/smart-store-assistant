@@ -1,44 +1,45 @@
 
 
-# Show Generated GEO Content Before Approval
+# Fix GEO Tool — Revised Plan (Keep OpenAI model as-is)
 
-## Problem
-Currently, `generate_geo_content` returns a summary card (JSON-LD ✓, FAQ ✓, etc.) but the prompt tells the AI to immediately call `update_product` WITHOUT showing the actual generated content. The user wants to see **what was generated** (the description, FAQ, meta description) before approving the update.
+## Issues to Fix
 
-## Fix
+### 1. Products slider STILL shows during GEO flow
+**Root cause**: `geoFlowActive` is only set from tool call batches (line 529), but `search_products` runs in batch 1 and `generate_geo_content` in batch 2. By the time the GEO tool appears, the slider is already emitted.
 
-### 1. Update prompt to show content before updating
-**File**: `supabase/functions/chat/prompts.ts` (line 140)
+**Fix**: Import `GEO_INTENT_RE` from `intent.ts` and set `geoFlowActive = true` from the **user message** right after line 257, before any tool execution begins.
 
-Change the instruction from "Do NOT output the generated content as text" to:
-- After `generate_geo_content` returns, present a brief summary of what was generated: the meta description, number of FAQs, and whether JSON-LD was included.
-- Then call `update_product`/`update_page`/`update_post` — the approval card will let the user confirm.
+```typescript
+// intent.ts — export the regex
+export { GEO_INTENT_RE };
 
-### 2. Enrich the `geo_report` rich content card with generated preview
-**File**: `supabase/functions/chat/tool-executor.ts` (~lines 1073-1096)
+// index.ts — after line 257
+import { GEO_INTENT_RE } from "./intent.ts";
+if (GEO_INTENT_RE.test(lastUserMsg)) geoFlowActive = true;
+```
 
-Add a `preview` section to the `richContent.data` object containing:
-- `meta_description` — the generated meta description text
-- `short_description` — the generated short description
-- `faqCount` — number of FAQ items detected
-- `hasJsonLd` — boolean
+### 2. Entity validation — prevent "Unknown" entity
+**File**: `tool-executor.ts` line 952
 
-### 3. Update `GeoReportCard` to render the preview
-**File**: `src/components/chat/GeoReportCard.tsx`
+Add early validation: if `entity_id` is falsy or 0, return error immediately.
 
-Add a "Generated Content Preview" section below the score/categories when `data.preview` exists:
-- Show meta description in a bordered box
-- Show short description
-- Show "3 FAQs generated" and "JSON-LD ✓" badges
-- This replaces the `score: -1` awkward display with a "Content Generated" header
+### 3. GEO prompt generates content about Yoast instead of the product
+**Root cause**: The prompt says `SEO Plugin: Yoast SEO` prominently, and the AI confuses this with the product to optimize.
 
-### 4. Remove `_instruction` suppression
-**File**: `supabase/functions/chat/tool-executor.ts` (line 1071)
+**Fix**: Restructure the prompt (line 988-1006) to clearly separate product info from plugin metadata, and add a guardrail:
+- Move product name/description to the top as the primary focus
+- Move SEO plugin info to a small metadata note at the end
+- Add: `"Generate content ONLY about the product '${entityName}'. Do NOT generate content about SEO plugins."`
 
-Keep the `_instruction` to chain into `update_product`, but remove the "Do NOT output the generated content as text" part since the rich card now shows the preview.
+### 4. AI dumps raw JSON in chat
+**Fix**: Update `_instruction` (line 1071) to explicitly say: `"The preview card already shows the generated content. Do NOT output JSON or raw data. Briefly confirm what was generated in natural language, then IMMEDIATELY call update_${entity_type}."`
 
-## Files to modify
-1. `supabase/functions/chat/prompts.ts` — allow AI to briefly describe generated content
-2. `supabase/functions/chat/tool-executor.ts` — add preview data to richContent
-3. `src/components/chat/GeoReportCard.tsx` — render preview section for generated content
+### 5. Update prompts.ts GEO section
+Strengthen line 140 to say the AI must NOT output tool results as JSON text — the rich card handles visualization.
+
+## Files to Modify
+1. **`supabase/functions/chat/intent.ts`** — Export `GEO_INTENT_RE`
+2. **`supabase/functions/chat/index.ts`** — Add message-level GEO intent detection after line 257
+3. **`supabase/functions/chat/tool-executor.ts`** — Add entity_id validation, restructure GEO prompt, update `_instruction` (keep OpenAI model `gpt-5.4-mini` unchanged)
+4. **`supabase/functions/chat/prompts.ts`** — Strengthen GEO output instructions
 
