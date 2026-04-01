@@ -895,11 +895,16 @@ export default function Index() {
                    allOrderStatuses={cachedAllStatuses}
                    paymentMethods={cachedPaymentMethods}
                    cachedProducts={cachedProducts}
-                    onApproval={handleApproval}
-                    onQuestionAnswer={handleQuestionAnswer}
-                    onOrderCreated={handleOrderCreated}
-                    onSendMessage={handleSend}
-                  />
+                   messageId={msg.id}
+                   feedbackRating={msg.feedbackRating}
+                   onApproval={handleApproval}
+                   onQuestionAnswer={handleQuestionAnswer}
+                   onOrderCreated={handleOrderCreated}
+                   onSendMessage={handleSend}
+                   onEditAndResend={msg.role === "user" ? (newText) => handleEditAndResend(i, newText) : undefined}
+                   onRetry={msg.role === "assistant" ? () => handleRetry(i) : undefined}
+                   onFeedback={msg.role === "assistant" && msg.id ? (rating) => handleFeedback(i, rating) : undefined}
+                 />
               ))}
             </div>
           )}
