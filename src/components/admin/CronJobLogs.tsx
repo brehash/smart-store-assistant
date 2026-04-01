@@ -214,7 +214,37 @@ export function CronJobLogs({ accessToken }: { accessToken: string }) {
                                   </CardContent>
                                 </Card>
                               )}
-                              {Array.isArray(log.details) && log.details.length > 0 ? (
+                              {isOrchestrator ? (
+                                Array.isArray(log.details) && log.details.length > 0 ? (
+                                  <div className="rounded-md border bg-background overflow-hidden">
+                                    <Table>
+                                      <TableHeader>
+                                        <TableRow>
+                                          <TableHead className="text-xs h-8 px-3">Integration ID</TableHead>
+                                          <TableHead className="text-xs h-8 px-3">Dispatch Status</TableHead>
+                                          <TableHead className="text-xs h-8 px-3">Error</TableHead>
+                                        </TableRow>
+                                      </TableHeader>
+                                      <TableBody>
+                                        {(log.details as unknown as Array<{ integration_id?: string; status?: string; error?: string }>).map((d, i) => (
+                                          <TableRow key={i}>
+                                            <TableCell className="text-xs px-3 py-1.5 font-mono">{d.integration_id ?? "—"}</TableCell>
+                                            <TableCell className="text-xs px-3 py-1.5">
+                                              <Badge variant={d.status === "dispatched" ? "default" : "destructive"} className="text-[10px]">
+                                                {d.status ?? "unknown"}
+                                              </Badge>
+                                            </TableCell>
+                                            <TableCell className="text-xs px-3 py-1.5 text-destructive">{d.error || "—"}</TableCell>
+                                          </TableRow>
+                                        ))}
+                                      </TableBody>
+                                    </Table>
+                                  </div>
+                                ) : (
+                                  <p className="text-xs text-muted-foreground">No dispatch details available.</p>
+                                )
+                              ) : (
+                                Array.isArray(log.details) && log.details.length > 0 ? (
                                 log.details.map((detail, i) => (
                                   <Card key={i}>
                                     <CardHeader className="pb-2 pt-3 px-4">
@@ -289,7 +319,6 @@ export function CronJobLogs({ accessToken }: { accessToken: string }) {
                                           </div>
                                         </div>
                                       )}
-                                      {/* Backward compat: show old completedOrders if checkedOrders missing */}
                                       {(!detail.checkedOrders || detail.checkedOrders.length === 0) && detail.completedOrders && detail.completedOrders.length > 0 && (
                                         <div>
                                           <p className="text-xs font-medium text-muted-foreground mb-1">Completed Orders:</p>
@@ -319,6 +348,7 @@ export function CronJobLogs({ accessToken }: { accessToken: string }) {
                                 ))
                               ) : (
                                 <p className="text-xs text-muted-foreground">No detailed breakdown available.</p>
+                              )
                               )}
                             </div>
                           </td>
