@@ -121,7 +121,7 @@ export default function Auth() {
   ];
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-[100dvh]">
       {/* Left panel - branding */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-center px-12 bg-primary text-primary-foreground">
         <h1 className="text-4xl font-bold tracking-tight mb-4">Asistent AI WooCommerce</h1>
@@ -144,15 +144,15 @@ export default function Auth() {
       </div>
 
       {/* Right panel - form */}
-      <div className="flex w-full lg:w-1/2 items-center justify-center p-6">
+      <div className="flex w-full lg:w-1/2 items-center justify-center p-4 sm:p-6">
         <Card className="w-full max-w-md border-0 shadow-xl">
           <CardHeader className="text-center">
             {inviteToken && inviteInfo ? (
               <>
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                  <Users className="h-6 w-6" />
+                <div className="mx-auto mb-3 sm:mb-4 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                  <Users className="h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
-                <CardTitle className="text-2xl">Ești invitat!</CardTitle>
+                <CardTitle className="text-xl sm:text-2xl">Ești invitat!</CardTitle>
                 <CardDescription>
                   <strong>{inviteInfo.inviter_name}</strong> te-a invitat să te alături echipei{" "}
                   <strong>{inviteInfo.team_name}</strong>. Autentifică-te sau creează un cont pentru a accepta.
@@ -160,10 +160,10 @@ export default function Auth() {
               </>
             ) : (
               <>
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                  <Store className="h-6 w-6" />
+                <div className="mx-auto mb-3 sm:mb-4 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                  <Store className="h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
-                <CardTitle className="text-2xl">{isLogin ? "Bine ai revenit" : "Creează cont"}</CardTitle>
+                <CardTitle className="text-xl sm:text-2xl">{isLogin ? "Bine ai revenit" : "Creează cont"}</CardTitle>
                 <CardDescription>
                   {isLogin ? "Autentifică-te în asistentul tău WooCommerce" : "Începe cu asistentul tău AI"}
                 </CardDescription>
