@@ -255,7 +255,7 @@ serve(async (req) => {
       }
     }
 
-    await writeLog(supabase, integrationId, userLog, startTime);
+    await writeLog(supabase, integrationId, userLog, startTime, userId);
 
     return new Response(JSON.stringify({
       success: true,
@@ -268,7 +268,7 @@ serve(async (req) => {
   } catch (e) {
     userLog.errors.push({ step: "fatal", error: e instanceof Error ? e.message : "Unknown" });
     try {
-      await writeLog(supabase, integrationId, userLog, startTime);
+      await writeLog(supabase, integrationId, userLog, startTime, userLog.userId);
     } catch { /* ignore */ }
 
     console.error(`colete-online-worker error (integration: ${integrationId}):`, e);
@@ -279,9 +279,10 @@ serve(async (req) => {
   }
 });
 
-async function writeLog(supabase: any, integrationId: string, userLog: any, startTime: number) {
+async function writeLog(supabase: any, integrationId: string, userLog: any, startTime: number, userId?: string) {
   await supabase.from("cron_job_logs").insert({
     job_name: "colete_online_worker",
+    user_id: userId || null,
     status: userLog.errors.length > 0 ? "error" : "success",
     summary: {
       integration_id: integrationId,

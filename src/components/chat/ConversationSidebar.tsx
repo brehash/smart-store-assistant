@@ -15,7 +15,7 @@ import {
   Plus, MessageSquare, Settings, LogOut, Trash2,
   FolderOpen, ChevronDown, ChevronRight, FolderPlus,
   Pencil, X, Check, Search, MoreHorizontal, Pin,
-  ArrowRight, PanelLeftClose, PanelLeft, Package, ShieldCheck,
+  ArrowRight, PanelLeftClose, PanelLeft, Package, ShieldCheck, Store,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -376,6 +376,9 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
             <TooltipContent side="right">Cont</TooltipContent>
           </Tooltip>
           <DropdownMenuContent side="top" align="center" className="w-48">
+            <DropdownMenuItem onClick={() => navigate("/connections")}>
+              <Store className="h-4 w-4 mr-2" /> Conexiuni
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={onOpenSettings}>
               <Settings className="h-4 w-4 mr-2" /> Setări
             </DropdownMenuItem>
@@ -577,6 +580,9 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="top" align="start" sideOffset={8} className="w-56 z-[9999]">
+            <DropdownMenuItem onClick={() => navigate("/connections")}>
+              <Store className="h-4 w-4 mr-2" /> Conexiuni
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={onOpenSettings}>
               <Settings className="h-4 w-4 mr-2" /> Setări
             </DropdownMenuItem>

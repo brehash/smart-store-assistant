@@ -11,6 +11,8 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import PackageSlips from "./pages/PackageSlips";
+import Connections from "./pages/Connections";
+import ColeteOnline from "./pages/ColeteOnline";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +30,8 @@ const App = () => (
             <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
             <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
             <Route path="/package-slips" element={<ProtectedRoute><PackageSlips /></ProtectedRoute>} />
+            <Route path="/connections" element={<ProtectedRoute><Connections /></ProtectedRoute>} />
+            <Route path="/integrations/colete-online" element={<ProtectedRoute><ColeteOnline /></ProtectedRoute>} />
             <Route path="/settings" element={<Navigate to="/?settings=general" replace />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
