@@ -1,59 +1,38 @@
 
 
-# Mobile-First Layout Improvements
+# Mobile Responsiveness Fixes — Index + Auth Pages
 
-## Current Issues on Mobile (440px viewport)
+## Issues
 
-1. **Sidebar** uses desktop-first approach — hidden by default, opens as overlay via hamburger menu. This works but the expanded sidebar is full `w-64` with no mobile optimizations.
-2. **Chat area** has fixed padding/margins designed for desktop (`max-w-3xl`, `px-4`).
-3. **Header bar** has desktop spacing.
-4. **Chat input** has desktop padding (`p-4`, `max-w-3xl`).
-5. **Empty state** suggestion buttons don't wrap well on small screens.
-6. **Settings dialog** uses `max-w-4xl h-[85vh]` which may be cramped on mobile.
+1. **Index.tsx**: Uses `h-screen` which on mobile browsers (Safari/Chrome) doesn't account for the address bar, causing content to overflow or the input to be hidden behind the browser chrome.
+2. **Auth.tsx**: Uses `min-h-screen` with the same mobile browser chrome issue. The form padding (`p-6`) is generous for small screens.
 
 ## Changes
 
-### 1. `src/pages/Index.tsx` — Tighten mobile spacing
+### 1. `src/pages/Index.tsx`
 
-| Area | Current | Mobile-First Change |
-|------|---------|-------------------|
-| Header bar | `px-4 py-3` | `px-3 py-2 sm:px-4 sm:py-3` |
-| Title | `text-lg` | `text-base sm:text-lg` |
-| Message container | `max-w-3xl py-4` | `max-w-3xl py-2 sm:py-4` |
-| Loading skeleton | `py-4 px-4` | `py-2 px-3 sm:py-4 sm:px-4` |
-| Empty state | `px-4` | `px-3 sm:px-4`, smaller text on mobile |
-| Suggestion chips | `flex-wrap gap-2` | `gap-1.5 sm:gap-2`, smaller text `text-xs sm:text-sm` |
-| Settings dialog | `max-w-4xl h-[85vh]` | `max-w-[95vw] sm:max-w-4xl h-[95vh] sm:h-[85vh]` on mobile it takes more screen |
-| Sidebar overlay | Only `lg:hidden` backdrop | Keep as-is, works well |
+- Replace `h-screen` with `h-[100dvh]` (dynamic viewport height) which accounts for mobile browser chrome.
+- The empty state container already has `h-full` + `justify-center` — this should work correctly once the parent uses `dvh`.
 
-### 2. `src/components/chat/ChatInput.tsx` — Mobile input area
+### 2. `src/pages/Auth.tsx`
 
-| Current | Change |
-|---------|--------|
-| `p-4` wrapper | `p-2 sm:p-4` |
-| `max-w-3xl` inner | Keep, already responsive |
-| Plan mode button `h-[44px] w-[44px]` | `h-9 w-9 sm:h-[44px] sm:w-[44px]` |
+- Replace `min-h-screen` with `min-h-[100dvh]`.
+- Reduce form panel padding on mobile: `p-4 sm:p-6`.
+- Scale down heading/icon sizes on mobile: card title `text-xl sm:text-2xl`, icon container `h-10 w-10 sm:h-12 sm:w-12`.
+- Add `safe-area-inset` padding for notched devices if needed.
 
-### 3. `src/components/chat/ChatMessage.tsx` — Compact mobile messages
+### 3. `src/index.css` (if needed)
 
-| Current | Change |
-|---------|--------|
-| Message padding | `px-4 py-4` → `px-3 py-2 sm:px-4 sm:py-4` |
-| Avatar icons | Smaller on mobile |
-| Content text | Already responsive via markdown |
+- Add a global `@supports` fallback for browsers that don't support `dvh`:
+  ```css
+  :root { --vh: 100vh; }
+  @supports (height: 100dvh) { :root { --vh: 100dvh; } }
+  ```
 
-### 4. `src/components/chat/ConversationSidebar.tsx` — Mobile sidebar width
-
-| Current | Change |
-|---------|--------|
-| Expanded width `w-64` | `w-[85vw] max-w-64 sm:w-64` on mobile overlay to use more screen but cap at 64 |
-
-### Files
+## Files
 
 | File | Change |
 |------|--------|
-| `src/pages/Index.tsx` | Mobile-first spacing for header, messages, empty state, settings dialog |
-| `src/components/chat/ChatInput.tsx` | Compact padding and button sizes on mobile |
-| `src/components/chat/ChatMessage.tsx` | Tighter message padding on mobile |
-| `src/components/chat/ConversationSidebar.tsx` | Better mobile width for overlay sidebar |
+| `src/pages/Index.tsx` | `h-screen` → `h-[100dvh]` |
+| `src/pages/Auth.tsx` | `min-h-screen` → `min-h-[100dvh]`, tighter mobile padding/sizing |
 
