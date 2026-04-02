@@ -279,9 +279,10 @@ serve(async (req) => {
   }
 });
 
-async function writeLog(supabase: any, integrationId: string, userLog: any, startTime: number) {
+async function writeLog(supabase: any, integrationId: string, userLog: any, startTime: number, userId?: string) {
   await supabase.from("cron_job_logs").insert({
     job_name: "colete_online_worker",
+    user_id: userId || null,
     status: userLog.errors.length > 0 ? "error" : "success",
     summary: {
       integration_id: integrationId,

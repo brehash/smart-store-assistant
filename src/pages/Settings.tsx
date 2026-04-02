@@ -796,41 +796,107 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
   /*  Layout                                                           */
   /* ---------------------------------------------------------------- */
 
-  return (
-    <div className="flex h-full min-h-[500px]">
-      {/* Sidebar nav */}
-      <nav className="w-52 shrink-0 border-r border-border p-3 space-y-1">
-        <div className="flex items-center justify-between mb-2 px-1">
-          <span className="text-sm font-semibold text-foreground">Setări</span>
-          {onClose && (
-            <button onClick={onClose} className="rounded-sm p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </div>
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => onTabChange?.(tab.id)}
-            className={cn(
-              "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-              activeTab === tab.id
-                ? "bg-accent text-accent-foreground font-medium"
-                : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-            )}
-          >
-            <tab.icon className="h-4 w-4" />
-            {tab.label}
-          </button>
-        ))}
-      </nav>
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
+  const [mobileShowContent, setMobileShowContent] = useState(!isMobile);
 
-      {/* Content */}
-      <ScrollArea className="flex-1">
-        <div className="p-6 max-w-2xl">
-          {renderTab()}
-        </div>
-      </ScrollArea>
+  const handleTabSelect = (tab: SettingsTab) => {
+    onTabChange?.(tab);
+    setMobileShowContent(true);
+  };
+
+  const handleMobileBack = () => {
+    setMobileShowContent(false);
+  };
+
+  const currentTab = TABS.find(t => t.id === activeTab);
+
+  return (
+    <div className="flex h-full min-h-[400px]">
+      {/* Mobile: two-phase layout */}
+      <div className="sm:hidden flex flex-col w-full">
+        {!mobileShowContent ? (
+          <div className="p-3 space-y-1">
+            <div className="flex items-center justify-between mb-2 px-1">
+              <span className="text-sm font-semibold text-foreground">Setări</span>
+              {onClose && (
+                <button onClick={onClose} className="rounded-sm p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => handleTabSelect(tab.id)}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
+                  activeTab === tab.id
+                    ? "bg-accent text-accent-foreground font-medium"
+                    : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                )}
+              >
+                <tab.icon className="h-4 w-4" />
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-col h-full">
+            <div className="flex items-center gap-2 p-3 border-b border-border">
+              <button onClick={handleMobileBack} className="rounded-sm p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
+                <X className="h-4 w-4" />
+              </button>
+              <span className="text-sm font-semibold">{currentTab?.label || "Setări"}</span>
+              <div className="flex-1" />
+              {onClose && (
+                <button onClick={onClose} className="rounded-sm p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+            <ScrollArea className="flex-1">
+              <div className="p-4 max-w-2xl">
+                {renderTab()}
+              </div>
+            </ScrollArea>
+          </div>
+        )}
+      </div>
+
+      {/* Desktop: sidebar + content */}
+      <div className="hidden sm:flex w-full">
+        <nav className="w-48 shrink-0 border-r border-border p-3 space-y-1">
+          <div className="flex items-center justify-between mb-2 px-1">
+            <span className="text-sm font-semibold text-foreground">Setări</span>
+            {onClose && (
+              <button onClick={onClose} className="rounded-sm p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => onTabChange?.(tab.id)}
+              className={cn(
+                "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                activeTab === tab.id
+                  ? "bg-accent text-accent-foreground font-medium"
+                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+              )}
+            >
+              <tab.icon className="h-4 w-4" />
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+
+        <ScrollArea className="flex-1">
+          <div className="p-6 max-w-2xl">
+            {renderTab()}
+          </div>
+        </ScrollArea>
+      </div>
     </div>
   );
 }
