@@ -987,9 +987,9 @@ export default function Index() {
               <p className="text-muted-foreground text-sm max-w-md">
                 Caută produse, creează comenzi, obține analize sau întreabă orice despre magazinul tău WooCommerce.
               </p>
-              <div className="mt-6 flex flex-wrap justify-center gap-2">
+              <div className="mt-6 flex flex-wrap justify-center gap-1.5 sm:gap-2">
                 {["Caută produse de paste", "Arată comenzile de azi", "Raport vânzări săptămâna aceasta", "Creează o comandă nouă"].map((s) => (
-                  <button key={s} onClick={() => handleSend(s)} className="rounded-full border border-border bg-card px-4 py-2 text-sm hover:bg-accent transition-colors">
+                  <button key={s} onClick={() => handleSend(s)} className="rounded-full border border-border bg-card px-3 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm hover:bg-accent transition-colors">
                     {s}
                   </button>
                 ))}
