@@ -376,6 +376,9 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
             <TooltipContent side="right">Cont</TooltipContent>
           </Tooltip>
           <DropdownMenuContent side="top" align="center" className="w-48">
+            <DropdownMenuItem onClick={() => navigate("/connections")}>
+              <Store className="h-4 w-4 mr-2" /> Conexiuni
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={onOpenSettings}>
               <Settings className="h-4 w-4 mr-2" /> Setări
             </DropdownMenuItem>
