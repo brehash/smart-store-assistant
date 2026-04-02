@@ -580,6 +580,9 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent side="top" align="start" sideOffset={8} className="w-56 z-[9999]">
+            <DropdownMenuItem onClick={() => navigate("/connections")}>
+              <Store className="h-4 w-4 mr-2" /> Conexiuni
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={onOpenSettings}>
               <Settings className="h-4 w-4 mr-2" /> Setări
             </DropdownMenuItem>
