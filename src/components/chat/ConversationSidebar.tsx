@@ -15,7 +15,7 @@ import {
   Plus, MessageSquare, Settings, LogOut, Trash2,
   FolderOpen, ChevronDown, ChevronRight, FolderPlus,
   Pencil, X, Check, Search, MoreHorizontal, Pin,
-  ArrowRight, PanelLeftClose, PanelLeft, Package,
+  ArrowRight, PanelLeftClose, PanelLeft, Package, ShieldCheck,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
