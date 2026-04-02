@@ -255,7 +255,7 @@ serve(async (req) => {
       }
     }
 
-    await writeLog(supabase, integrationId, userLog, startTime);
+    await writeLog(supabase, integrationId, userLog, startTime, userId);
 
     return new Response(JSON.stringify({
       success: true,
