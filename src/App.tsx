@@ -11,6 +11,8 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import PackageSlips from "./pages/PackageSlips";
+import Connections from "./pages/Connections";
+import ColeteOnline from "./pages/ColeteOnline";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
