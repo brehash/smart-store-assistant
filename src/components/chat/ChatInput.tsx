@@ -36,7 +36,7 @@ export function ChatInput({ onSend, onStop, disabled, isStreaming, planMode, onP
   };
 
   return (
-    <div className="border-t bg-card p-4">
+    <div className="border-t bg-card p-2 sm:p-4">
       <div className="mx-auto flex max-w-3xl items-end gap-2">
         {onPlanModeToggle && (
           <Button
