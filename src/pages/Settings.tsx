@@ -785,8 +785,6 @@ export function SettingsContent({ activeTab = "general", onTabChange, onClose }:
     switch (activeTab) {
       case "general": return renderGeneral();
       case "appearance": return renderAppearance();
-      case "connection": return renderConnection();
-      case "integrations": return renderIntegrations();
       case "team": return <TeamSettings />;
       case "credits": return renderCredits();
       case "account": return renderAccount();
