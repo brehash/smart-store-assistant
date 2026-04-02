@@ -74,7 +74,7 @@ export function ChatMessage({
   const isUser = role === "user";
 
   return (
-    <div className={cn("group flex gap-3 px-4 py-4", isUser ? "flex-row-reverse" : "")}>
+    <div className={cn("group flex gap-2 sm:gap-3 px-3 py-2 sm:px-4 sm:py-4", isUser ? "flex-row-reverse" : "")}>
       <div
         className={cn(
           "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
