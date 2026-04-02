@@ -62,8 +62,20 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
   const [recentsLimit, setRecentsLimit] = useState(30);
   const [hoveredConvId, setHoveredConvId] = useState<string | null>(null);
   const [openMenuConvId, setOpenMenuConvId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  // Load from sessionStorage cache on mount, then fetch fresh data
+  // Check admin role
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("user_roles" as any)
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .maybeSingle()
+      .then(({ data }) => setIsAdmin(!!data));
+  }, [user]);
+
   useEffect(() => {
     if (!user) return;
 
