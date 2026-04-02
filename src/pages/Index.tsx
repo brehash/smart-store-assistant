@@ -1043,7 +1043,7 @@ export default function Index() {
 
       {/* Settings Modal */}
       <Dialog open={settingsOpen} onOpenChange={handleCloseSettings}>
-        <DialogContent className="max-w-4xl h-[85vh] overflow-hidden p-0 [&>button.absolute]:hidden z-[50]">
+        <DialogContent className="max-w-[95vw] sm:max-w-4xl h-[95vh] sm:h-[85vh] overflow-hidden p-0 [&>button.absolute]:hidden z-[50]">
           <SettingsContent activeTab={settingsTab} onTabChange={handleSettingsTabChange} onClose={() => handleCloseSettings(false)} />
         </DialogContent>
       </Dialog>

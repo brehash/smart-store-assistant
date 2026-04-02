@@ -64,7 +64,7 @@ export function ChatInput({ onSend, onStop, disabled, isStreaming, planMode, onP
             onClick={onStop}
             variant="destructive"
             size="icon"
-            className="shrink-0 h-[44px] w-[44px]"
+            className="shrink-0 h-9 w-9 sm:h-[44px] sm:w-[44px]"
           >
             <Square className="h-4 w-4" />
           </Button>
@@ -73,7 +73,7 @@ export function ChatInput({ onSend, onStop, disabled, isStreaming, planMode, onP
             onClick={handleSubmit}
             disabled={!input.trim() || disabled}
             size="icon"
-            className="shrink-0 h-[44px] w-[44px]"
+            className="shrink-0 h-9 w-9 sm:h-[44px] sm:w-[44px]"
           >
             {disabled ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
