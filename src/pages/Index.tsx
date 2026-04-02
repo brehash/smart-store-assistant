@@ -924,7 +924,7 @@ export default function Index() {
       </div>
 
       <div className="flex flex-1 flex-col min-w-0">
-        <div className="flex items-center gap-3 border-b px-4 py-3 bg-card">
+        <div className="flex items-center gap-3 border-b px-3 py-2 sm:px-4 sm:py-3 bg-card">
           <Button variant="ghost" size="icon" className="relative lg:hidden" onClick={() => setSidebarOpen(true)}>
             <Menu className="h-5 w-5" />
             {newOrderCount > 0 && (
@@ -933,7 +933,7 @@ export default function Index() {
               </span>
             )}
           </Button>
-          <h1 className="text-lg font-semibold truncate">Asistent AI WooCommerce</h1>
+          <h1 className="text-base sm:text-lg font-semibold truncate">Asistent AI WooCommerce</h1>
           {creditBalance !== null && (
             <button
               onClick={() => topupModalEnabled && setCreditsModalOpen(true)}
