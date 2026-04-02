@@ -396,7 +396,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
 
   // --- Expanded view ---
   return (
-    <div className="flex h-full w-64 flex-col bg-sidebar text-sidebar-foreground">
+    <div className="flex h-full w-[85vw] max-w-64 sm:w-64 flex-col bg-sidebar text-sidebar-foreground">
       {/* Header: Toggle + New Chat */}
       <div className="p-3 pb-2 space-y-1">
         <div className="flex items-center justify-between">

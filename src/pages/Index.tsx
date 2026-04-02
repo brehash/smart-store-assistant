@@ -924,7 +924,7 @@ export default function Index() {
       </div>
 
       <div className="flex flex-1 flex-col min-w-0">
-        <div className="flex items-center gap-3 border-b px-4 py-3 bg-card">
+        <div className="flex items-center gap-3 border-b px-3 py-2 sm:px-4 sm:py-3 bg-card">
           <Button variant="ghost" size="icon" className="relative lg:hidden" onClick={() => setSidebarOpen(true)}>
             <Menu className="h-5 w-5" />
             {newOrderCount > 0 && (
@@ -933,7 +933,7 @@ export default function Index() {
               </span>
             )}
           </Button>
-          <h1 className="text-lg font-semibold truncate">Asistent AI WooCommerce</h1>
+          <h1 className="text-base sm:text-lg font-semibold truncate">Asistent AI WooCommerce</h1>
           {creditBalance !== null && (
             <button
               onClick={() => topupModalEnabled && setCreditsModalOpen(true)}
@@ -946,7 +946,7 @@ export default function Index() {
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin">
           {loadingMessages ? (
-            <div className="mx-auto max-w-3xl py-4 space-y-6 px-4">
+            <div className="mx-auto max-w-3xl py-2 space-y-6 px-3 sm:py-4 sm:px-4">
               {[...Array(3)].map((_, i) => (
                 <div key={i} className={`flex gap-3 ${i % 2 === 0 ? "justify-end" : ""}`}>
                   <div className={`space-y-2 ${i % 2 === 0 ? "max-w-[70%]" : "max-w-[80%]"}`}>
@@ -963,7 +963,7 @@ export default function Index() {
               setShowWebhookSetup(true);
             }} />
           ) : messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center px-4">
+            <div className="flex flex-col items-center justify-center h-full text-center px-3 sm:px-4">
               {showWebhookSetup && (
                 <div className="w-full mb-6">
                   <WebhookSetupCard
@@ -987,16 +987,16 @@ export default function Index() {
               <p className="text-muted-foreground text-sm max-w-md">
                 Caută produse, creează comenzi, obține analize sau întreabă orice despre magazinul tău WooCommerce.
               </p>
-              <div className="mt-6 flex flex-wrap justify-center gap-2">
+              <div className="mt-6 flex flex-wrap justify-center gap-1.5 sm:gap-2">
                 {["Caută produse de paste", "Arată comenzile de azi", "Raport vânzări săptămâna aceasta", "Creează o comandă nouă"].map((s) => (
-                  <button key={s} onClick={() => handleSend(s)} className="rounded-full border border-border bg-card px-4 py-2 text-sm hover:bg-accent transition-colors">
+                  <button key={s} onClick={() => handleSend(s)} className="rounded-full border border-border bg-card px-3 py-1.5 text-xs sm:px-4 sm:py-2 sm:text-sm hover:bg-accent transition-colors">
                     {s}
                   </button>
                 ))}
               </div>
             </div>
           ) : (
-            <div className="mx-auto max-w-3xl py-4">
+            <div className="mx-auto max-w-3xl py-2 sm:py-4">
               {messages.map((msg, i) => (
                  <ChatMessage
                    key={i}
@@ -1043,7 +1043,7 @@ export default function Index() {
 
       {/* Settings Modal */}
       <Dialog open={settingsOpen} onOpenChange={handleCloseSettings}>
-        <DialogContent className="max-w-4xl h-[85vh] overflow-hidden p-0 [&>button.absolute]:hidden z-[50]">
+        <DialogContent className="max-w-[95vw] sm:max-w-4xl h-[95vh] sm:h-[85vh] overflow-hidden p-0 [&>button.absolute]:hidden z-[50]">
           <SettingsContent activeTab={settingsTab} onTabChange={handleSettingsTabChange} onClose={() => handleCloseSettings(false)} />
         </DialogContent>
       </Dialog>

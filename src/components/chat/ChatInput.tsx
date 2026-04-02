@@ -36,13 +36,13 @@ export function ChatInput({ onSend, onStop, disabled, isStreaming, planMode, onP
   };
 
   return (
-    <div className="border-t bg-card p-4">
+    <div className="border-t bg-card p-2 sm:p-4">
       <div className="mx-auto flex max-w-3xl items-end gap-2">
         {onPlanModeToggle && (
           <Button
             variant={planMode ? "default" : "outline"}
             size="icon"
-            className={cn("shrink-0 h-[44px] w-[44px]", planMode && "bg-amber-500 hover:bg-amber-600 text-white")}
+            className={cn("shrink-0 h-9 w-9 sm:h-[44px] sm:w-[44px]", planMode && "bg-amber-500 hover:bg-amber-600 text-white")}
             onClick={onPlanModeToggle}
             title={planMode ? "Plan Mode ON" : "Plan Mode OFF"}
           >
@@ -64,7 +64,7 @@ export function ChatInput({ onSend, onStop, disabled, isStreaming, planMode, onP
             onClick={onStop}
             variant="destructive"
             size="icon"
-            className="shrink-0 h-[44px] w-[44px]"
+            className="shrink-0 h-9 w-9 sm:h-[44px] sm:w-[44px]"
           >
             <Square className="h-4 w-4" />
           </Button>
@@ -73,7 +73,7 @@ export function ChatInput({ onSend, onStop, disabled, isStreaming, planMode, onP
             onClick={handleSubmit}
             disabled={!input.trim() || disabled}
             size="icon"
-            className="shrink-0 h-[44px] w-[44px]"
+            className="shrink-0 h-9 w-9 sm:h-[44px] sm:w-[44px]"
           >
             {disabled ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
