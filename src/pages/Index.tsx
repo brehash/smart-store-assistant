@@ -946,7 +946,7 @@ export default function Index() {
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto scrollbar-thin">
           {loadingMessages ? (
-            <div className="mx-auto max-w-3xl py-4 space-y-6 px-4">
+            <div className="mx-auto max-w-3xl py-2 space-y-6 px-3 sm:py-4 sm:px-4">
               {[...Array(3)].map((_, i) => (
                 <div key={i} className={`flex gap-3 ${i % 2 === 0 ? "justify-end" : ""}`}>
                   <div className={`space-y-2 ${i % 2 === 0 ? "max-w-[70%]" : "max-w-[80%]"}`}>
