@@ -367,6 +367,11 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
             <DropdownMenuItem onClick={onOpenSettings}>
               <Settings className="h-4 w-4 mr-2" /> Setări
             </DropdownMenuItem>
+            {isAdmin && (
+              <DropdownMenuItem onClick={() => navigate("/admin")}>
+                <ShieldCheck className="h-4 w-4 mr-2" /> Admin
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={signOut}>
               <LogOut className="h-4 w-4 mr-2" /> Deconectare
