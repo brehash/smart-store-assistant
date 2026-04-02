@@ -144,7 +144,7 @@ export default function Auth() {
       </div>
 
       {/* Right panel - form */}
-      <div className="flex w-full lg:w-1/2 items-center justify-center p-6">
+      <div className="flex w-full lg:w-1/2 items-center justify-center p-4 sm:p-6">
         <Card className="w-full max-w-md border-0 shadow-xl">
           <CardHeader className="text-center">
             {inviteToken && inviteInfo ? (
