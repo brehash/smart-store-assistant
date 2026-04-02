@@ -268,7 +268,7 @@ serve(async (req) => {
   } catch (e) {
     userLog.errors.push({ step: "fatal", error: e instanceof Error ? e.message : "Unknown" });
     try {
-      await writeLog(supabase, integrationId, userLog, startTime);
+      await writeLog(supabase, integrationId, userLog, startTime, userLog.userId);
     } catch { /* ignore */ }
 
     console.error(`colete-online-worker error (integration: ${integrationId}):`, e);
