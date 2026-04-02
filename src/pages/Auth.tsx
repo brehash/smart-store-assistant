@@ -149,10 +149,10 @@ export default function Auth() {
           <CardHeader className="text-center">
             {inviteToken && inviteInfo ? (
               <>
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                  <Users className="h-6 w-6" />
+                <div className="mx-auto mb-3 sm:mb-4 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                  <Users className="h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
-                <CardTitle className="text-2xl">Ești invitat!</CardTitle>
+                <CardTitle className="text-xl sm:text-2xl">Ești invitat!</CardTitle>
                 <CardDescription>
                   <strong>{inviteInfo.inviter_name}</strong> te-a invitat să te alături echipei{" "}
                   <strong>{inviteInfo.team_name}</strong>. Autentifică-te sau creează un cont pentru a accepta.
