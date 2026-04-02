@@ -121,7 +121,7 @@ export default function Auth() {
   ];
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-[100dvh]">
       {/* Left panel - branding */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-center px-12 bg-primary text-primary-foreground">
         <h1 className="text-4xl font-bold tracking-tight mb-4">Asistent AI WooCommerce</h1>
