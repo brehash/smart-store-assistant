@@ -15,7 +15,7 @@ import {
   Plus, MessageSquare, Settings, LogOut, Trash2,
   FolderOpen, ChevronDown, ChevronRight, FolderPlus,
   Pencil, X, Check, Search, MoreHorizontal, Pin,
-  ArrowRight, PanelLeftClose, PanelLeft, Package,
+  ArrowRight, PanelLeftClose, PanelLeft, Package, ShieldCheck,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -62,8 +62,20 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
   const [recentsLimit, setRecentsLimit] = useState(30);
   const [hoveredConvId, setHoveredConvId] = useState<string | null>(null);
   const [openMenuConvId, setOpenMenuConvId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  // Load from sessionStorage cache on mount, then fetch fresh data
+  // Check admin role
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("user_roles" as any)
+      .select("role")
+      .eq("user_id", user.id)
+      .eq("role", "admin")
+      .maybeSingle()
+      .then(({ data }) => setIsAdmin(!!data));
+  }, [user]);
+
   useEffect(() => {
     if (!user) return;
 
@@ -367,6 +379,11 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
             <DropdownMenuItem onClick={onOpenSettings}>
               <Settings className="h-4 w-4 mr-2" /> Setări
             </DropdownMenuItem>
+            {isAdmin && (
+              <DropdownMenuItem onClick={() => navigate("/admin")}>
+                <ShieldCheck className="h-4 w-4 mr-2" /> Admin
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={signOut}>
               <LogOut className="h-4 w-4 mr-2" /> Deconectare
@@ -563,6 +580,11 @@ export function ConversationSidebar({ activeId, onSelect, onNew, onNewInView, on
             <DropdownMenuItem onClick={onOpenSettings}>
               <Settings className="h-4 w-4 mr-2" /> Setări
             </DropdownMenuItem>
+            {isAdmin && (
+              <DropdownMenuItem onClick={() => navigate("/admin")}>
+                <ShieldCheck className="h-4 w-4 mr-2" /> Admin
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={signOut}>
               <LogOut className="h-4 w-4 mr-2" /> Deconectare
