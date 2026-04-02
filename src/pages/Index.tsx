@@ -996,7 +996,7 @@ export default function Index() {
               </div>
             </div>
           ) : (
-            <div className="mx-auto max-w-3xl py-4">
+            <div className="mx-auto max-w-3xl py-2 sm:py-4">
               {messages.map((msg, i) => (
                  <ChatMessage
                    key={i}
