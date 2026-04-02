@@ -42,7 +42,7 @@ export function ChatInput({ onSend, onStop, disabled, isStreaming, planMode, onP
           <Button
             variant={planMode ? "default" : "outline"}
             size="icon"
-            className={cn("shrink-0 h-[44px] w-[44px]", planMode && "bg-amber-500 hover:bg-amber-600 text-white")}
+            className={cn("shrink-0 h-9 w-9 sm:h-[44px] sm:w-[44px]", planMode && "bg-amber-500 hover:bg-amber-600 text-white")}
             onClick={onPlanModeToggle}
             title={planMode ? "Plan Mode ON" : "Plan Mode OFF"}
           >
