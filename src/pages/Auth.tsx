@@ -160,10 +160,10 @@ export default function Auth() {
               </>
             ) : (
               <>
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                  <Store className="h-6 w-6" />
+                <div className="mx-auto mb-3 sm:mb-4 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+                  <Store className="h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
-                <CardTitle className="text-2xl">{isLogin ? "Bine ai revenit" : "Creează cont"}</CardTitle>
+                <CardTitle className="text-xl sm:text-2xl">{isLogin ? "Bine ai revenit" : "Creează cont"}</CardTitle>
                 <CardDescription>
                   {isLogin ? "Autentifică-te în asistentul tău WooCommerce" : "Începe cu asistentul tău AI"}
                 </CardDescription>
