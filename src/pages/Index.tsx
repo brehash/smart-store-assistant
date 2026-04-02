@@ -963,7 +963,7 @@ export default function Index() {
               setShowWebhookSetup(true);
             }} />
           ) : messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center px-4">
+            <div className="flex flex-col items-center justify-center h-full text-center px-3 sm:px-4">
               {showWebhookSetup && (
                 <div className="w-full mb-6">
                   <WebhookSetupCard
